@@ -1,9 +1,11 @@
 import type { Contact, EmailRecord, Task, Segment, TaskItem } from "../types";
+import type { Campaign } from "../components/email-workflows/campaign/types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
 import emailHistoryJson from "./emailHistory.json";
 import tasksJson from "./tasks.json";
+import campaignsJson from "./campaigns.json";
 
 const KEYS = {
   contacts: "loanbudcrm:contacts",
@@ -11,6 +13,7 @@ const KEYS = {
   taskItems: "loanbudcrm:taskItems",
   emailHistory: "loanbudcrm:emailHistory",
   tasks: "loanbudcrm:tasks",
+  campaigns: "loanbudcrm:campaigns",
 } as const;
 
 function reviveDates<T extends Record<string, unknown>>(
@@ -88,5 +91,14 @@ export const store = {
         ["scheduledFor", "completedAt"],
       ),
     write: (data: Task[]) => write(KEYS.tasks, data),
+  },
+  campaigns: {
+    read: () =>
+      read<Campaign>(
+        KEYS.campaigns,
+        campaignsJson as Campaign[],
+        ["sentAt", "scheduledFor"],
+      ),
+    write: (data: Campaign[]) => write(KEYS.campaigns, data),
   },
 };

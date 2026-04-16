@@ -9,66 +9,20 @@ import {
   CheckSquare,
   Eye,
 } from "lucide-react";
-import type { Contact } from "@/app/types";
 import type { Campaign } from "./campaign/types";
 import {
   CAMPAIGN_STATUS_COLORS,
   CAMPAIGN_STATUS_LABELS,
 } from "./campaign/campaign-data";
 import { CampaignDetail } from "./CampaignDetail";
-import { NewCampaignModal } from "./campaign/NewCampaignModal";
 import { Button } from "../ui/button";
 
 interface CampaignsProps {
-  contacts: Contact[];
-  onSendEmail: (
-    recipients: Contact[],
-    subject: string,
-    body: string,
-    senderIdentity: string,
-  ) => void;
+  campaigns: Campaign[];
+  onCompose: () => void;
 }
 
-export function Campaigns({
-  contacts: _contacts,
-  onSendEmail: _onSendEmail,
-}: CampaignsProps) {
-  const [campaigns, _setCampaigns] = useState<Campaign[]>([
-    {
-      id: "1",
-      name: "New Broker Outreach - April",
-      segmentId: "seg1",
-      segmentName: "New Broker Listings",
-      templateId: "tpl1",
-      templateName: "Claim Your Listing",
-      status: "sent",
-      sentAt: new Date(2026, 3, 10),
-      recipientCount: 45,
-      openRate: 68.5,
-      followUpTasks: [
-        {
-          daysAfter: 0,
-          taskType: "Call",
-          description: "Initial follow-up call",
-        },
-        { daysAfter: 3, taskType: "Call", description: "Day 3 check-in" },
-      ],
-    },
-    {
-      id: "2",
-      name: "Re-engagement Campaign",
-      segmentId: "seg2",
-      segmentName: "Dormant Contacts",
-      templateId: "tpl2",
-      templateName: "We Miss You",
-      status: "scheduled",
-      scheduledFor: new Date(2026, 3, 20),
-      recipientCount: 120,
-      followUpTasks: [],
-    },
-  ]);
-
-  const [showNewCampaign, setShowNewCampaign] = useState(false);
+export function Campaigns({ campaigns, onCompose }: CampaignsProps) {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null,
   );
@@ -93,7 +47,7 @@ export function Campaigns({
               One-off or scheduled email campaigns to user segments
             </p>
           </div>
-          <Button onClick={() => setShowNewCampaign(true)}>
+          <Button onClick={onCompose}>
             <Plus className="w-4 h-4" />
             New Campaign
           </Button>
@@ -191,7 +145,7 @@ export function Campaigns({
                   Create your first campaign to send emails to user segments
                 </p>
                 <button
-                  onClick={() => setShowNewCampaign(true)}
+                  onClick={onCompose}
                   className="px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-all inline-flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -300,10 +254,6 @@ export function Campaigns({
         </div>
       </div>
 
-      <NewCampaignModal
-        isOpen={showNewCampaign}
-        onClose={() => setShowNewCampaign(false)}
-      />
     </div>
   );
 }

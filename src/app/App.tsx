@@ -13,6 +13,7 @@ import {
   Campaigns,
   UserSegments,
   Overview,
+  ComposeEmail,
 } from "./components/email-workflows";
 import {
   FileText,
@@ -35,7 +36,12 @@ import type {
   Contact,
   EmailRecord,
   Task,
+  TaskItem,
 } from "./types";
+import type {
+  Campaign,
+  ComposeSubmitParams,
+} from "./components/email-workflows/campaign/types";
 import { store } from "./data/store";
 import React from "react";
 import { crmSubItems } from "./data/navigation";
@@ -72,8 +78,14 @@ export default function App() {
   const [view, setView] = useState<View>("applications");
   const [activeSection, setActiveSection] = useState<MainSection | null>(null);
   const [contacts, setContacts] = useState<Contact[]>(store.contacts.read());
-  const [emailHistory, setEmailHistory] = useState<EmailRecord[]>(store.emailHistory.read());
+  const [emailHistory, setEmailHistory] = useState<EmailRecord[]>(
+    store.emailHistory.read(),
+  );
   const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
+  const [campaigns, setCampaigns] = useState<Campaign[]>(
+    store.campaigns.read(),
+  );
+  const [composeSegmentId, setComposeSegmentId] = useState<string>("");
   const [showSegmentBuilder, setShowSegmentBuilder] = useState(false);
 
   const iconNavItems = [
@@ -143,55 +155,86 @@ export default function App() {
     { id: "history", label: "History" },
   ];
 
-  const handleSendEmail = (
-    recipients: Contact[],
-    subject: string,
-    body: string,
-    senderIdentity: string,
-  ) => {
+  const handleOpenCompose = (segmentId = "") => {
+    setComposeSegmentId(segmentId);
+    setView("compose");
+  };
+
+  const handleCompose = (params: ComposeSubmitParams) => {
     const now = new Date();
 
-    const newEmails = recipients.map((contact, index) => ({
-      id: `email-${Date.now()}-${index}`,
-      contactId: contact.id,
-      contactName: `${contact.firstName} ${contact.lastName}`,
-      subject,
-      senderIdentity,
+    const newEmails: EmailRecord[] = params.recipients.map((c, i) => ({
+      id: `email-${Date.now()}-${i}`,
+      contactId: c.id,
+      contactName: `${c.firstName} ${c.lastName}`,
+      subject: params.subject,
+      senderIdentity: params.senderIdentity,
       status: "Sent" as const,
       sequenceDay: 0,
       sentAt: now,
     }));
 
-    const newTasks: Task[] = [];
-    [0, 3, 7, 14].forEach((day) => {
-      recipients.forEach((contact, index) => {
-        const scheduledDate = new Date(now);
-        scheduledDate.setDate(scheduledDate.getDate() + day);
+    const newTasks: Task[] = params.recipients.map((c, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      contactId: c.id,
+      contactName: `${c.firstName} ${c.lastName}`,
+      contactPhone: c.phone,
+      listingStatus: c.listingStatus,
+      callObjective: params.followUp.objective,
+      voicemailScript: params.followUp.vmScript,
+      dueDay: 0,
+      scheduledFor: params.followUp.dueDate,
+      status: "pending" as const,
+    }));
 
-        newTasks.push({
-          id: `task-${Date.now()}-${day}-${index}`,
-          contactId: contact.id,
-          contactName: `${contact.firstName} ${contact.lastName}`,
-          contactPhone: contact.phone,
-          listingStatus: contact.listingStatus,
-          callObjective:
-            day === 0
-              ? "Initial follow-up after email sent"
-              : `Day ${day} follow-up`,
-          voicemailScript: `Hi ${contact.firstName}, this is [Your Name] from LoanBud. I wanted to follow up on ${contact.listingName}. Please give me a call back at your earliest convenience. Thanks!`,
-          dueDay: day,
-          scheduledFor: scheduledDate,
-          status: "pending",
-        });
-      });
-    });
+    const newTaskItems: TaskItem[] = params.recipients.map((c, i) => ({
+      id: `taskitem-${Date.now()}-${i}`,
+      contactName: `${c.firstName} ${c.lastName}`,
+      contactId: c.id,
+      contactStatus: c.listingStatus,
+      taskType: params.followUp.taskType,
+      source: params.campaignName,
+      sourceType: "campaign" as const,
+      dueDate: params.followUp.dueDate,
+      assignee: params.senderIdentity,
+      status: "pending" as const,
+      triggerContext: params.followUp.objective,
+      notes: params.followUp.vmScript || undefined,
+    }));
+
+    const newCampaign: Campaign = {
+      id: `campaign-${Date.now()}`,
+      name: params.campaignName,
+      segmentId: params.segmentId,
+      segmentName: params.segmentName,
+      templateId: params.templateId,
+      templateName: params.templateName,
+      status: "sent",
+      sentAt: now,
+      recipientCount: params.recipients.length,
+      followUpTasks: [
+        {
+          daysAfter: 0,
+          taskType: params.followUp.taskType,
+          description: params.followUp.objective,
+        },
+      ],
+    };
 
     const updatedHistory = [...emailHistory, ...newEmails];
     const updatedTasks = [...tasks, ...newTasks];
+    const updatedItems = [...store.taskItems.read(), ...newTaskItems];
+    const updatedCampaigns = [...campaigns, newCampaign];
+
     setEmailHistory(updatedHistory);
     setTasks(updatedTasks);
+    setCampaigns(updatedCampaigns);
+
     store.emailHistory.write(updatedHistory);
     store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+    store.campaigns.write(updatedCampaigns);
+
     setView("history");
   };
 
@@ -268,6 +311,7 @@ export default function App() {
       )}
 
       {activeSection === "email-workflows" &&
+        view !== "compose" &&
         !(view === "user-segments" && showSegmentBuilder) && (
           <EmailWorkflowsSidebar
             items={emailWorkflowsSubItems}
@@ -286,13 +330,25 @@ export default function App() {
           {/* Email Workflows Views */}
           {view === "overview" && <Overview />}
           {view === "campaigns" && (
-            <Campaigns contacts={contacts} onSendEmail={handleSendEmail} />
+            <Campaigns
+              campaigns={campaigns}
+              onCompose={() => handleOpenCompose()}
+            />
+          )}
+          {view === "compose" && (
+            <ComposeEmail
+              contacts={contacts}
+              preSelectedSegmentId={composeSegmentId}
+              onSend={handleCompose}
+              onCancel={() => setView("campaigns")}
+            />
           )}
           {view === "flow-builder" && <FlowBuilder />}
           {view === "user-segments" && !showSegmentBuilder && (
             <UserSegments
               contacts={contacts}
               onEditSegment={() => setShowSegmentBuilder(true)}
+              onCompose={(segId: string) => handleOpenCompose(segId)}
             />
           )}
           {view === "user-segments" && showSegmentBuilder && (
@@ -328,46 +384,13 @@ export default function App() {
           {view === "companies" && (
             <PlaceholderView icon={Building2} title="Companies" />
           )}
-          {view === "leads" && (
-            <PlaceholderView icon={UsersIcon} title="Leads" />
-          )}
-          {view === "deals" && (
-            <PlaceholderView icon={Briefcase} title="Deals" />
-          )}
-          {view === "tickets" && (
-            <PlaceholderView icon={FileText} title="Tickets" />
-          )}
-          {view === "orders" && (
-            <PlaceholderView icon={FileText} title="Orders" />
-          )}
-          {view === "listings" && (
-            <PlaceholderView icon={FileText} title="Listings" />
-          )}
-          {view === "segments-lists" && (
-            <PlaceholderView icon={UsersIcon} title="Segments (Lists)" />
-          )}
+
           {view === "inbox" && (
             <PlaceholderView icon={Inbox} title="Inbox" badge="99+" />
           )}
           {view === "calls" && <PlaceholderView icon={Phone} title="Calls" />}
           {view === "meetings" && (
             <PlaceholderView icon={FileText} title="Meetings" />
-          )}
-          {view === "tasks" && (
-            <TaskQueue
-              tasks={tasks}
-              onComplete={handleCompleteTask}
-              onReschedule={handleRescheduleTask}
-            />
-          )}
-          {view === "playbooks" && (
-            <PlaceholderView icon={FileText} title="Playbooks" />
-          )}
-          {view === "message-templates" && (
-            <PlaceholderView icon={Mail} title="Message Templates" />
-          )}
-          {view === "snippets" && (
-            <PlaceholderView icon={FileText} title="Snippets" />
           )}
 
           {/* Main Navigation Views */}

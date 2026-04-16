@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Users,
-  User as UserIcon,
-} from "lucide-react";
+import { Plus, Edit, Trash2, Users, User as UserIcon } from "lucide-react";
 import type { Contact, Segment } from "@/app/types";
 import { Button } from "../ui/button";
 import { store } from "@/app/data/store";
@@ -13,11 +7,13 @@ import { store } from "@/app/data/store";
 interface UserSegmentsProps {
   contacts: Contact[];
   onEditSegment: () => void;
+  onCompose: (segmentId: string) => void;
 }
 
 export function UserSegments({
   contacts: _contacts,
   onEditSegment,
+  onCompose,
 }: UserSegmentsProps) {
   const [segments, _setSegments] = useState<Segment[]>(store.segments.read());
 
@@ -315,7 +311,10 @@ export function UserSegments({
               <button className="px-4 py-2 border-2 border-border text-foreground rounded-lg hover:bg-muted transition-all">
                 Export
               </button>
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all">
+              <button
+                onClick={() => onCompose(selectedSegments[0])}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
+              >
                 Create Campaign
               </button>
             </div>

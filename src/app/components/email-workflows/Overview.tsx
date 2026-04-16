@@ -9,7 +9,6 @@ import {
   Mail,
   GitBranch,
   ArrowRight,
-
   Search,
   User,
   Edit,
@@ -58,15 +57,6 @@ export function Overview() {
       status: "scheduled",
       audienceSize: 120,
       progress: 0,
-    },
-    {
-      id: "4",
-      name: "Listing Follow-up Sequence",
-      type: "flow",
-      status: "paused",
-      audienceSize: 89,
-      progress: 2,
-      currentStep: "Step 2: Waiting",
     },
   ]);
 
@@ -230,10 +220,10 @@ export function Overview() {
               </div>
 
               {/* Scheduled & Paused */}
-              <div className="space-y-4">
+              <div className="space-y-4 flex flex-col">
                 {activeCampaigns.filter((c) => c.status === "scheduled")
                   .length > 0 && (
-                  <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden">
                     <div className="bg-blue-50 px-6 py-3 border-b border-blue-200">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-blue-700" />
@@ -347,7 +337,7 @@ export function Overview() {
               <div className="flex gap-3"></div>
             </div>
 
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="bg-card border border-border rounded-lg ">
               {/* Search and Filters */}
               <div className="px-6 py-4 border-b border-border space-y-3">
                 {/* Stats Bar */}
@@ -481,7 +471,7 @@ export function Overview() {
                       </div>
                       <div>
                         <label className="block text-sm mb-2 text-muted-foreground">
-                          Source
+                          Campaign
                         </label>
                         <select
                           value={filterSource}
@@ -523,8 +513,8 @@ export function Overview() {
 
               {/* List View */}
               {viewMode === "list" ? (
-                <div>
-                  <table className="w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full table-auto">
                     <thead className="bg-muted/50 border-b border-border">
                       <tr>
                         <th className="px-6 py-4 text-left">
@@ -534,7 +524,7 @@ export function Overview() {
                           />
                         </th>
                         <th
-                          className="px-6 py-4 text-left text-sm text-muted-foreground"
+                          className="px-6 py-4 min-w-[250px] text-left text-sm text-muted-foreground"
                           style={{
                             fontFamily: "var(--font-sans)",
                             fontWeight: 600,
@@ -549,10 +539,10 @@ export function Overview() {
                             fontWeight: 600,
                           }}
                         >
-                          Task Type
+                          Categories
                         </th>
                         <th
-                          className="px-6 py-4 text-left text-sm text-muted-foreground"
+                          className="px-6 py-4 text-left min-w-[200px] text-sm text-muted-foreground"
                           style={{
                             fontFamily: "var(--font-sans)",
                             fontWeight: 600,
@@ -561,16 +551,16 @@ export function Overview() {
                           Source
                         </th>
                         <th
-                          className="px-6 py-4 text-left text-sm text-muted-foreground"
+                          className="px-6 py-4 text-left min-w-[250px] text-sm text-muted-foreground"
                           style={{
                             fontFamily: "var(--font-sans)",
                             fontWeight: 600,
                           }}
                         >
-                          Due Date
+                          Date
                         </th>
                         <th
-                          className="px-6 py-4 text-left text-sm text-muted-foreground"
+                          className="px-6 py-4 text-left min-w-[200px] text-sm text-muted-foreground"
                           style={{
                             fontFamily: "var(--font-sans)",
                             fontWeight: 600,

@@ -4,7 +4,8 @@
 
 LoanBud CRM Phase 1 Prototype — React SPA for loan management.
 
-- Frontend-only (no backend, no DB); all data is client-side mock data in `src/app/data/seeds.ts`
+- Frontend-only (no backend, no DB); all data lives in JSON seed files under `src/app/data/`
+- `src/app/data/store.ts` manages reads/writes via `localStorage`, seeded from JSON files on first load
 - Figma-originated project: components reflect the design system
 
 ## Tech Stack
@@ -28,10 +29,11 @@ LoanBud CRM Phase 1 Prototype — React SPA for loan management.
 
 - `src/app/App.tsx` — root component, routing, nav structure
 - `src/app/components/ui/` — Shadcn UI primitives (do not modify unless necessary)
-- `src/app/components/crm/` — CRM feature components
+- `src/app/components/crm/` — CRM feature components (CRMSidebar, ContactList, etc.)
 - `src/app/components/email-workflows/` — Email workflow feature components
-- `src/app/types/index.ts` — shared TypeScript interfaces
-- `src/app/data/seeds.ts` — mock data
+- `src/app/types/index.ts` — shared TypeScript interfaces and view/section union types
+- `src/app/data/store.ts` — localStorage-backed data store (source of truth at runtime)
+- `src/app/data/*.json` — seed data files: contacts, segments, tasks, taskItems, emailHistory, campaigns
 
 ## Coding Conventions
 
@@ -45,4 +47,5 @@ LoanBud CRM Phase 1 Prototype — React SPA for loan management.
 ## State Management
 
 - React Context API for shared state (no Redux, no Zustand)
-- No backend calls — all data flows from `seeds.ts` or local component state
+- No backend calls — all data flows from `store.ts` (which seeds from JSON files) or local component state
+- `store.ts` exposes typed getters/setters per entity; always go through it rather than importing JSON directly

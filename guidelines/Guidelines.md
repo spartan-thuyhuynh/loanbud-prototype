@@ -1,61 +1,50 @@
-**Add your own guidelines here**
-<!--
+# LoanBud CRM — Development Guidelines
 
-System Guidelines
+## General
 
-Use this file to provide the AI with rules and guidelines you want it to follow.
-This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs
+- Only use absolute positioning when necessary; prefer flex/grid layouts
+- Keep file sizes small — extract helper functions and subcomponents into their own files when a component grows large
+- No unused imports; ESLint enforces zero-warning policy
+- TypeScript strict mode — no `any` types
 
-TIP: More context isn't always better. It can confuse the LLM. Try and add the most important rules you need
+## Design System
 
-# General guidelines
+- Base font-size: 14px
+- Date formats: always "Jun 10" style (short month + day)
+- Use Shadcn UI components from `src/app/components/ui/` for all UI primitives
+- Prefer Tailwind utility classes over inline styles or new CSS files
+- Color tokens and typography are defined in `src/styles/theme.css`
 
-Any general rules you want the AI to follow.
-For example:
+## Component Guidelines
 
-* Only use absolute positioning when necessary. Opt for responsive and well structured layouts that use flexbox and grid by default
-* Refactor code as you go to keep code clean
-* Keep file sizes small and put helper functions and components in their own files.
+### Buttons
+- **Primary** — main action per section; filled with brand color; one per section
+- **Secondary** — supporting/alternative actions; outlined, transparent background
+- **Tertiary** — least important actions; text-only, no border
 
---------------
+### Navigation
+- Icon sidebar (`IconSidebar.tsx`) handles top-level section switching
+- Section-level sidebars (e.g. `CRMSidebar`, `EmailWorkflowsSidebar`) handle sub-views
+- Maximum 4 items in any bottom toolbar
+- Never combine a floating action button with a bottom toolbar
 
-# Design system guidelines
-Rules for how the AI should make generations look like your company's design system
+### Forms
+- Use React Hook Form for all form state
+- Validate at the field level; show inline errors below each field
+- Use Shadcn `<Input>`, `<Select>`, `<Checkbox>` etc. — do not build custom form primitives
 
-Additionally, if you select a design system to use in the prompt box, you can reference
-your design system's components, tokens, variables and components.
-For example:
+### Data & State
+- All runtime data flows through `src/app/data/store.ts` — never import JSON seed files directly in components
+- Use React Context for state shared across multiple components
+- Local UI state (open/close, hover, active tab) stays in component state
 
-* Use a base font-size of 14px
-* Date formats should always be in the format “Jun 10”
-* The bottom toolbar should only ever have a maximum of 4 items
-* Never use the floating action button with the bottom toolbar
-* Chips should always come in sets of 3 or more
-* Don't use a dropdown if there are 2 or fewer options
+## Email Workflows
 
-You can also create sub sections and add more specific details
-For example:
+- Views: Overview, Compose, Campaigns, User Segments, Flow Builder, Task Rules, Templates, History
+- Campaign data lives in `campaigns.json`, accessed via `store.ts`
+- Segment builder (`SegmentBuilderView`) is a standalone view, not a modal
 
+## CRM
 
-## Button
-The Button component is a fundamental interactive element in our design system, designed to trigger actions or navigate
-users through the application. It provides visual feedback and clear affordances to enhance user experience.
-
-### Usage
-Buttons should be used for important actions that users need to take, such as form submissions, confirming choices,
-or initiating processes. They communicate interactivity and should have clear, action-oriented labels.
-
-### Variants
-* Primary Button
-  * Purpose : Used for the main action in a section or page
-  * Visual Style : Bold, filled with the primary brand color
-  * Usage : One primary button per section to guide users toward the most important action
-* Secondary Button
-  * Purpose : Used for alternative or supporting actions
-  * Visual Style : Outlined with the primary color, transparent background
-  * Usage : Can appear alongside a primary button for less important actions
-* Tertiary Button
-  * Purpose : Used for the least important actions
-  * Visual Style : Text-only with no border, using primary color
-  * Usage : For actions that should be available but not emphasized
--->
+- Views: Contacts, Companies, Leads, Deals, Tickets, Orders, Listings, Segments/Lists, Inbox, Calls, Meetings, Tasks, Playbooks, Message Templates, Snippets
+- Contact data lives in `contacts.json`, accessed via `store.ts`

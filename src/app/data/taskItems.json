@@ -11,7 +11,7 @@
     "assignee": "Sarah Chen",
     "status": "overdue",
     "ruleId": "rule1",
-    "ruleName": "Day 0 Follow-up Call",
+    "ruleName": "Day 0 Email",
     "triggerContext": "Day 0 after email sent"
   },
   {
@@ -19,14 +19,14 @@
     "contactName": "Michael Rodriguez",
     "contactId": "c2",
     "contactStatus": "New",
-    "taskType": "Follow-up Call",
+    "taskType": "Email",
     "source": "New Broker Onboarding",
     "sourceType": "flow",
     "dueDate": "2026-04-15T00:00:00.000Z",
     "assignee": "John Doe",
     "status": "pending",
     "ruleId": "rule2",
-    "ruleName": "Day 3 Follow-up Call",
+    "ruleName": "Day 3 Email",
     "triggerContext": "Day 3 after email sent, no response"
   },
   {
@@ -34,7 +34,7 @@
     "contactName": "Emily Thompson",
     "contactId": "c3",
     "contactStatus": "Draft",
-    "taskType": "Status Check",
+    "taskType": "Voicemail",
     "source": "Manual",
     "sourceType": "manual",
     "dueDate": "2026-04-15T00:00:00.000Z",
@@ -53,7 +53,7 @@
     "assignee": "John Doe",
     "status": "pending",
     "ruleId": "rule1",
-    "ruleName": "Day 0 Follow-up Call",
+    "ruleName": "Day 0 Email",
     "triggerContext": "Day 0 after email sent"
   },
   {
@@ -70,6 +70,6 @@
     "completedAt": "2026-04-10T14:30:00.000Z",
     "outcome": "Voicemail left",
     "ruleId": "rule3",
-    "ruleName": "Day 7 Follow-up Call"
+    "ruleName": "Day 7 Email"
   }
 ]

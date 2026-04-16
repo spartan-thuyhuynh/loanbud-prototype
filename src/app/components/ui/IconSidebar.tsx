@@ -18,7 +18,7 @@ export const IconSidebar = ({
     {/* Logo */}
     <div className="p-3 border-b border-white/10 flex items-center justify-center">
       <img
-        src="/symbol.png"
+        src="public/symbol.png"
         alt="Logo"
         width={24}
         height={24}

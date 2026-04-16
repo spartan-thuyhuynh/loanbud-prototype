@@ -1,358 +1,563 @@
-import { useState, useEffect } from 'react';
-import { Send, AlertTriangle, Info, Sparkles, User } from 'lucide-react';
-import type { Contact } from '@/app/types';
+import { useState } from "react";
+import { Send, Users, ChevronRight } from "lucide-react";
+import type { Contact, Segment } from "@/app/types";
+import { store } from "@/app/data/store";
+import { sampleTemplates } from "./campaign/campaign-data";
+import type { ComposeSubmitParams } from "./campaign/types";
 
 interface ComposeEmailProps {
-  preselectedRecipients?: Contact[];
   contacts: Contact[];
-  onSend: (
-    recipients: Contact[],
-    subject: string,
-    body: string,
-    senderIdentity: string
-  ) => void;
+  preSelectedSegmentId?: string;
+  onSend: (params: ComposeSubmitParams) => void;
+  onCancel: () => void;
+}
+
+const STEPS = ["Select Recipients", "Email Content", "Follow-up Reminder", "Review & Send"] as const;
+
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-8">
+      {STEPS.map((label, i) => {
+        const num = i + 1;
+        const active = num === current;
+        const done = num < current;
+        return (
+          <div key={num} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : done
+                      ? "bg-green-500 text-white"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {num}
+              </div>
+              <span
+                className={`text-sm ${active ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ComposeEmail({
-  preselectedRecipients,
-  contacts: _contacts,
+  contacts,
+  preSelectedSegmentId = "",
   onSend,
+  onCancel,
 }: ComposeEmailProps) {
-  const [senderIdentity, setSenderIdentity] = useState<'brand' | 'agent'>('brand');
-  const [agentName, setAgentName] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  const segments: Segment[] = store.segments.read();
 
-  const recipients = preselectedRecipients || [];
-  const eligibleRecipients = recipients.filter((r) => !r.optedOut);
-  const blockedRecipients = recipients.filter((r) => r.optedOut);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [selectedSegmentId, setSelectedSegmentId] = useState(preSelectedSegmentId);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [senderIdentity, setSenderIdentity] = useState<"brand" | "agent">("brand");
+  const [agentName, setAgentName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [followUpTaskType, setFollowUpTaskType] = useState("Call");
+  const [followUpDueDate, setFollowUpDueDate] = useState("");
+  const [followUpObjective, setFollowUpObjective] = useState("");
+  const [followUpVmScript, setFollowUpVmScript] = useState("");
 
-  useEffect(() => {
-    if (preselectedRecipients && preselectedRecipients.length > 0) {
-      // Pre-fill template for "New" listings
-      const hasNewListings = preselectedRecipients.some(
-        (r) => r.listingStatus === 'New'
-      );
-      if (hasNewListings) {
-        setSubject('Claim Your Listing - Fast Approval Available');
-        setBody(
-          `Hi {{first_name}},\n\nI noticed your listing for {{listing_name}} and wanted to reach out personally.\n\nWe specialize in fast approvals and competitive rates. I'd love to discuss how we can help you move forward quickly.\n\nCan we schedule a quick call this week?\n\nBest regards,\nThe LoanBud Team`
-        );
-      }
-    }
-  }, [preselectedRecipients]);
+  const selectedSegment = segments.find((s) => s.id === selectedSegmentId);
+  const eligibleRecipients = contacts.filter((c) => !c.optedOut);
+  const optedOutCount = contacts.filter((c) => c.optedOut).length;
 
-  const handlePreview = () => {
-    if (eligibleRecipients.length === 0) {
-      alert('No eligible recipients selected');
-      return;
-    }
-    if (!subject.trim() || !body.trim()) {
-      alert('Please fill in subject and body');
-      return;
-    }
-    if (senderIdentity === 'agent' && !agentName.trim()) {
-      alert('Please enter agent name');
-      return;
-    }
-    setShowConfirmation(true);
-  };
-
-  const handleConfirmSend = () => {
-    const identity =
-      senderIdentity === 'brand'
-        ? 'LoanBud Brand'
-        : `Agent: ${agentName}`;
-
-    onSend(eligibleRecipients, subject, body, identity);
-
-    // Reset form
-    setSubject('');
-    setBody('');
-    setSenderIdentity('brand');
-    setAgentName('');
-    setShowConfirmation(false);
-  };
+  const previewContacts = contacts.slice(0, 5);
 
   const insertTag = (tag: string) => {
-    setBody(body + `{{${tag}}}`);
+    setBody((prev) => prev + `{{${tag}}}`);
   };
 
-  const previewBody = (contact: Contact) => {
-    return body
-      .replace(/\{\{first_name\}\}/g, contact.firstName)
-      .replace(/\{\{listing_name\}\}/g, contact.listingName);
+  const handleTemplateSelect = (idx: number) => {
+    const tpl = sampleTemplates[idx];
+    setSelectedTemplateId(String(idx));
+    setSubject(tpl.subject);
+    setBody(tpl.body);
+    setSenderIdentity(tpl.senderType);
   };
 
-  if (showConfirmation) {
-    return (
-      <div className="h-full flex flex-col bg-background">
-        <div className="border-b border-border bg-card px-8 py-6">
-          <h2 className="text-3xl" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-            Confirm & Send
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Review before sending
-          </p>
-        </div>
+  const handleSend = () => {
+    const segment = selectedSegment!;
+    const today = new Date();
+    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const campaignName = `${segment.name} – ${monthNames[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
 
-        <div className="flex-1 overflow-auto px-8 py-6">
-          <div className="max-w-4xl mx-auto space-y-6">
-            {/* Send Summary */}
-            <div className="bg-accent/10 border-2 border-accent rounded-lg p-6">
-              <div className="flex items-start gap-4">
-                <AlertTriangle className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-                <div className="flex-1">
-                  <h3 className="text-lg mb-2" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                    Ready to Send
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-muted-foreground">Recipients:</span>{' '}
-                      <span className="font-medium" style={{ fontFamily: 'var(--font-mono)' }}>
-                        {eligibleRecipients.length} contacts
-                      </span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Sender Identity:</span>{' '}
-                      <span className="font-medium">
-                        {senderIdentity === 'brand' ? 'LoanBud Brand' : `Agent: ${agentName}`}
-                      </span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Call Reminders:</span>{' '}
-                      <span className="font-medium">
-                        4 tasks will be created per contact (Days 0, 3, 7, 14)
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    const tpl = selectedTemplateId !== "" ? sampleTemplates[Number(selectedTemplateId)] : null;
 
-            {/* Email Preview */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 px-6 py-4 border-b border-border">
-                <h3 className="text-lg" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                  Email Preview
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="mb-4">
-                  <span className="text-sm text-muted-foreground">Subject:</span>
-                  <p className="text-lg mt-1" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                    {subject}
-                  </p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-4 border border-border">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Example for: {eligibleRecipients[0]?.firstName} {eligibleRecipients[0]?.lastName}
-                  </p>
-                  <div className="whitespace-pre-wrap">
-                    {eligibleRecipients[0] && previewBody(eligibleRecipients[0])}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="flex-1 px-6 py-4 border-2 border-border text-foreground rounded-lg hover:bg-muted transition-all"
-              >
-                Back to Edit
-              </button>
-              <button
-                onClick={handleConfirmSend}
-                className="flex-1 px-6 py-4 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
-                style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}
-              >
-                <Send className="w-5 h-5" />
-                Confirm & Send to {eligibleRecipients.length} Recipients
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    onSend({
+      recipients: eligibleRecipients,
+      subject,
+      body,
+      senderIdentity: senderIdentity === "brand" ? "LoanBud Brand" : `Agent: ${agentName}`,
+      segmentId: selectedSegmentId,
+      segmentName: segment.name,
+      templateId: selectedTemplateId || "custom",
+      templateName: tpl ? tpl.name : "Custom",
+      campaignName,
+      followUp: {
+        taskType: followUpTaskType,
+        dueDate: new Date(followUpDueDate),
+        objective: followUpObjective,
+        vmScript: followUpVmScript,
+      },
+    });
+  };
 
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-6">
-        <h2 className="text-3xl" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-          Compose & Send Email
+        <h2
+          className="text-3xl mb-1"
+          style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+        >
+          New Campaign
         </h2>
-        <p className="text-muted-foreground mt-1">
-          Manual email campaign with personalization
+        <p className="text-muted-foreground text-sm">
+          Step {step} of 4 — {STEPS[step - 1]}
         </p>
       </div>
 
       <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Recipient Info */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="text-lg mb-4" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-              Recipients
-            </h3>
-            {recipients.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Info className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No recipients selected</p>
-                <p className="text-sm mt-1">Go to Contacts & Segments to build a segment</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <span className="text-sm text-green-700">Eligible:</span>
-                    <span
-                      className="text-xl text-green-900"
-                      style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                    >
-                      {eligibleRecipients.length}
-                    </span>
-                  </div>
-                  {blockedRecipients.length > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
-                      <span className="text-sm text-red-700">Blocked (Opted Out):</span>
+        <div className="max-w-3xl mx-auto">
+          <StepIndicator current={step} />
+
+          {/* Step 1 — Select Recipients */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3
+                className="text-lg"
+                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+              >
+                Select a Segment
+              </h3>
+              <div className="space-y-2">
+                {segments.map((seg) => (
+                  <div
+                    key={seg.id}
+                    onClick={() => setSelectedSegmentId(seg.id)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedSegmentId === seg.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Users className="w-4 h-4 text-primary" />
+                        <span
+                          className="font-medium"
+                          style={{ fontFamily: "var(--font-sans)" }}
+                        >
+                          {seg.name}
+                        </span>
+                      </div>
                       <span
-                        className="text-xl text-red-900"
-                        style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+                        className="text-sm px-2 py-0.5 bg-muted rounded-full"
+                        style={{ fontFamily: "var(--font-mono)" }}
                       >
-                        {blockedRecipients.length}
+                        {seg.contactCount.toLocaleString()} contacts
                       </span>
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+
+              {selectedSegmentId && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between">
+                    <span
+                      className="text-sm font-semibold"
+                      style={{ fontFamily: "var(--font-sans)" }}
+                    >
+                      Contact Preview (first 5)
+                    </span>
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-green-700">
+                        Eligible: {eligibleRecipients.length}
+                      </span>
+                      <span className="text-red-600">
+                        Opted out: {optedOutCount}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {previewContacts.map((c) => (
+                      <div
+                        key={c.id}
+                        className="px-4 py-3 flex items-center justify-between text-sm"
+                      >
+                        <span>
+                          {c.firstName} {c.lastName}
+                        </span>
+                        <span className="text-muted-foreground">{c.email}</span>
+                        {c.optedOut && (
+                          <span className="text-xs text-red-500 ml-2">
+                            opted out
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                {blockedRecipients.length > 0 && (
-                  <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
-                    <p className="text-sm text-destructive">
-                      <AlertTriangle className="w-4 h-4 inline mr-2" />
-                      {blockedRecipients.length} contact(s) will be excluded due to opt-out status
-                    </p>
+              )}
+
+              <div className="flex justify-between pt-4">
+                <button
+                  onClick={onCancel}
+                  className="px-6 py-2 border border-border rounded-lg hover:bg-muted transition-all text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={!selectedSegmentId}
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 — Email Content */}
+          {step === 2 && (
+            <div className="space-y-6">
+              {/* Template picker */}
+              <div>
+                <h3
+                  className="text-lg mb-3"
+                  style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                >
+                  Choose a Template
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {sampleTemplates.map((tpl, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleTemplateSelect(idx)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedTemplateId === String(idx)
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <div
+                        className="font-medium text-sm mb-2"
+                        style={{ fontFamily: "var(--font-sans)" }}
+                      >
+                        {tpl.name}
+                      </div>
+                      <div className="flex gap-1 flex-wrap">
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                          {tpl.category}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-full">
+                          {tpl.senderType === "brand" ? "Brand" : "Agent"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sender Identity */}
+              <div>
+                <h3
+                  className="text-base mb-3 font-semibold"
+                  style={{ fontFamily: "var(--font-sans)" }}
+                >
+                  Sender Identity
+                </h3>
+                <div className="flex gap-3 mb-3">
+                  <button
+                    onClick={() => setSenderIdentity("brand")}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm transition-all ${
+                      senderIdentity === "brand"
+                        ? "border-primary bg-primary/5 font-medium"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    Brand Voice
+                  </button>
+                  <button
+                    onClick={() => setSenderIdentity("agent")}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm transition-all ${
+                      senderIdentity === "agent"
+                        ? "border-primary bg-primary/5 font-medium"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    Specific Agent
+                  </button>
+                </div>
+                {senderIdentity === "agent" && (
+                  <input
+                    type="text"
+                    placeholder="Agent name..."
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  />
+                )}
+              </div>
+
+              {/* Subject + Body */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-1">
+                    Subject Line
+                  </label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="Enter subject..."
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm text-muted-foreground">
+                      Email Body
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => insertTag("first_name")}
+                        className="px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 transition-all"
+                        style={{ fontFamily: "var(--font-mono)" }}
+                      >
+                        + first_name
+                      </button>
+                      <button
+                        onClick={() => insertTag("listing_name")}
+                        className="px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 transition-all"
+                        style={{ fontFamily: "var(--font-mono)" }}
+                      >
+                        + listing_name
+                      </button>
+                    </div>
+                  </div>
+                  <textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows={10}
+                    placeholder="Email body..."
+                    className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-2 border border-border rounded-lg hover:bg-muted transition-all text-sm"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!subject.trim() || !body.trim()}
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3 — Follow-up Reminder */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <h3
+                className="text-lg"
+                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+              >
+                Configure Follow-up Reminder
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-1">
+                    Task Type
+                  </label>
+                  <select
+                    value={followUpTaskType}
+                    onChange={(e) => setFollowUpTaskType(e.target.value)}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  >
+                    <option value="Call">Call</option>
+                    <option value="Email">Email</option>
+                    <option value="Voicemail">Voicemail</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={followUpDueDate}
+                    onChange={(e) => setFollowUpDueDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-1">
+                    Call Objective <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={followUpObjective}
+                    onChange={(e) => setFollowUpObjective(e.target.value)}
+                    placeholder="e.g. Confirm receipt of email, discuss listing options..."
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  />
+                </div>
+
+                {(followUpTaskType === "Call" || followUpTaskType === "Voicemail") && (
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">
+                      VM Script{" "}
+                      <span className="text-muted-foreground text-xs">
+                        (optional)
+                      </span>
+                    </label>
+                    <textarea
+                      value={followUpVmScript}
+                      onChange={(e) => setFollowUpVmScript(e.target.value)}
+                      rows={4}
+                      placeholder="Hi {{first_name}}, this is [Name] from LoanBud..."
+                      className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none"
+                    />
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Sender Identity */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="text-lg mb-4" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-              Sender Identity
-            </h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <button
-                onClick={() => setSenderIdentity('brand')}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  senderIdentity === 'brand'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <Sparkles className="w-6 h-6 mb-2 mx-auto text-primary" />
-                <div className="text-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                  Brand Voice
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Send as LoanBud
-                </div>
-              </button>
-              <button
-                onClick={() => setSenderIdentity('agent')}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  senderIdentity === 'agent'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <User className="w-6 h-6 mb-2 mx-auto text-primary" />
-                <div className="text-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                  Specific Agent
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Personal touch
-                </div>
-              </button>
+              <div className="flex justify-between pt-2">
+                <button
+                  onClick={() => setStep(2)}
+                  className="px-6 py-2 border border-border rounded-lg hover:bg-muted transition-all text-sm"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep(4)}
+                  disabled={!followUpDueDate || !followUpObjective.trim()}
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
-            {senderIdentity === 'agent' && (
-              <input
-                type="text"
-                placeholder="Enter agent name..."
-                value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
-                className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            )}
-          </div>
+          )}
 
-          {/* Email Content */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                Email Content
+          {/* Step 4 — Review & Send */}
+          {step === 4 && (
+            <div className="space-y-6">
+              <h3
+                className="text-lg"
+                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+              >
+                Review & Send
               </h3>
-              <div className="flex gap-2">
+
+              <div className="bg-card border border-border rounded-lg divide-y divide-border">
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Segment
+                  </span>
+                  <span className="text-sm flex-1 font-medium">
+                    {selectedSegment?.name}{" "}
+                    <span className="text-muted-foreground font-normal">
+                      ({selectedSegment?.contactCount.toLocaleString()} contacts)
+                    </span>
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Eligible
+                  </span>
+                  <span className="text-sm flex-1">
+                    <span className="text-green-700 font-medium">
+                      {eligibleRecipients.length} eligible
+                    </span>{" "}
+                    /{" "}
+                    <span className="text-red-500">
+                      {optedOutCount} opted out
+                    </span>
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Template
+                  </span>
+                  <span className="text-sm flex-1 font-medium">
+                    {selectedTemplateId !== ""
+                      ? sampleTemplates[Number(selectedTemplateId)].name
+                      : "Custom"}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Subject
+                  </span>
+                  <span className="text-sm flex-1">{subject}</span>
+                </div>
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Sender
+                  </span>
+                  <span className="text-sm flex-1">
+                    {senderIdentity === "brand"
+                      ? "LoanBud Brand"
+                      : `Agent: ${agentName}`}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground w-36">
+                    Follow-up
+                  </span>
+                  <span className="text-sm flex-1">
+                    <span className="font-medium">{followUpTaskType}</span> on{" "}
+                    {followUpDueDate} —{" "}
+                    <span className="italic">"{followUpObjective}"</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-2">
                 <button
-                  onClick={() => insertTag('first_name')}
-                  className="px-3 py-1.5 text-xs bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20 transition-all"
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  onClick={() => setStep(3)}
+                  className="px-6 py-2 border border-border rounded-lg hover:bg-muted transition-all text-sm"
                 >
-                  + first_name
+                  ← Back
                 </button>
                 <button
-                  onClick={() => insertTag('listing_name')}
-                  className="px-3 py-1.5 text-xs bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20 transition-all"
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  onClick={handleSend}
+                  className="px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-all flex items-center gap-2 text-sm font-semibold shadow"
                 >
-                  + listing_name
+                  <Send className="w-4 h-4" />
+                  Confirm & Send to {eligibleRecipients.length} contacts
                 </button>
               </div>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm mb-2 text-muted-foreground">
-                  Subject Line
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter subject..."
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2 text-muted-foreground">
-                  Email Body
-                </label>
-                <textarea
-                  placeholder="Enter email body... Use {{first_name}} and {{listing_name}} for personalization"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={12}
-                  className="w-full px-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Send Button */}
-          <button
-            onClick={handlePreview}
-            disabled={eligibleRecipients.length === 0}
-            className="w-full px-6 py-4 bg-accent text-accent-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg"
-            style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}
-          >
-            <Send className="w-5 h-5" />
-            Preview & Send
-          </button>
+          )}
         </div>
       </div>
     </div>

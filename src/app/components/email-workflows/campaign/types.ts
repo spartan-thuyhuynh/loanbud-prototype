@@ -1,4 +1,24 @@
+import type { Contact } from "@/app/types";
+
 export type CampaignStatus = "draft" | "scheduled" | "sent";
+
+export interface ComposeSubmitParams {
+  recipients: Contact[];
+  subject: string;
+  body: string;
+  senderIdentity: string;
+  segmentId: string;
+  segmentName: string;
+  templateId: string;
+  templateName: string;
+  campaignName: string;
+  followUp: {
+    taskType: string;
+    dueDate: Date;
+    objective: string;
+    vmScript: string;
+  };
+}
 
 export interface FollowUpTask {
   daysAfter: number;

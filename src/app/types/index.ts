@@ -29,6 +29,7 @@ export type CRMView =
 
 export type EmailWorkflowView =
   | "overview"
+  | "compose"
   | "campaigns"
   | "user-segments"
   | "flow-builder"
