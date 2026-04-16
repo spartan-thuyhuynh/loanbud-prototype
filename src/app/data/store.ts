@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
@@ -6,6 +6,8 @@ import taskItemsJson from "./taskItems.json";
 import emailHistoryJson from "./emailHistory.json";
 import tasksJson from "./tasks.json";
 import campaignsJson from "./campaigns.json";
+import applicationsJson from "./applications.json";
+import businessAcquisitionsJson from "./businessAcquisitions.json";
 
 const KEYS = {
   contacts: "loanbudcrm:contacts",
@@ -14,6 +16,8 @@ const KEYS = {
   emailHistory: "loanbudcrm:emailHistory",
   tasks: "loanbudcrm:tasks",
   campaigns: "loanbudcrm:campaigns",
+  applications: "loanbudcrm:applications",
+  businessAcquisitions: "loanbudcrm:businessAcquisitions",
 } as const;
 
 function reviveDates<T extends Record<string, unknown>>(
@@ -100,5 +104,24 @@ export const store = {
         ["sentAt", "scheduledFor"],
       ),
     write: (data: Campaign[]) => write(KEYS.campaigns, data),
+  },
+  applications: {
+    read: () =>
+      read<Application>(
+        KEYS.applications,
+        applicationsJson as Application[],
+        ["createdAt", "updatedAt"],
+      ),
+    write: (data: Application[]) => write(KEYS.applications, data),
+  },
+  businessAcquisitions: {
+    read: () =>
+      read<BusinessAcquisitionRecord>(
+        KEYS.businessAcquisitions,
+        businessAcquisitionsJson as BusinessAcquisitionRecord[],
+        ["createdAt", "updatedAt"],
+      ),
+    write: (data: BusinessAcquisitionRecord[]) =>
+      write(KEYS.businessAcquisitions, data),
   },
 };

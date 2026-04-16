@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ContactList } from "./components/crm";
+import { ApplicationList, BusinessAcquisitionList } from "./components/applications";
 import { IconSidebar } from "./components/ui/IconSidebar";
 import { CRMSidebar } from "./components/crm";
 import { EmailWorkflowsSidebar } from "./components/email-workflows";
@@ -35,6 +36,8 @@ import type {
   EmailRecord,
   Task,
   TaskItem,
+  Application,
+  BusinessAcquisitionRecord,
 } from "./types";
 import type { Campaign } from "./components/email-workflows/campaign/types";
 import { store } from "./data/store";
@@ -78,6 +81,10 @@ export default function App() {
   ); // Added state for TaskItems
   const [campaigns, setCampaigns] = useState<Campaign[]>(
     store.campaigns.read(),
+  );
+  const [applications] = useState<Application[]>(store.applications.read());
+  const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(
+    store.businessAcquisitions.read(),
   );
   const [composeSegmentId, setComposeSegmentId] = useState<string>("");
   const [showSegmentBuilder, setShowSegmentBuilder] = useState(false);
@@ -413,10 +420,16 @@ export default function App() {
           {view === "flow-builder" && <FlowBuilder />}
           {view === "task-rules" && <TaskRules />}
 
+          {/* Applications & Business Acquisition */}
+          {view === "applications" && (
+            <ApplicationList applications={applications} />
+          )}
+          {view === "business-acquisition" && (
+            <BusinessAcquisitionList businessAcquisitions={businessAcquisitions} />
+          )}
+
           {/* Placeholder Views */}
           {[
-            "applications",
-            "business-acquisition",
             "users",
             "automations",
             "questionnaires",

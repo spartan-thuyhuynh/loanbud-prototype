@@ -130,3 +130,62 @@ export interface TaskItem {
   completedAt?: Date;
   outcome?: string;
 }
+
+export type ApplicationStage =
+  | "Leads"
+  | "Prequalification Review"
+  | "Completed Initial Application"
+  | "Submitted to Underwriting"
+  | "Requested Prepaid Docs"
+  | "On Hold"
+  | "Withdrawn"
+  | "Funded";
+
+export type LoanPurpose =
+  | "Start a Business"
+  | "Buy Commercial Real Estate"
+  | "Debt Refinance"
+  | "Equipment Purchase"
+  | "Working Capital";
+
+export interface Application {
+  id: string;
+  applicationNumber: string;
+  stage: ApplicationStage;
+  loanPurpose: LoanPurpose;
+  branchName: string;
+  loanOfficerName: string;
+  assigneeName: string;
+  loanAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type BusinessAcquisitionStage =
+  | "New Lead"
+  | "Qualified"
+  | "Proposal Sent"
+  | "Negotiation"
+  | "Closed Won"
+  | "Closed Lost"
+  | "On Hold";
+
+export type AcquisitionType =
+  | "Direct Referral"
+  | "Cold Outreach"
+  | "Partnership"
+  | "Inbound Inquiry"
+  | "Broker Network";
+
+export interface BusinessAcquisitionRecord {
+  id: string;
+  recordNumber: string;
+  stage: BusinessAcquisitionStage;
+  acquisitionType: AcquisitionType;
+  branchName: string;
+  agentName: string;
+  assigneeName: string;
+  dealValue: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
