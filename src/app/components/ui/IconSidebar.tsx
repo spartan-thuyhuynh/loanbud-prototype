@@ -1,0 +1,71 @@
+import type { IconNavItem, MainSection, View } from "../../types";
+import * as Tooltip from "@radix-ui/react-tooltip";
+
+interface IconSidebarProps {
+  items: IconNavItem[];
+  activeSection: MainSection | null;
+  activeView: View;
+  onSectionClick: (section: MainSection) => void;
+}
+
+export const IconSidebar = ({
+  items,
+  activeSection,
+  activeView,
+  onSectionClick,
+}: IconSidebarProps) => (
+  <aside className="w-16 bg-[#2c3e50] text-white flex flex-col shadow-xl">
+    {/* Logo */}
+    <div className="p-3 border-b border-white/10 flex items-center justify-center">
+      <img
+        src="/symbol.png"
+        alt="Logo"
+        width={24}
+        height={24}
+        className="object-contain"
+      />
+    </div>
+
+    <nav className="flex-1 py-4 overflow-auto">
+      <div className="space-y-2 px-2">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            activeSection === item.id ||
+            (!activeSection && activeView === item.id);
+
+          return (
+            <Tooltip.Provider key={item.id} delayDuration={300}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    onClick={() => onSectionClick(item.id)}
+                    className={`
+              w-full p-3 rounded-lg transition-all duration-200
+              ${isActive ? "bg-[#4ade80] text-white" : "text-white/70 hover:bg-white/10"}
+            `}
+                  >
+                    <Icon className="w-6 h-6 mx-auto" />
+                  </button>
+                </Tooltip.Trigger>
+
+                {/* The Portal "teleports" the tooltip out of the sidebar container */}
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="right"
+                    sideOffset={12}
+                    className="z-[100] px-3 py-1.5 rounded bg-gray-900 text-white text-xs shadow-xl animate-in fade-in zoom-in-95 duration-200"
+                  >
+                    {item.tooltip}
+                    {/* Optional: Adds a little arrow pointing to the icon */}
+                    <Tooltip.Arrow className="fill-gray-900" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          );
+        })}
+      </div>
+    </nav>
+  </aside>
+);

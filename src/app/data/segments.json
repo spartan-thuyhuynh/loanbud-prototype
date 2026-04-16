@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "name": "Leads from first marketing checkers",
+    "contactCount": 1234,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-10T14:30:00.000Z",
+    "createdBy": "John Doe",
+    "createdAt": "2026-03-15T09:00:00.000Z",
+    "filters": []
+  },
+  {
+    "id": "2",
+    "name": "Email_checker_first[firstname]_test1",
+    "contactCount": 856,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-08T11:15:00.000Z",
+    "createdBy": "Sarah Chen",
+    "createdAt": "2026-03-20T10:30:00.000Z",
+    "filters": []
+  },
+  {
+    "id": "3",
+    "name": "Shop_checker_firstname_description-1",
+    "contactCount": 2145,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-05T16:00:00.000Z",
+    "createdBy": "Mike Johnson",
+    "createdAt": "2026-03-10T08:45:00.000Z",
+    "filters": []
+  },
+  {
+    "id": "4",
+    "name": "Email_Business Develop_Super User",
+    "contactCount": 432,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-01T09:30:00.000Z",
+    "createdBy": "Emily Davis",
+    "createdAt": "2026-02-28T14:15:00.000Z",
+    "filters": []
+  },
+  {
+    "id": "5",
+    "name": "Interested Referral Partners - All Contacts",
+    "contactCount": 1678,
+    "status": "Active",
+    "lastUpdatedAt": "2026-03-28T13:45:00.000Z",
+    "createdBy": "Robert Wilson",
+    "createdAt": "2026-02-15T10:00:00.000Z",
+    "filters": []
+  },
+  {
+    "id": "6",
+    "name": "All Inactive Referral Partners - Annual",
+    "contactCount": 543,
+    "status": "Active",
+    "lastUpdatedAt": "2026-03-25T10:20:00.000Z",
+    "createdBy": "Lisa Anderson",
+    "createdAt": "2026-02-10T09:30:00.000Z",
+    "filters": []
+  }
+]
