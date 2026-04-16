@@ -97,7 +97,7 @@ export interface Task {
   dueDay: number;
   scheduledFor: Date;
   status: "pending" | "completed";
-  disposition?: "Answered" | "VM Left" | "No Answer" | "Not Needed";
+  disposition?: "Answered" | "VM Left" | "No Answer" | "Not Needed" | string;
 }
 
 export interface Segment {
@@ -112,6 +112,7 @@ export interface Segment {
 }
 
 export interface TaskItem {
+  disposition: string;
   id: string;
   contactName: string;
   contactId: string;

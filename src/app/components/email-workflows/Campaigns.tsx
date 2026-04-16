@@ -41,7 +41,7 @@ export function Campaigns({ campaigns, onCompose }: CampaignsProps) {
               className="text-3xl mb-2"
               style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
             >
-              Campaigns
+              Email Campaigns
             </h2>
             <p className="text-muted-foreground">
               One-off or scheduled email campaigns to user segments
@@ -253,7 +253,6 @@ export function Campaigns({ campaigns, onCompose }: CampaignsProps) {
           </div>
         </div>
       </div>
-
     </div>
   );
 }
