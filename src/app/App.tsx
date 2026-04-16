@@ -19,9 +19,7 @@ import {
   FileText,
   Briefcase,
   Users as UsersIcon,
-  Building2,
   Inbox,
-  Mail,
   Phone,
   User,
   Workflow,
@@ -38,10 +36,7 @@ import type {
   Task,
   TaskItem,
 } from "./types";
-import type {
-  Campaign,
-  ComposeSubmitParams,
-} from "./components/email-workflows/campaign/types";
+import type { Campaign } from "./components/email-workflows/campaign/types";
 import { store } from "./data/store";
 import React from "react";
 import { crmSubItems } from "./data/navigation";
@@ -55,15 +50,10 @@ const PlaceholderView = ({
   title: string;
   badge?: string;
 }) => (
-  <div className="h-full flex items-center justify-center bg-background">
+  <div className="h-full flex items-center justify-center bg-background font-sans">
     <div className="text-center">
       <Icon className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-      <h2
-        className="text-2xl mb-2"
-        style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-      >
-        {title}
-      </h2>
+      <h2 className="text-2xl mb-2 font-semibold text-foreground">{title}</h2>
       {badge && (
         <span className="inline-block px-3 py-1 bg-red-500 text-white text-sm rounded-full mb-2">
           {badge}
@@ -75,6 +65,7 @@ const PlaceholderView = ({
 );
 
 export default function App() {
+  // --- State Hooks ---
   const [view, setView] = useState<View>("applications");
   const [activeSection, setActiveSection] = useState<MainSection | null>(null);
   const [contacts, setContacts] = useState<Contact[]>(store.contacts.read());
@@ -82,12 +73,16 @@ export default function App() {
     store.emailHistory.read(),
   );
   const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
+  const [taskItems, setTaskItems] = useState<TaskItem[]>(
+    store.taskItems.read(),
+  ); // Added state for TaskItems
   const [campaigns, setCampaigns] = useState<Campaign[]>(
     store.campaigns.read(),
   );
   const [composeSegmentId, setComposeSegmentId] = useState<string>("");
   const [showSegmentBuilder, setShowSegmentBuilder] = useState(false);
 
+  // --- Nav Items ---
   const iconNavItems = [
     {
       id: "applications" as MainSection,
@@ -147,7 +142,7 @@ export default function App() {
     dividerAfter?: boolean;
   }[] = [
     { id: "overview", label: "Overview", dividerAfter: true },
-    { id: "campaigns", label: "Campaigns" },
+    { id: "campaigns", label: "Email Campaigns" },
     { id: "flow-builder", label: "Email Flows", dividerAfter: true },
     { id: "user-segments", label: "Segments" },
     { id: "templates", label: "Templates" },
@@ -155,79 +150,87 @@ export default function App() {
     { id: "history", label: "History" },
   ];
 
+  // --- Handlers ---
   const handleOpenCompose = (segmentId = "") => {
     setComposeSegmentId(segmentId);
     setView("compose");
   };
 
-  const handleCompose = (params: ComposeSubmitParams) => {
+  const handleCompose = (params: any) => {
     const now = new Date();
+    const newEmails: EmailRecord[] = params.recipients.map(
+      (c: any, i: number) => ({
+        id: `email-${Date.now()}-${i}`,
+        contactId: c.id,
+        contactName: `${c.firstName} ${c.lastName}`,
+        subject: params.subject,
+        senderIdentity: params.senderIdentity,
+        status: "Sent" as const,
+        sequenceDay: 0,
+        sentAt: now,
+      }),
+    );
 
-    const newEmails: EmailRecord[] = params.recipients.map((c, i) => ({
-      id: `email-${Date.now()}-${i}`,
-      contactId: c.id,
-      contactName: `${c.firstName} ${c.lastName}`,
-      subject: params.subject,
-      senderIdentity: params.senderIdentity,
-      status: "Sent" as const,
-      sequenceDay: 0,
-      sentAt: now,
-    }));
+    const newTasks: Task[] = [];
+    const newTaskItems: TaskItem[] = [];
 
-    const newTasks: Task[] = params.recipients.map((c, i) => ({
-      id: `task-${Date.now()}-${i}`,
-      contactId: c.id,
-      contactName: `${c.firstName} ${c.lastName}`,
-      contactPhone: c.phone,
-      listingStatus: c.listingStatus,
-      callObjective: params.followUp.objective,
-      voicemailScript: params.followUp.vmScript,
-      dueDay: 0,
-      scheduledFor: params.followUp.dueDate,
-      status: "pending" as const,
-    }));
-
-    const newTaskItems: TaskItem[] = params.recipients.map((c, i) => ({
-      id: `taskitem-${Date.now()}-${i}`,
-      contactName: `${c.firstName} ${c.lastName}`,
-      contactId: c.id,
-      contactStatus: c.listingStatus,
-      taskType: params.followUp.taskType,
-      source: params.campaignName,
-      sourceType: "campaign" as const,
-      dueDate: params.followUp.dueDate,
-      assignee: params.senderIdentity,
-      status: "pending" as const,
-      triggerContext: params.followUp.objective,
-      notes: params.followUp.vmScript || undefined,
-    }));
+    params.reminders.forEach((reminder: any, rIdx: number) => {
+      params.recipients.forEach((c: any, cIdx: number) => {
+        const uniqueId = `${Date.now()}-${rIdx}-${cIdx}`;
+        newTasks.push({
+          id: `task-${uniqueId}`,
+          contactId: c.id,
+          contactName: `${c.firstName} ${c.lastName}`,
+          contactPhone: c.phone,
+          listingStatus: c.listingStatus,
+          callObjective: reminder.objective,
+          voicemailScript: reminder.vmScript,
+          dueDay: 0,
+          scheduledFor: new Date(reminder.dueDate),
+          status: "pending" as const,
+        });
+        newTaskItems.push({
+          id: `taskitem-${uniqueId}`,
+          contactName: `${c.firstName} ${c.lastName}`,
+          contactId: c.id,
+          contactStatus: c.listingStatus,
+          taskType: reminder.type,
+          source: params.campaignName || "Email Campaign",
+          sourceType: "campaign" as const,
+          dueDate: new Date(reminder.dueDate),
+          assignee: params.senderIdentity,
+          status: "pending" as const,
+          triggerContext: reminder.objective,
+          notes: reminder.vmScript || undefined,
+          disposition: "",
+        });
+      });
+    });
 
     const newCampaign: Campaign = {
       id: `campaign-${Date.now()}`,
-      name: params.campaignName,
+      name: params.campaignName || "Campaign",
       segmentId: params.segmentId,
       segmentName: params.segmentName,
-      templateId: params.templateId,
-      templateName: params.templateName,
       status: "sent",
       sentAt: now,
       recipientCount: params.recipients.length,
-      followUpTasks: [
-        {
-          daysAfter: 0,
-          taskType: params.followUp.taskType,
-          description: params.followUp.objective,
-        },
-      ],
+      followUpTasks: params.reminders.map((r: any) => ({
+        taskType: r.type,
+        description: r.objective,
+      })),
+      templateId: "",
+      templateName: "",
     };
 
     const updatedHistory = [...emailHistory, ...newEmails];
     const updatedTasks = [...tasks, ...newTasks];
-    const updatedItems = [...store.taskItems.read(), ...newTaskItems];
+    const updatedItems = [...taskItems, ...newTaskItems];
     const updatedCampaigns = [...campaigns, newCampaign];
 
     setEmailHistory(updatedHistory);
     setTasks(updatedTasks);
+    setTaskItems(updatedItems);
     setCampaigns(updatedCampaigns);
 
     store.emailHistory.write(updatedHistory);
@@ -238,8 +241,45 @@ export default function App() {
     setView("history");
   };
 
-  const handleComposeFromSegment = (_recipients: Contact[]) => {
-    setView("campaigns");
+  const handleCompleteTask = (taskId: string, disposition: string) => {
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: "completed" as const, disposition } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      ti.id.includes(taskId)
+        ? { ...ti, status: "completed" as const, disposition }
+        : ti,
+    );
+
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleRescheduleTask = (taskId: string, newDate: Date) => {
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, scheduledFor: newDate } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      ti.id.includes(taskId) ? { ...ti, dueDate: newDate } : ti,
+    );
+
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (!window.confirm("Delete this task?")) return;
+    const updatedTasks = tasks.filter((t) => t.id !== taskId);
+    const updatedItems = taskItems.filter((ti) => !ti.id.includes(taskId));
+
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
   };
 
   const handleUpdateContact = (
@@ -253,38 +293,15 @@ export default function App() {
     store.contacts.write(updated);
   };
 
-  const handleCompleteTask = (
-    taskId: string,
-    disposition: Task["disposition"],
-  ) => {
-    const updated = tasks.map((t) =>
-      t.id === taskId ? { ...t, status: "completed" as const, disposition } : t,
-    );
-    setTasks(updated);
-    store.tasks.write(updated);
-  };
-
-  const handleRescheduleTask = (taskId: string, newDate: Date) => {
-    const updated = tasks.map((t) =>
-      t.id === taskId ? { ...t, scheduledFor: newDate } : t,
-    );
-    setTasks(updated);
-    store.tasks.write(updated);
-  };
-
   const handleSectionClick = (section: MainSection) => {
     if (section === "crm") {
       setActiveSection(activeSection === "crm" ? null : "crm");
-      if (activeSection !== "crm") {
-        setView("contacts");
-      }
+      if (activeSection !== "crm") setView("contacts");
     } else if (section === "email-workflows") {
       setActiveSection(
         activeSection === "email-workflows" ? null : "email-workflows",
       );
-      if (activeSection !== "email-workflows") {
-        setView("overview");
-      }
+      if (activeSection !== "email-workflows") setView("overview");
     } else {
       setActiveSection(null);
       setView(section);
@@ -292,8 +309,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* 1. Main Icon Sidebar */}
+    <div className="flex h-screen bg-background overflow-hidden font-sans">
       <IconSidebar
         items={iconNavItems}
         activeSection={activeSection}
@@ -301,7 +317,6 @@ export default function App() {
         onSectionClick={handleSectionClick}
       />
 
-      {/* Sub-Sidebar for CRM */}
       {activeSection === "crm" && (
         <CRMSidebar
           items={crmSubItems}
@@ -312,27 +327,39 @@ export default function App() {
 
       {activeSection === "email-workflows" &&
         view !== "compose" &&
-        !(view === "user-segments" && showSegmentBuilder) && (
+        !showSegmentBuilder && (
           <EmailWorkflowsSidebar
             items={emailWorkflowsSubItems}
             activeView={view}
-            onViewChange={(newView) => {
-              setView(newView);
+            onViewChange={(v) => {
+              setView(v);
               setShowSegmentBuilder(false);
             }}
-            onResetSegmentBuilder={() => setShowSegmentBuilder(false)}
+            onResetSegmentBuilder={function (): void {
+              throw new Error("Function not implemented.");
+            }}
           />
         )}
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <div className="h-full">
-          {/* Email Workflows Views */}
-          {view === "overview" && <Overview />}
+          {/* Email Views */}
           {view === "campaigns" && (
-            <Campaigns
-              campaigns={campaigns}
-              onCompose={() => handleOpenCompose()}
+            <Campaigns campaigns={campaigns} onCompose={handleOpenCompose} />
+          )}
+          {view === "overview" && (
+            <Overview
+              onComplete={handleCompleteTask}
+              onReschedule={handleRescheduleTask}
+              onDelete={handleDeleteTask}
+            />
+          )}
+          {view === "tasks" && (
+            <TaskQueue
+              tasks={taskItems}
+              onComplete={handleCompleteTask}
+              onReschedule={handleRescheduleTask}
+              onDelete={handleDeleteTask}
             />
           )}
           {view === "compose" && (
@@ -343,24 +370,25 @@ export default function App() {
               onCancel={() => setView("campaigns")}
             />
           )}
-          {view === "flow-builder" && <FlowBuilder />}
           {view === "user-segments" && !showSegmentBuilder && (
             <UserSegments
               contacts={contacts}
               onEditSegment={() => setShowSegmentBuilder(true)}
-              onCompose={(segId: string) => handleOpenCompose(segId)}
+              onCompose={handleOpenCompose}
             />
           )}
+
+          {/* Segment Builder Sub-view */}
           {view === "user-segments" && showSegmentBuilder && (
             <div className="h-full flex flex-col">
               <div className="px-8 py-4 border-b border-border bg-card flex items-center gap-3">
                 <button
                   onClick={() => setShowSegmentBuilder(false)}
-                  className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm"
+                  className="px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm"
                 >
                   ← Back
                 </button>
-                <span className="text-muted-foreground text-sm">
+                <span className="text-muted-foreground text-sm font-medium">
                   Segment Builder
                 </span>
               </div>
@@ -369,46 +397,41 @@ export default function App() {
               </div>
             </div>
           )}
-          {view === "templates" && <TemplatesView />}
-          {view === "task-rules" && <TaskRules />}
-          {view === "history" && <EmailHistory history={emailHistory} />}
 
           {/* CRM Views */}
           {view === "contacts" && (
             <ContactList
               contacts={contacts}
               onUpdateContact={handleUpdateContact}
-              onComposeToSegment={handleComposeFromSegment}
+              onComposeToSegment={() => setView("campaigns")}
             />
           )}
-          {view === "companies" && (
-            <PlaceholderView icon={Building2} title="Companies" />
-          )}
 
-          {view === "inbox" && (
-            <PlaceholderView icon={Inbox} title="Inbox" badge="99+" />
-          )}
-          {view === "calls" && <PlaceholderView icon={Phone} title="Calls" />}
-          {view === "meetings" && (
-            <PlaceholderView icon={FileText} title="Meetings" />
-          )}
+          {/* Utilities & History */}
+          {view === "history" && <EmailHistory history={emailHistory} />}
+          {view === "templates" && <TemplatesView />}
+          {view === "flow-builder" && <FlowBuilder />}
+          {view === "task-rules" && <TaskRules />}
 
-          {/* Main Navigation Views */}
-          {view === "applications" && (
-            <PlaceholderView icon={FileText} title="Applications" />
-          )}
-          {view === "business-acquisition" && (
-            <PlaceholderView icon={Briefcase} title="Business Acquisition" />
-          )}
-          {view === "users" && <PlaceholderView icon={User} title="Users" />}
-          {view === "automations" && (
-            <PlaceholderView icon={Zap} title="Automations" />
-          )}
-          {view === "questionnaires" && (
-            <PlaceholderView icon={ClipboardList} title="Questionnaires" />
-          )}
-          {view === "configurations" && (
-            <PlaceholderView icon={Sliders} title="Configurations" />
+          {/* Placeholder Views */}
+          {[
+            "applications",
+            "business-acquisition",
+            "users",
+            "automations",
+            "questionnaires",
+            "configurations",
+            "companies",
+            "inbox",
+            "calls",
+            "meetings",
+          ].includes(view) && (
+            <PlaceholderView
+              icon={
+                view === "inbox" ? Inbox : view === "calls" ? Phone : FileText
+              }
+              title={view.replace("-", " ").toUpperCase()}
+            />
           )}
         </div>
       </main>
