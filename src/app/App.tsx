@@ -10,7 +10,6 @@ import {
   SegmentsView,
   TemplatesView,
   FlowBuilder,
-  TaskRules,
   Campaigns,
   UserSegments,
   Overview,
@@ -153,7 +152,6 @@ export default function App() {
     { id: "flow-builder", label: "Email Flows", dividerAfter: true },
     { id: "user-segments", label: "Segments" },
     { id: "templates", label: "Templates" },
-    { id: "task-rules", label: "Task Rules" },
     { id: "history", label: "History" },
   ];
 
@@ -279,10 +277,51 @@ export default function App() {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if (!window.confirm("Delete this task?")) return;
     const updatedTasks = tasks.filter((t) => t.id !== taskId);
     const updatedItems = taskItems.filter((ti) => !ti.id.includes(taskId));
 
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkCompleteTask = (taskIds: string[], disposition: string) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.map((t) =>
+      idSet.has(t.id) ? { ...t, status: "completed" as const, disposition } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      taskIds.some((id) => ti.id.includes(id))
+        ? { ...ti, status: "completed" as const, disposition }
+        : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkRescheduleTask = (taskIds: string[], newDate: Date) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.map((t) =>
+      idSet.has(t.id) ? { ...t, scheduledFor: newDate } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      taskIds.some((id) => ti.id.includes(id)) ? { ...ti, dueDate: newDate } : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkDeleteTask = (taskIds: string[]) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.filter((t) => !idSet.has(t.id));
+    const updatedItems = taskItems.filter(
+      (ti) => !taskIds.some((id) => ti.id.includes(id)),
+    );
     setTasks(updatedTasks);
     setTaskItems(updatedItems);
     store.tasks.write(updatedTasks);
@@ -367,6 +406,9 @@ export default function App() {
               onComplete={handleCompleteTask}
               onReschedule={handleRescheduleTask}
               onDelete={handleDeleteTask}
+              onBulkComplete={handleBulkCompleteTask}
+              onBulkReschedule={handleBulkRescheduleTask}
+              onBulkDelete={handleBulkDeleteTask}
             />
           )}
           {view === "compose" && (
@@ -387,22 +429,10 @@ export default function App() {
 
           {/* Segment Builder Sub-view */}
           {view === "user-segments" && showSegmentBuilder && (
-            <div className="h-full flex flex-col">
-              <div className="px-8 py-4 border-b border-border bg-card flex items-center gap-3">
-                <button
-                  onClick={() => setShowSegmentBuilder(false)}
-                  className="px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm"
-                >
-                  ← Back
-                </button>
-                <span className="text-muted-foreground text-sm font-medium">
-                  Segment Builder
-                </span>
-              </div>
-              <div className="flex-1 overflow-auto">
-                <SegmentsView contacts={contacts} />
-              </div>
-            </div>
+            <SegmentsView
+              contacts={contacts}
+              onBack={() => setShowSegmentBuilder(false)}
+            />
           )}
 
           {/* CRM Views */}
@@ -418,7 +448,6 @@ export default function App() {
           {view === "history" && <EmailHistory history={emailHistory} />}
           {view === "templates" && <TemplatesView />}
           {view === "flow-builder" && <FlowBuilder />}
-          {view === "task-rules" && <TaskRules />}
 
           {/* Applications & Business Acquisition */}
           {view === "applications" && (

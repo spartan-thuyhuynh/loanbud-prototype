@@ -5,6 +5,7 @@ import type { FilterGroup, FilterRule, SavedSegment } from "./types";
 import { FilterGroupCard } from "./segment-builder/FilterGroupCard";
 import { InlineToggle } from "./segment-builder/InlineToggle";
 import { SegmentPreviewPanel } from "./segment-builder/SegmentPreviewPanel";
+import { SaveSegmentModal } from "./segment-builder/SaveSegmentModal";
 
 export type { SavedSegment };
 
@@ -13,15 +14,15 @@ interface SegmentBuilderProps {
   savedSegments: SavedSegment[];
   onSaveSegment: (segment: SavedSegment) => void;
   onDeleteSegment: (id: string) => void;
+  onBack?: () => void;
 }
 
 export function SegmentBuilder({
   contacts,
   onSaveSegment,
+  onBack,
 }: SegmentBuilderProps) {
-  const [segmentName, setSegmentName] = useState("");
-  const [segmentDescription, setSegmentDescription] = useState("");
-  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [excludeContacts, setExcludeContacts] = useState(false);
   const [_testMatchesEnabled, _setTestMatchesEnabled] = useState(true);
   const [groups, setGroups] = useState<FilterGroup[]>([
@@ -169,27 +170,45 @@ export function SegmentBuilder({
     );
   };
 
-  const handleSave = () => {
-    if (!segmentName.trim()) return;
-    const allFilters = groups.flatMap((g) => g.filters);
+  const handleSave = (name: string, description: string) => {
     const newSegment: SavedSegment = {
       id: `segment-${Date.now()}`,
-      name: segmentName,
-      description: segmentDescription,
-      filters: allFilters,
+      name,
+      description,
+      filters: groups.flatMap((g) => g.filters),
       createdAt: new Date(),
     };
     onSaveSegment(newSegment);
-    setSegmentName("");
-    setSegmentDescription("");
     setGroups([{ id: "group-1", filters: [], connectorAfter: "or" }]);
-    setShowSaveForm(false);
+    setShowSaveModal(false);
   };
 
   const hasNoFilters = groups.every((g) => g.filters.length === 0);
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-8 py-4 border-b border-border bg-card flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm"
+            >
+              ← Back
+            </button>
+          )}
+          <span className="text-muted-foreground text-sm">Segment Builder</span>
+        </div>
+        <button
+          onClick={() => setShowSaveModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all text-sm"
+        >
+          <Save className="w-4 h-4" />
+          Save segment
+        </button>
+      </div>
+
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left: builder */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-2">
@@ -228,60 +247,6 @@ export function SegmentBuilder({
             />
           </div>
 
-          {/* Save segment */}
-          <div className="mt-4 border-t border-border pt-4">
-            {!showSaveForm ? (
-              <button
-                onClick={() => setShowSaveForm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all text-sm"
-              >
-                <Save className="w-4 h-4" />
-                Save segment
-              </button>
-            ) : (
-              <div className="space-y-3 bg-muted/30 border border-border rounded-lg p-4">
-                <div>
-                  <label className="block text-sm mb-1.5 text-muted-foreground">
-                    Segment Name
-                  </label>
-                  <input
-                    type="text"
-                    value={segmentName}
-                    onChange={(e) => setSegmentName(e.target.value)}
-                    placeholder="e.g., New Broker Listings"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1.5 text-muted-foreground">
-                    Description (Optional)
-                  </label>
-                  <textarea
-                    value={segmentDescription}
-                    onChange={(e) => setSegmentDescription(e.target.value)}
-                    placeholder="Describe this segment..."
-                    rows={2}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring resize-none text-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={!segmentName.trim()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Save Segment
-                  </button>
-                  <button
-                    onClick={() => setShowSaveForm(false)}
-                    className="px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-all text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right: preview panel */}
@@ -291,6 +256,12 @@ export function SegmentBuilder({
           hasNoFilters={hasNoFilters}
         />
       </div>
+
+      <SaveSegmentModal
+        isOpen={showSaveModal}
+        onSave={handleSave}
+        onClose={() => setShowSaveModal(false)}
+      />
     </div>
   );
 }

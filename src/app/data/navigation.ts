@@ -79,7 +79,5 @@ export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
   { id: "flow-builder", label: "Email Flows", dividerAfter: true },
 
   { id: "templates", label: "Templates" },
-  { id: "task-rules", label: "Task Rules" },
-
   { id: "history", label: "History" },
 ];

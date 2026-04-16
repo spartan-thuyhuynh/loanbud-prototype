@@ -18,11 +18,10 @@ import {
   UserSegments,
   TemplatesView,
   FlowBuilder,
-  TaskRules,
   Campaigns,
   Overview,
+  SegmentsView,
 } from "./email-workflows";
-import { SegmentBuilderView } from "./email-workflows/SegmentBuilderView";
 import { PlaceholderView } from "./ui/PlaceholderView";
 import type { View, Contact, EmailRecord, Task } from "../types";
 
@@ -72,10 +71,9 @@ export const MainContentArea = ({
         <UserSegments contacts={contacts} onEditSegment={onEditSegment} />
       )}
       {view === "user-segments" && showSegmentBuilder && (
-        <SegmentBuilderView contacts={contacts} onBack={onBackFromSegmentBuilder} />
+        <SegmentsView contacts={contacts} onBack={onBackFromSegmentBuilder} />
       )}
       {view === "templates" && <TemplatesView />}
-      {view === "task-rules" && <TaskRules />}
       {view === "history" && <EmailHistory history={emailHistory} />}
 
       {/* CRM Views */}

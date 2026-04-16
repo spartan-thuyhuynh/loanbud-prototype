@@ -4,9 +4,10 @@ import type { Contact } from '@/app/types';
 
 interface SegmentsViewProps {
   contacts: Contact[];
+  onBack?: () => void;
 }
 
-export function SegmentsView({ contacts }: SegmentsViewProps) {
+export function SegmentsView({ contacts, onBack }: SegmentsViewProps) {
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
 
   return (
@@ -17,6 +18,7 @@ export function SegmentsView({ contacts }: SegmentsViewProps) {
       onDeleteSegment={(id) =>
         setSavedSegments(savedSegments.filter((s) => s.id !== id))
       }
+      onBack={onBack}
     />
   );
 }

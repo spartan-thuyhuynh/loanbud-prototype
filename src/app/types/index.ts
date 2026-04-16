@@ -33,7 +33,6 @@ export type EmailWorkflowView =
   | "campaigns"
   | "user-segments"
   | "flow-builder"
-  | "task-rules"
   | "templates"
   | "history";
 
