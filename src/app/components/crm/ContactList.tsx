@@ -1,20 +1,15 @@
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Button } from "../ui/button";
-import type { Contact } from "@/app/types";
-
-interface ContactListProps {
-  contacts: Contact[];
-  onUpdateContact: (contactId: string, updates: Partial<Contact>) => void;
-  onComposeToSegment: (recipients: Contact[]) => void;
-}
+import { useAppData } from "@/app/contexts/AppDataContext";
 
 interface FilterRule {
   field: "listingStatus" | "userType";
   value: string;
 }
 
-export function ContactList({ contacts }: ContactListProps) {
+export function ContactList() {
+  const { contacts } = useAppData();
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, _setFilters] = useState<FilterRule[]>([]);
   // Filter contacts based on search and segment filters

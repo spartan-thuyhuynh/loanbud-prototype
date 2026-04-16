@@ -3,14 +3,8 @@ import { Search } from "lucide-react";
 import { Button } from "@ui/button";
 import { Checkbox } from "@ui/checkbox";
 import { Switch } from "@ui/switch";
-import type {
-  BusinessAcquisitionRecord,
-  BusinessAcquisitionStage,
-} from "@app/types";
-
-interface BusinessAcquisitionListProps {
-  businessAcquisitions: BusinessAcquisitionRecord[];
-}
+import type { BusinessAcquisitionStage } from "@app/types";
+import { useAppData } from "@/app/contexts/AppDataContext";
 
 const BA_STAGE_COLORS: Record<
   BusinessAcquisitionStage,
@@ -60,9 +54,8 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function BusinessAcquisitionList({
-  businessAcquisitions,
-}: BusinessAcquisitionListProps) {
+export function BusinessAcquisitionList() {
+  const { businessAcquisitions } = useAppData();
   const [activeTab, setActiveTab] = useState<BusinessAcquisitionStage | "All">(
     "All",
   );

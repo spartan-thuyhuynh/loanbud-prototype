@@ -1,20 +1,15 @@
 import { useState } from "react";
 import { Plus, Edit, Trash2, Users, User as UserIcon } from "lucide-react";
-import type { Contact, Segment } from "@/app/types";
+import type { Segment } from "@/app/types";
 import { Button } from "../ui/button";
 import { store } from "@/app/data/store";
+import { useNavigate } from "react-router";
 
-interface UserSegmentsProps {
-  contacts: Contact[];
-  onEditSegment: () => void;
-  onCompose: (segmentId: string) => void;
-}
+export function UserSegments() {
+  const navigate = useNavigate();
+  const onEditSegment = () => navigate("/email-workflows/user-segments/builder");
+  const onCompose = (segmentId: string) => navigate("/email-workflows/compose", { state: { segmentId } });
 
-export function UserSegments({
-  contacts: _contacts,
-  onEditSegment,
-  onCompose,
-}: UserSegmentsProps) {
   const [segments, _setSegments] = useState<Segment[]>(store.segments.read());
 
   const [searchTerm, setSearchTerm] = useState("");

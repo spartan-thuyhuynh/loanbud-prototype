@@ -16,13 +16,14 @@ import {
 } from "./campaign/campaign-data";
 import { CampaignDetail } from "./CampaignDetail";
 import { Button } from "../ui/button";
+import { useAppData } from "@/app/contexts/AppDataContext";
+import { useNavigate } from "react-router";
 
-interface CampaignsProps {
-  campaigns: Campaign[];
-  onCompose: () => void;
-}
+export function Campaigns() {
+  const { campaigns } = useAppData();
+  const navigate = useNavigate();
+  const onCompose = () => navigate("/email-workflows/compose");
 
-export function Campaigns({ campaigns, onCompose }: CampaignsProps) {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null,
   );

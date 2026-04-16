@@ -3,11 +3,8 @@ import { Search } from "lucide-react";
 import { Button } from "@ui/button";
 import { Checkbox } from "@ui/checkbox";
 import { Switch } from "@ui/switch";
-import type { Application, ApplicationStage } from "@app/types";
-
-interface ApplicationListProps {
-  applications: Application[];
-}
+import type { ApplicationStage } from "@app/types";
+import { useAppData } from "@/app/contexts/AppDataContext";
 
 const STAGE_COLORS: Record<
   ApplicationStage,
@@ -54,7 +51,8 @@ const TAB_ORDER: Array<ApplicationStage | "All"> = [
   "Funded",
 ];
 
-export function ApplicationList({ applications }: ApplicationListProps) {
+export function ApplicationList() {
+  const { applications } = useAppData();
   const [activeTab, setActiveTab] = useState<ApplicationStage | "All">("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

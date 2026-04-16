@@ -1,18 +1,11 @@
-import type { EmailWorkflowSubItem, View } from "../../types";
+import { NavLink } from "react-router";
+import type { EmailWorkflowSubItem } from "../../types";
 
 interface EmailWorkflowsSidebarProps {
   items: EmailWorkflowSubItem[];
-  activeView: View;
-  onViewChange: (view: View) => void;
-  onResetSegmentBuilder: () => void;
 }
 
-export const EmailWorkflowsSidebar = ({
-  items,
-  activeView,
-  onViewChange,
-  onResetSegmentBuilder,
-}: EmailWorkflowsSidebarProps) => (
+export const EmailWorkflowsSidebar = ({ items }: EmailWorkflowsSidebarProps) => (
   <aside className="w-52 bg-[#eaeaea] text-black flex flex-col shadow-xl">
     <div className="p-6 border-b border-black/10">
       <h2
@@ -25,29 +18,23 @@ export const EmailWorkflowsSidebar = ({
 
     <nav className="flex-1 px-4 py-4 overflow-auto">
       <div className="space-y-1">
-        {items.map((item) => {
-          const isActive = activeView === item.id;
-          return (
-            <div key={item.id}>
-              <button
-                onClick={() => {
-                  onViewChange(item.id);
-                  onResetSegmentBuilder();
-                }}
-                className={`
-            w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
-            transition-all duration-200 text-sm
-            ${isActive ? "bg-white text-black" : "text-black hover:bg-black/10"}
-          `}
-              >
-                <span className="flex-1 text-left">{item.label}</span>
-              </button>
-              {item.dividerAfter && (
-                <div className="border-t border-black/20 my-3" />
-              )}
-            </div>
-          );
-        })}
+        {items.map((item) => (
+          <div key={item.id}>
+            <NavLink
+              to={`/email-workflows/${item.id}`}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg
+                transition-all duration-200 text-sm
+                ${isActive ? "bg-white text-black" : "text-black hover:bg-black/10"}`
+              }
+            >
+              <span className="flex-1 text-left">{item.label}</span>
+            </NavLink>
+            {item.dividerAfter && (
+              <div className="border-t border-black/20 my-3" />
+            )}
+          </div>
+        ))}
       </div>
     </nav>
 

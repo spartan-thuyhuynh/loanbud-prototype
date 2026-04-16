@@ -7,7 +7,7 @@ interface PlaceholderViewProps {
 }
 
 export const PlaceholderView = ({ icon: Icon, title, badge }: PlaceholderViewProps) => (
-  <div className="h-full flex items-center justify-center bg-background">
+  <div className="flex-1 h-full flex items-center justify-center bg-background">
     <div className="text-center">
       <Icon className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
       <h2

@@ -1,17 +1,15 @@
-import type { IconNavItem, MainSection, View } from "../../types";
+import type { IconNavItem } from "../../types";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 interface IconSidebarProps {
   items: IconNavItem[];
-  activeSection: MainSection | null;
-  activeView: View;
-  onSectionClick: (section: MainSection) => void;
+  activeSection: string | null;
+  onSectionClick: (id: string) => void;
 }
 
 export const IconSidebar = ({
   items,
   activeSection,
-  activeView,
   onSectionClick,
 }: IconSidebarProps) => (
   <aside className="w-16 bg-[#2c3e50] text-white flex flex-col shadow-xl">
@@ -30,9 +28,7 @@ export const IconSidebar = ({
       <div className="space-y-2 px-2">
         {items.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            activeSection === item.id ||
-            (!activeSection && activeView === item.id);
+          const isActive = activeSection === item.id;
 
           return (
             <Tooltip.Provider key={item.id} delayDuration={300}>
@@ -41,15 +37,13 @@ export const IconSidebar = ({
                   <button
                     onClick={() => onSectionClick(item.id)}
                     className={`
-              w-full p-3 rounded-lg transition-all duration-200
-              ${isActive ? "bg-[#4ade80] text-white" : "text-white/70 hover:bg-white/10"}
-            `}
+                      w-full p-3 rounded-lg transition-all duration-200
+                      ${isActive ? "bg-[#4ade80] text-white" : "text-white/70 hover:bg-white/10"}
+                    `}
                   >
                     <Icon className="w-6 h-6 mx-auto" />
                   </button>
                 </Tooltip.Trigger>
-
-                {/* The Portal "teleports" the tooltip out of the sidebar container */}
                 <Tooltip.Portal>
                   <Tooltip.Content
                     side="right"
@@ -57,7 +51,6 @@ export const IconSidebar = ({
                     className="z-[100] px-3 py-1.5 rounded bg-gray-900 text-white text-xs shadow-xl animate-in fade-in zoom-in-95 duration-200"
                   >
                     {item.tooltip}
-                    {/* Optional: Adds a little arrow pointing to the icon */}
                     <Tooltip.Arrow className="fill-gray-900" />
                   </Tooltip.Content>
                 </Tooltip.Portal>

@@ -74,10 +74,10 @@ export const crmSubItems: CRMSubItem[] = [
 
 export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
   { id: "overview", label: "Overview", dividerAfter: true },
-  { id: "user-segments", label: "Segments" },
   { id: "campaigns", label: "Campaigns" },
   { id: "flow-builder", label: "Email Flows", dividerAfter: true },
-
+  { id: "user-segments", label: "Segments" },
   { id: "templates", label: "Templates" },
   { id: "history", label: "History" },
+  { id: "tasks", label: "Tasks", dividerAfter: true },
 ];

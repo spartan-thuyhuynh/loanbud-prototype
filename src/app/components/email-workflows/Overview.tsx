@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import type { TaskItem } from "@/app/types";
-import { store } from "@/app/data/store";
+import { useAppData } from "@/app/contexts/AppDataContext";
 import { TaskQueue } from "./TaskQueue";
 
 interface Campaign {
@@ -24,17 +24,8 @@ interface Campaign {
   currentStep?: string;
 }
 
-interface OverviewProps {
-  onComplete: (taskId: string, disposition: string) => void;
-  onReschedule: (taskId: string, newDate: Date) => void;
-  onDelete: (taskId: string) => void;
-}
-
-export function Overview({
-  onComplete,
-  onReschedule,
-  onDelete,
-}: OverviewProps) {
+export function Overview() {
+  const { taskItems: tasks } = useAppData();
   // --- State ---
   const [activeCampaigns] = useState<Campaign[]>([
     {
@@ -63,9 +54,6 @@ export function Overview({
       progress: 0,
     },
   ]);
-
-  // Read tasks from store
-  const [tasks] = useState<TaskItem[]>(store.taskItems.read());
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, _setFilterStatus] = useState<string>("all");
@@ -248,12 +236,7 @@ export function Overview({
 
               {/* Data Display */}
               {viewMode === "list" ? (
-                <TaskQueue
-                  tasks={filteredTasks}
-                  onComplete={onComplete}
-                  onReschedule={onReschedule}
-                  onDelete={onDelete}
-                />
+                <TaskQueue tasks={filteredTasks} />
               ) : (
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {assignees.map((assignee) => (

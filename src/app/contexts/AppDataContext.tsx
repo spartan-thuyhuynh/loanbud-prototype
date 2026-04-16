@@ -1,0 +1,234 @@
+import { createContext, useContext, useState } from "react";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord } from "../types";
+import type { Campaign } from "../components/email-workflows/campaign/types";
+import { store } from "../data/store";
+
+interface AppDataContextValue {
+  // Data
+  contacts: Contact[];
+  emailHistory: EmailRecord[];
+  tasks: Task[];
+  taskItems: TaskItem[];
+  campaigns: Campaign[];
+  applications: Application[];
+  businessAcquisitions: BusinessAcquisitionRecord[];
+  // Task handlers
+  handleCompleteTask: (taskId: string, disposition: string) => void;
+  handleRescheduleTask: (taskId: string, newDate: Date) => void;
+  handleDeleteTask: (taskId: string) => void;
+  handleBulkCompleteTask: (taskIds: string[], disposition: string) => void;
+  handleBulkRescheduleTask: (taskIds: string[], newDate: Date) => void;
+  handleBulkDeleteTask: (taskIds: string[]) => void;
+  // Contact handlers
+  handleUpdateContact: (contactId: string, updates: Partial<Contact>) => void;
+  // Campaign/compose handler (navigation handled by the caller)
+  handleCompose: (params: any) => void;
+}
+
+const AppDataContext = createContext<AppDataContextValue | null>(null);
+
+export function AppDataProvider({ children }: { children: React.ReactNode }) {
+  const [contacts, setContacts] = useState<Contact[]>(store.contacts.read());
+  const [emailHistory, setEmailHistory] = useState<EmailRecord[]>(store.emailHistory.read());
+  const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
+  const [taskItems, setTaskItems] = useState<TaskItem[]>(store.taskItems.read());
+  const [campaigns, setCampaigns] = useState<Campaign[]>(store.campaigns.read());
+  const [applications] = useState<Application[]>(store.applications.read());
+  const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(store.businessAcquisitions.read());
+
+  const handleCompleteTask = (taskId: string, disposition: string) => {
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: "completed" as const, disposition } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      ti.id.includes(taskId) ? { ...ti, status: "completed" as const, disposition } : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleRescheduleTask = (taskId: string, newDate: Date) => {
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, scheduledFor: newDate } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      ti.id.includes(taskId) ? { ...ti, dueDate: newDate } : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    const updatedTasks = tasks.filter((t) => t.id !== taskId);
+    const updatedItems = taskItems.filter((ti) => !ti.id.includes(taskId));
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkCompleteTask = (taskIds: string[], disposition: string) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.map((t) =>
+      idSet.has(t.id) ? { ...t, status: "completed" as const, disposition } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      taskIds.some((id) => ti.id.includes(id)) ? { ...ti, status: "completed" as const, disposition } : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkRescheduleTask = (taskIds: string[], newDate: Date) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.map((t) =>
+      idSet.has(t.id) ? { ...t, scheduledFor: newDate } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      taskIds.some((id) => ti.id.includes(id)) ? { ...ti, dueDate: newDate } : ti,
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkDeleteTask = (taskIds: string[]) => {
+    const idSet = new Set(taskIds);
+    const updatedTasks = tasks.filter((t) => !idSet.has(t.id));
+    const updatedItems = taskItems.filter(
+      (ti) => !taskIds.some((id) => ti.id.includes(id)),
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleUpdateContact = (contactId: string, updates: Partial<Contact>) => {
+    const updated = contacts.map((c) =>
+      c.id === contactId ? { ...c, ...updates } : c,
+    );
+    setContacts(updated);
+    store.contacts.write(updated);
+  };
+
+  const handleCompose = (params: any) => {
+    const now = new Date();
+    const newEmails: EmailRecord[] = params.recipients.map((c: any, i: number) => ({
+      id: `email-${Date.now()}-${i}`,
+      contactId: c.id,
+      contactName: `${c.firstName} ${c.lastName}`,
+      subject: params.subject,
+      senderIdentity: params.senderIdentity,
+      status: "Sent" as const,
+      sequenceDay: 0,
+      sentAt: now,
+    }));
+
+    const newTasks: Task[] = [];
+    const newTaskItems: TaskItem[] = [];
+
+    params.reminders.forEach((reminder: any, rIdx: number) => {
+      params.recipients.forEach((c: any, cIdx: number) => {
+        const uniqueId = `${Date.now()}-${rIdx}-${cIdx}`;
+        newTasks.push({
+          id: `task-${uniqueId}`,
+          contactId: c.id,
+          contactName: `${c.firstName} ${c.lastName}`,
+          contactPhone: c.phone,
+          listingStatus: c.listingStatus,
+          callObjective: reminder.objective,
+          voicemailScript: reminder.vmScript,
+          dueDay: 0,
+          scheduledFor: new Date(reminder.dueDate),
+          status: "pending" as const,
+        });
+        newTaskItems.push({
+          id: `taskitem-${uniqueId}`,
+          contactName: `${c.firstName} ${c.lastName}`,
+          contactId: c.id,
+          contactStatus: c.listingStatus,
+          taskType: reminder.type,
+          source: params.campaignName || "Email Campaign",
+          sourceType: "campaign" as const,
+          dueDate: new Date(reminder.dueDate),
+          assignee: params.senderIdentity,
+          status: "pending" as const,
+          triggerContext: reminder.objective,
+          notes: reminder.vmScript || undefined,
+          disposition: "",
+        });
+      });
+    });
+
+    const newCampaign: Campaign = {
+      id: `campaign-${Date.now()}`,
+      name: params.campaignName || "Campaign",
+      segmentId: params.segmentId,
+      segmentName: params.segmentName,
+      status: "sent",
+      sentAt: now,
+      recipientCount: params.recipients.length,
+      followUpTasks: params.reminders.map((r: any) => ({
+        taskType: r.type,
+        description: r.objective,
+      })),
+      templateId: "",
+      templateName: "",
+    };
+
+    const updatedHistory = [...emailHistory, ...newEmails];
+    const updatedTasks = [...tasks, ...newTasks];
+    const updatedItems = [...taskItems, ...newTaskItems];
+    const updatedCampaigns = [...campaigns, newCampaign];
+
+    setEmailHistory(updatedHistory);
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    setCampaigns(updatedCampaigns);
+
+    store.emailHistory.write(updatedHistory);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+    store.campaigns.write(updatedCampaigns);
+    // Navigation after compose is handled by the ComposeEmail component
+  };
+
+  return (
+    <AppDataContext.Provider
+      value={{
+        contacts,
+        emailHistory,
+        tasks,
+        taskItems,
+        campaigns,
+        applications,
+        businessAcquisitions,
+        handleCompleteTask,
+        handleRescheduleTask,
+        handleDeleteTask,
+        handleBulkCompleteTask,
+        handleBulkRescheduleTask,
+        handleBulkDeleteTask,
+        handleUpdateContact,
+        handleCompose,
+      }}
+    >
+      {children}
+    </AppDataContext.Provider>
+  );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAppData(): AppDataContextValue {
+  const ctx = useContext(AppDataContext);
+  if (!ctx) throw new Error("useAppData must be used inside AppDataProvider");
+  return ctx;
+}

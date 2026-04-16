@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { SegmentBuilder, type SavedSegment } from './campaign/SegmentBuilder';
-import type { Contact } from '@/app/types';
+import { useAppData } from '@/app/contexts/AppDataContext';
+import { useNavigate } from 'react-router';
 
-interface SegmentsViewProps {
-  contacts: Contact[];
-  onBack?: () => void;
-}
-
-export function SegmentsView({ contacts, onBack }: SegmentsViewProps) {
+export function SegmentsView() {
+  const { contacts } = useAppData();
+  const navigate = useNavigate();
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
 
   return (
@@ -18,7 +16,7 @@ export function SegmentsView({ contacts, onBack }: SegmentsViewProps) {
       onDeleteSegment={(id) =>
         setSavedSegments(savedSegments.filter((s) => s.id !== id))
       }
-      onBack={onBack}
+      onBack={() => navigate("/email-workflows/user-segments")}
     />
   );
 }

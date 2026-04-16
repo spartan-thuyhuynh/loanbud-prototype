@@ -1,9 +1,5 @@
 import { Mail, CheckCircle2, Eye, Send, Clock } from 'lucide-react';
-import type { EmailRecord } from '@/app/types';
-
-interface EmailHistoryProps {
-  history: EmailRecord[];
-}
+import { useAppData } from '@/app/contexts/AppDataContext';
 
 const statusConfig = {
   Sent: {
@@ -26,7 +22,8 @@ const statusConfig = {
   },
 };
 
-export function EmailHistory({ history }: EmailHistoryProps) {
+export function EmailHistory() {
+  const { emailHistory: history } = useAppData();
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',

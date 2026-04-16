@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Send, Plus, Trash2, Check } from "lucide-react";
-import type { Contact, Segment } from "@/app/types";
+import type { Segment } from "@/app/types";
 import { store } from "@/app/data/store";
 import { sampleTemplates } from "./campaign/campaign-data";
+import { useAppData } from "@/app/contexts/AppDataContext";
+import { useNavigate, useLocation } from "react-router";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -22,13 +24,6 @@ interface Reminder {
   dueDate: string;
   objective: string;
   vmScript?: string;
-}
-
-interface ComposeEmailProps {
-  contacts: Contact[];
-  preSelectedSegmentId?: string;
-  onSend: (params: any) => void;
-  onCancel: () => void;
 }
 
 const STEPS = ["Setup Content", "Schedule Reminders", "Review & Send"] as const;
@@ -78,12 +73,18 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-export function ComposeEmail({
-  contacts,
-  preSelectedSegmentId = "",
-  onSend,
-  onCancel,
-}: ComposeEmailProps) {
+export function ComposeEmail() {
+  const { contacts, handleCompose } = useAppData();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const preSelectedSegmentId: string = (location.state as { segmentId?: string } | null)?.segmentId ?? "";
+
+  const onSend = (params: Parameters<typeof handleCompose>[0]) => {
+    handleCompose(params);
+    navigate("/email-workflows/history");
+  };
+  const onCancel = () => navigate(-1);
+
   const segments: Segment[] = store.segments.read();
 
   // 1. Unified State
