@@ -1,4 +1,5 @@
 import { Mail, CheckCircle2, Eye, Send, Clock } from 'lucide-react';
+import { Link } from 'react-router';
 import { useAppData } from '@/app/contexts/AppDataContext';
 
 const statusConfig = {
@@ -217,7 +218,7 @@ export function EmailHistory() {
                                   <StatusIcon className={`w-5 h-5 ${config.color}`} />
                                 </div>
                                 <div className="flex-1">
-                                  <div className="font-medium">{email.contactName}</div>
+                                  <Link to={`/crm/contacts/${email.contactId}`} className="font-medium text-primary hover:underline">{email.contactName}</Link>
                                   <div className="text-sm text-muted-foreground">
                                     {email.contactId}
                                   </div>

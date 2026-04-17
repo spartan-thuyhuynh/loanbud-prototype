@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Calendar, CheckCircle2, Trash2 } from "lucide-react";
+import { Calendar, CheckCircle2, Trash2, Plus } from "lucide-react";
+import { Link } from "react-router";
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { TaskActionModal } from "./TaskActionModal";
 import { TaskBulkActionsBar } from "./TaskBulkActionsBar";
 import { TaskBulkActionModal } from "./TaskBulkActionModal";
+import { CreateTaskModal } from "./CreateTaskModal";
 
 type ModalMode = "complete" | "reschedule" | "delete" | null;
 
@@ -15,6 +17,7 @@ interface TaskQueueProps {
 
 export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
   const {
+    contacts,
     taskItems,
     handleCompleteTask,
     handleRescheduleTask,
@@ -25,6 +28,10 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
   } = useAppData();
 
   const tasks = tasksProp ?? taskItems;
+
+  const contactById = new Map(contacts.map((c) => [c.id, c]));
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -72,11 +79,23 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
 
   return (
     <div className="flex flex-col h-full bg-card">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <span className="text-sm text-muted-foreground">{pendingTasks.length} pending task{pendingTasks.length !== 1 ? "s" : ""}</span>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          New Task
+        </button>
+      </div>
+
       <div className={`flex-1 overflow-auto ${selectedTasks.length > 0 ? "pb-20" : ""}`}>
-        <table className="w-full table-fixed min-w-[1200px]">
+        <table className="w-full table-fixed min-w-[1400px]">
           <thead className="bg-muted/50 border-b border-border sticky top-0">
             <tr>
-              <th className="w-[50px] px-6 py-4 text-left">
+              <th className="w-[50px] px-4 py-4 text-left">
                 <input
                   type="checkbox"
                   checked={selectedTasks.length === pendingTasks.length && pendingTasks.length > 0}
@@ -84,18 +103,20 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
                   className="rounded border-border"
                 />
               </th>
-              <th className="w-[200px] px-6 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Contact</th>
-              <th className="px-6 py-4 w-[100px] text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Type</th>
-              <th className="w-[200px] px-6 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Objective</th>
-              <th className="w-[160px] px-6 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Due Date</th>
-              <th className="w-[160px] px-6 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Source</th>
-              <th className="w-[160px] px-6 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Actions</th>
+              <th className="w-[160px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Name</th>
+              <th className="w-[140px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Phone</th>
+              <th className="w-[160px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Listing</th>
+              <th className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Status</th>
+              <th className="w-[100px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Type</th>
+              <th className="w-[220px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Objective / VM Notes</th>
+              <th className="w-[150px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Due Date</th>
+              <th className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {pendingTasks.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
                   <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-20" />
                   <p>All caught up!</p>
                 </td>
@@ -103,9 +124,13 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
             ) : (
               pendingTasks.map((task) => {
                 const isSelected = selectedTasks.includes(task.id);
+                const contact = contactById.get(task.contactId);
+                const phone = contact?.phone ?? "—";
+                const listingName = contact?.listingName ?? "—";
+                const isOverdue = task.status === "overdue" || new Date(task.dueDate) < new Date();
                 return (
-                  <tr key={task.id} className={`group hover:bg-muted/20 transition-colors ${isSelected ? "bg-muted/10" : ""}`}>
-                    <td className="px-6 py-4">
+                  <tr key={task.id} className={`group hover:bg-muted/20 transition-colors ${isSelected ? "bg-muted/10" : ""} ${isOverdue ? "bg-red-50/40" : ""}`}>
+                    <td className="px-4 py-4">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -113,20 +138,39 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
                         className="rounded border-border"
                       />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-foreground">{task.contactName}</div>
-                      <div className="text-xs text-muted-foreground uppercase">{task.contactStatus}</div>
+                    <td className="px-4 py-4">
+                      <Link to={`/crm/contacts/${task.contactId}`} className="text-sm font-medium text-primary hover:underline truncate" title={task.contactName} onClick={(e) => e.stopPropagation()}>{task.contactName}</Link>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
+                      <div className="text-sm text-muted-foreground">{phone}</div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="text-sm text-muted-foreground truncate" title={listingName}>{listingName}</div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded uppercase tracking-tighter text-muted-foreground whitespace-nowrap">{task.contactStatus}</span>
+                      {isOverdue && (
+                        <div className="mt-1">
+                          <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tighter">Overdue</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
                       <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] rounded-full uppercase tracking-tighter">{task.taskType}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm truncate max-w-[200px]" title={task.triggerContext}>{task.triggerContext}</div>
+                    <td className="px-4 py-4">
+                      {task.triggerContext && (
+                        <div className="text-sm text-foreground line-clamp-2" title={task.triggerContext}>{task.triggerContext}</div>
+                      )}
+                      {task.notes && (
+                        <div className="mt-1 text-xs text-muted-foreground italic line-clamp-2" title={task.notes}>
+                          VM: {task.notes}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(task.dueDate)}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{task.source}</td>
-                    <td className="px-6 py-4 text-left">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-4 text-sm text-muted-foreground whitespace-nowrap">{formatDate(task.dueDate)}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-1">
                         <button onClick={() => openModal(task, "complete")} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
@@ -173,6 +217,11 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
         onReschedule={(date) => { handleBulkRescheduleTask(selectedTasks, date); setSelectedTasks([]); closeBulkModal(); }}
         onDelete={() => { handleBulkDeleteTask(selectedTasks); setSelectedTasks([]); closeBulkModal(); }}
         onClose={closeBulkModal}
+      />
+
+      <CreateTaskModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
       />
     </div>
   );

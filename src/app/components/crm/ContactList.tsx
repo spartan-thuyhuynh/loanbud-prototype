@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "@/app/contexts/AppDataContext";
+import { useNavigate } from "react-router";
 
 interface FilterRule {
   field: "listingStatus" | "userType";
@@ -10,6 +11,7 @@ interface FilterRule {
 
 export function ContactList() {
   const { contacts } = useAppData();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, _setFilters] = useState<FilterRule[]>([]);
   // Filter contacts based on search and segment filters
@@ -155,7 +157,8 @@ export function ContactList() {
               {filteredContacts.map((contact) => (
                 <tr
                   key={contact.id}
-                  className="hover:bg-muted/30 transition-colors"
+                  className="hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/crm/contacts/${contact.id}`)}
                 >
                   <td className="px-6 py-4">
                     <div className="text-sm font-semibold text-blue-600">

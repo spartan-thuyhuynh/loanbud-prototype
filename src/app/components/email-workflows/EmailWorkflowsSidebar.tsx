@@ -41,7 +41,7 @@ export const EmailWorkflowsSidebar = ({ items }: EmailWorkflowsSidebarProps) => 
     <div className="p-4 border-t border-black/10">
       <div className="text-xs text-black/60">
         <p className="mb-1">Phase 1: MVP</p>
-        <p className="opacity-70">Manual Send + Reminders</p>
+        <p className="opacity-70">Manual Send + Tasks</p>
       </div>
     </div>
   </aside>

@@ -21,6 +21,16 @@ interface AppDataContextValue {
   handleBulkDeleteTask: (taskIds: string[]) => void;
   // Contact handlers
   handleUpdateContact: (contactId: string, updates: Partial<Contact>) => void;
+  // Standalone task creation (not tied to a campaign)
+  handleCreateTask: (params: {
+    contactId: string;
+    contactName: string;
+    taskType: string;
+    dueDate: Date;
+    objective: string;
+    vmScript?: string;
+    assignee?: string;
+  }) => void;
   // Campaign/compose handler (navigation handled by the caller)
   handleCompose: (params: any) => void;
 }
@@ -105,6 +115,52 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const updatedItems = taskItems.filter(
       (ti) => !taskIds.some((id) => ti.id.includes(id)),
     );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleCreateTask = (params: {
+    contactId: string;
+    contactName: string;
+    taskType: string;
+    dueDate: Date;
+    objective: string;
+    vmScript?: string;
+    assignee?: string;
+  }) => {
+    const contact = contacts.find((c) => c.id === params.contactId);
+    const uniqueId = `manual-${Date.now()}`;
+    const newTask: Task = {
+      id: `task-${uniqueId}`,
+      contactId: params.contactId,
+      contactName: params.contactName,
+      contactPhone: contact?.phone ?? "",
+      listingStatus: contact?.listingStatus ?? "",
+      callObjective: params.objective,
+      voicemailScript: params.vmScript ?? "",
+      dueDay: 0,
+      scheduledFor: params.dueDate,
+      status: "pending",
+    };
+    const newItem: TaskItem = {
+      id: `taskitem-${uniqueId}`,
+      contactId: params.contactId,
+      contactName: params.contactName,
+      contactStatus: contact?.listingStatus ?? "",
+      taskType: params.taskType,
+      source: "Manual",
+      sourceType: "manual",
+      dueDate: params.dueDate,
+      assignee: params.assignee ?? "",
+      status: "pending",
+      triggerContext: params.objective,
+      notes: params.vmScript,
+      disposition: "",
+    };
+    const updatedTasks = [...tasks, newTask];
+    const updatedItems = [...taskItems, newItem];
     setTasks(updatedTasks);
     setTaskItems(updatedItems);
     store.tasks.write(updatedTasks);
@@ -218,6 +274,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleBulkRescheduleTask,
         handleBulkDeleteTask,
         handleUpdateContact,
+        handleCreateTask,
         handleCompose,
       }}
     >

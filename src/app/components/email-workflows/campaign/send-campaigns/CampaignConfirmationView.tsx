@@ -66,7 +66,7 @@ export function CampaignConfirmationView({
                 </p>
                 <p>
                   <span className="text-muted-foreground">
-                    Call Reminders:
+                    Call Tasks:
                   </span>{" "}
                   <span className="font-medium">
                     4 tasks will be created per contact (Days 0, 3, 7, 14)

@@ -26,7 +26,51 @@ interface Reminder {
   vmScript?: string;
 }
 
-const STEPS = ["Setup Content", "Schedule Reminders", "Review & Send"] as const;
+function toDateInputValue(date: Date) {
+  return date.toISOString().split("T")[0];
+}
+
+function addDays(base: Date, days: number) {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return toDateInputValue(d);
+}
+
+function default14DayCadence(): Reminder[] {
+  const today = new Date();
+  return [
+    {
+      id: "cadence-0",
+      type: "Call",
+      dueDate: addDays(today, 0),
+      objective: "Introduce yourself, confirm the contact received the opening email, and explain the next step",
+      vmScript: "Hi {{first_name}}, this is [Name] from LoanBud. I just sent you an email about your listing — please give me a call back at [phone]. Looking forward to connecting!",
+    },
+    {
+      id: "cadence-3",
+      type: "Call",
+      dueDate: addDays(today, 3),
+      objective: "Explain which documents are needed and how to upload them in LoanBud",
+      vmScript: "Hi {{first_name}}, following up on my last call. Please check the email I sent — it has the document details. Call me back at [phone].",
+    },
+    {
+      id: "cadence-7",
+      type: "Call",
+      dueDate: addDays(today, 7),
+      objective: "Re-state action needed and confirm commitment date",
+      vmScript: "Hi {{first_name}}, just a quick check-in on your listing. Give me a call at [phone] — I can help you get this moving quickly.",
+    },
+    {
+      id: "cadence-14",
+      type: "Call",
+      dueDate: addDays(today, 14),
+      objective: "Final follow-up — close the loop and confirm next steps or conclude the sequence",
+      vmScript: "Hi {{first_name}}, this is my final follow-up regarding your listing. Please call me at [phone] — I'd love to help you move forward.",
+    },
+  ];
+}
+
+const STEPS = ["Setup Content", "Schedule Tasks", "Review & Send"] as const;
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -100,10 +144,8 @@ export function ComposeEmail() {
   const [body, setBody] = useState("");
   const [showBodyPreview, setShowBodyPreview] = useState(false);
 
-  // 2. Multi-Reminder State
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: "1", type: "Call", dueDate: "", objective: "" },
-  ]);
+  // 2. Multi-Reminder State — pre-populated with 14-day cadence
+  const [reminders, setReminders] = useState<Reminder[]>(default14DayCadence);
 
   // Logic Helpers
   const addReminder = () => {
@@ -302,7 +344,7 @@ export function ComposeEmail() {
                   onClick={() => setStep(2)}
                   disabled={!selectedSegmentId || !subject.trim()}
                 >
-                  Next: Configure Reminders →
+                  Next: Configure Tasks →
                 </Button>
               </div>
             </div>
@@ -312,7 +354,7 @@ export function ComposeEmail() {
           {step === 2 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Follow-up Reminders</h3>
+                <h3 className="text-lg font-semibold">Follow-up Tasks</h3>
                 <Button
                   variant="outline"
                   size="sm"
@@ -320,7 +362,7 @@ export function ComposeEmail() {
                   className="gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Reminder
+                  Add Task
                 </Button>
               </div>
 
@@ -331,9 +373,19 @@ export function ComposeEmail() {
                     className="p-5 border border-border rounded-xl bg-card shadow-sm relative group"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Reminder {idx + 1}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Task {idx + 1}
+                        </span>
+                        {reminder.dueDate && (() => {
+                          const today = new Date(); today.setHours(0,0,0,0);
+                          const due = new Date(reminder.dueDate + "T00:00:00");
+                          const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+                          return diff >= 0 ? (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">Day {diff}</span>
+                          ) : null;
+                        })()}
+                      </div>
                       {reminders.length > 1 && (
                         <Button
                           variant="ghost"
@@ -393,6 +445,22 @@ export function ComposeEmail() {
                         />
                       </div>
                     </div>
+                    {(reminder.type === "Call" || reminder.type === "Voicemail") && (
+                      <div className="grid gap-1.5 mt-3">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider">
+                          Voicemail Script <span className="normal-case tracking-normal text-muted-foreground/60">(optional — shown to agent if no answer)</span>
+                        </label>
+                        <Textarea
+                          rows={2}
+                          placeholder="e.g. Hi {{first_name}}, this is [Name] from LoanBud — please give me a call back at [phone]."
+                          value={reminder.vmScript ?? ""}
+                          onChange={(e) =>
+                            updateReminder(reminder.id, "vmScript", e.target.value)
+                          }
+                          className="resize-none text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -453,7 +521,7 @@ export function ComposeEmail() {
                 </div>
 
                 <div className="px-5 py-4 grid grid-cols-3 text-sm items-start">
-                  <span className="text-muted-foreground">Reminders</span>
+                  <span className="text-muted-foreground">Tasks</span>
                   <div className="col-span-2 space-y-1">
                     {reminders.map((r, i) => (
                       <div key={i} className="flex items-center gap-2">

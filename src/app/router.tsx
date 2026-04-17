@@ -3,7 +3,7 @@ import { RootLayout } from "./layouts/RootLayout";
 import { CRMLayout } from "./layouts/CRMLayout";
 import { EmailWorkflowsLayout } from "./layouts/EmailWorkflowsLayout";
 import { ApplicationList, BusinessAcquisitionList } from "./components/applications";
-import { ContactList } from "./components/crm";
+import { ContactList, ContactDetail } from "./components/crm";
 import {
   Overview,
   Campaigns,
@@ -46,6 +46,7 @@ export const router = createBrowserRouter(
         children: [
           { index: true, element: <Navigate to="/crm/contacts" replace /> },
           { path: "contacts", element: <ContactList /> },
+          { path: "contacts/:id", element: <ContactDetail /> },
           { path: "companies", element: <PlaceholderView icon={Briefcase} title="Companies" /> },
           { path: "inbox", element: <PlaceholderView icon={FileText} title="Inbox" /> },
           { path: "calls", element: <PlaceholderView icon={FileText} title="Calls" /> },
