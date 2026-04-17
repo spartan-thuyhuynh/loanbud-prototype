@@ -79,7 +79,7 @@ export function ContactDetail() {
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <div className="text-center">
           <p className="mb-4">Contact not found.</p>
-          <button onClick={() => navigate("/crm/contacts")} className="text-primary underline text-sm">
+          <button onClick={() => navigate(-1)} className="text-primary underline text-sm">
             Back to contacts
           </button>
         </div>
@@ -113,11 +113,11 @@ export function ContactDetail() {
       {/* Back nav */}
       <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2">
         <button
-          onClick={() => navigate("/crm/contacts")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Contacts
+          Back
         </button>
       </div>
 

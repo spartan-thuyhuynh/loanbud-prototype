@@ -103,6 +103,7 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
                   className="rounded border-border"
                 />
               </th>
+              <th className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Actions</th>
               <th className="w-[160px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Name</th>
               <th className="w-[140px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Phone</th>
               <th className="w-[160px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Listing</th>
@@ -110,7 +111,6 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
               <th className="w-[100px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Type</th>
               <th className="w-[220px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Objective / VM Notes</th>
               <th className="w-[150px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Due Date</th>
-              <th className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -137,6 +137,19 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
                         onChange={() => handleSelectTask(task.id)}
                         className="rounded border-border"
                       />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openModal(task, "complete")} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openModal(task, "reschedule")} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
+                          <Calendar className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openModal(task, "delete")} className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <Link to={`/crm/contacts/${task.contactId}`} className="text-sm font-medium text-primary hover:underline truncate" title={task.contactName} onClick={(e) => e.stopPropagation()}>{task.contactName}</Link>
@@ -169,19 +182,6 @@ export function TaskQueue({ tasks: tasksProp }: TaskQueueProps) {
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm text-muted-foreground whitespace-nowrap">{formatDate(task.dueDate)}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openModal(task, "complete")} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => openModal(task, "reschedule")} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
-                          <Calendar className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => openModal(task, "delete")} className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 );
               })
