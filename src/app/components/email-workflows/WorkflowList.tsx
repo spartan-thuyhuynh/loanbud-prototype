@@ -104,7 +104,7 @@ export function WorkflowList() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border">
                 <tr>
-                  {["Name", "Segment", "Status", "Steps", "Enrolled", "Activated", "Actions"].map((col) => (
+                  {["Name", "Segment", "Status", "Steps", "Activated", "Actions"].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {col}
                     </th>
@@ -148,7 +148,6 @@ export function WorkflowList() {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-foreground font-medium">{wf.enrolledCount}</td>
                     <td className="px-5 py-4 text-muted-foreground">
                       {wf.status === "active" ? formatDate(wf.createdAt) : "—"}
                     </td>
