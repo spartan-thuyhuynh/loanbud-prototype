@@ -12,7 +12,7 @@
     "steps": [
       {
         "id": "step-wf1-1",
-        "name": "Send Email Step",
+        "name": "Welcome Email",
         "order": 1,
         "dayOffset": 0,
         "actionType": "email",
@@ -24,22 +24,34 @@
       },
       {
         "id": "step-wf1-2",
-        "name": "Call Reminder Step",
+        "name": "Day 3 Call Reminder",
         "order": 2,
         "dayOffset": 3,
         "actionType": "call-reminder",
-        "note": "Follow up on email sent Day 0. Ask if they reviewed our offer.",
+        "note": "Follow up on welcome email sent Day 0. Ask if they reviewed our offer and have questions.",
         "reminderDaysBefore": 1
       },
       {
         "id": "step-wf1-3",
-        "name": "Send SMS Step",
+        "name": "Day 7 SMS Check-in",
         "order": 3,
         "dayOffset": 7,
         "actionType": "sms",
         "smsTemplateId": "sms-1",
         "smsTemplateName": "Day 7 Check-in",
         "message": "Hi {{first_name}}, just checking in on your listing application. Reply anytime — we're here to help!"
+      },
+      {
+        "id": "step-wf1-4",
+        "name": "Day 14 Follow-up Email",
+        "order": 4,
+        "dayOffset": 14,
+        "actionType": "email",
+        "templateId": "tpl-3",
+        "templateName": "Two-Week Follow-up",
+        "senderIdentity": "John Smith <john@loanbuds.com>",
+        "subject": "Still here to help — next steps for your listing",
+        "body": "Hi {{first_name}},\n\nIt's been two weeks since we first connected. I wanted to make sure you have everything you need to move forward.\n\nReply to this email or give us a call — we'd love to help you get funded.\n\nBest,\nJohn"
       }
     ]
   },
@@ -56,7 +68,7 @@
     "steps": [
       {
         "id": "step-wf2-1",
-        "name": "Send Email Step",
+        "name": "Re-engagement Email",
         "order": 1,
         "dayOffset": 0,
         "actionType": "email",
@@ -68,12 +80,68 @@
       },
       {
         "id": "step-wf2-2",
-        "name": "Call Reminder Step",
+        "name": "Day 5 Call Reminder",
         "order": 2,
         "dayOffset": 5,
         "actionType": "call-reminder",
         "note": "Check if they opened the re-engagement email. Offer a quick intro call.",
         "reminderDaysBefore": 1
+      },
+      {
+        "id": "step-wf2-3",
+        "name": "Day 10 SMS",
+        "order": 3,
+        "dayOffset": 10,
+        "actionType": "sms",
+        "smsTemplateId": "sms-2",
+        "smsTemplateName": "Re-engagement SMS",
+        "message": "Hi {{first_name}}, we have new loan programs with competitive rates. Interested? Reply YES and we'll be in touch."
+      }
+    ]
+  },
+  {
+    "id": "wf-3",
+    "name": "Lender Partner Nurture",
+    "description": "Keep lender partners engaged with periodic updates and check-ins",
+    "segmentId": "5",
+    "segmentName": "Interested Referral Partners - All Contacts",
+    "status": "paused",
+    "createdAt": "2026-03-20T11:00:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 1,
+    "steps": [
+      {
+        "id": "step-wf3-1",
+        "name": "Intro Email",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-4",
+        "templateName": "Partner Intro",
+        "senderIdentity": "Mike Johnson <mike@loanbuds.com>",
+        "subject": "Welcome to the LoanBud Partner Network",
+        "body": "Hi {{first_name}},\n\nThank you for joining our partner network. We're excited to work with you.\n\nAs a partner you'll receive priority support and early access to new programs.\n\nLet's connect soon.\n\nMike"
+      },
+      {
+        "id": "step-wf3-2",
+        "name": "Day 7 Call Reminder",
+        "order": 2,
+        "dayOffset": 7,
+        "actionType": "call-reminder",
+        "note": "Intro call to discuss partnership terms and first referral opportunity.",
+        "reminderDaysBefore": 1
+      },
+      {
+        "id": "step-wf3-3",
+        "name": "Day 21 Update Email",
+        "order": 3,
+        "dayOffset": 21,
+        "actionType": "email",
+        "templateId": "tpl-5",
+        "templateName": "Monthly Partner Update",
+        "senderIdentity": "Mike Johnson <mike@loanbuds.com>",
+        "subject": "Your first month as a LoanBud partner — here's what's new",
+        "body": "Hi {{first_name}},\n\nIt's been three weeks since you joined and we wanted to share some highlights.\n\nNew programs, updated rates, and exclusive referral bonuses are live. Check the portal for details.\n\nMike"
       }
     ]
   }

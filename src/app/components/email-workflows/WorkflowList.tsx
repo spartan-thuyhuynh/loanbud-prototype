@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Pencil, Trash2, LayoutList, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, LayoutList, ChevronRight, PlayCircle, PauseCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "../../contexts/AppDataContext";
 
@@ -16,7 +16,7 @@ function formatDate(d: Date): string {
 
 export function WorkflowList() {
   const navigate = useNavigate();
-  const { workflows, handleDeleteWorkflow } = useAppData();
+  const { workflows, handleDeleteWorkflow, handleUpdateWorkflow } = useAppData();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const totalFlows = workflows.length;
@@ -48,6 +48,15 @@ export function WorkflowList() {
   const cancelDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDeleteId(null);
+  };
+
+  const handleToggleStatus = (e: React.MouseEvent, id: string, currentStatus: string) => {
+    e.stopPropagation();
+    if (currentStatus === "active") {
+      handleUpdateWorkflow(id, { status: "paused" });
+    } else {
+      handleUpdateWorkflow(id, { status: "active", createdAt: new Date() });
+    }
   };
 
   return (
@@ -95,7 +104,7 @@ export function WorkflowList() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border">
                 <tr>
-                  {["Name", "Segment", "Status", "Steps", "Enrolled", "Created", "Actions"].map((col) => (
+                  {["Name", "Segment", "Status", "Steps", "Enrolled", "Activated", "Actions"].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {col}
                     </th>
@@ -127,15 +136,22 @@ export function WorkflowList() {
                     </td>
                     <td className="px-5 py-4 text-muted-foreground">
                       <div className="flex flex-wrap gap-1">
-                        {wf.steps.map((s) => (
+                        {wf.steps.slice(0, 3).map((s) => (
                           <span key={s.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
                             Day {s.dayOffset} · {ACTION_TYPE_LABELS[s.actionType] ?? s.actionType}
                           </span>
                         ))}
+                        {wf.steps.length > 3 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">
+                            +{wf.steps.length - 3} more
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-4 text-foreground font-medium">{wf.enrolledCount}</td>
-                    <td className="px-5 py-4 text-muted-foreground">{formatDate(wf.createdAt)}</td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {wf.status === "active" ? formatDate(wf.createdAt) : "—"}
+                    </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1">
                         {confirmDeleteId === wf.id ? (
@@ -155,6 +171,16 @@ export function WorkflowList() {
                           </>
                         ) : (
                           <>
+                            <button
+                              className="p-1.5 rounded hover:bg-muted transition-colors"
+                              onClick={(e) => handleToggleStatus(e, wf.id, wf.status)}
+                              title={wf.status === "active" ? "Pause" : "Activate"}
+                            >
+                              {wf.status === "active"
+                                ? <PauseCircle className="h-3.5 w-3.5 text-yellow-500" />
+                                : <PlayCircle className="h-3.5 w-3.5 text-green-600" />
+                              }
+                            </button>
                             <button
                               className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                               onClick={(e) => handleEdit(e, wf.id)}

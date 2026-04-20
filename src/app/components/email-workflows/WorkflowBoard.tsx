@@ -271,9 +271,16 @@ function KanbanColumn({
   return (
     <div className="w-72 flex-shrink-0 flex flex-col bg-muted/40 border border-border rounded-xl">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
-          {label}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+            {label}
+          </h3>
+          {currentStep && (currentStep.actionType === "email" || currentStep.actionType === "sms") && (
+            <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 leading-none uppercase tracking-wide">
+              Auto
+            </span>
+          )}
+        </div>
         <span className="ml-2 flex-shrink-0 text-xs font-medium bg-muted text-muted-foreground rounded-full px-2 py-0.5">
           {colEnrollments.length}
         </span>
