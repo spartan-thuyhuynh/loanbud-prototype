@@ -1,24 +1,18 @@
 import { useState } from "react";
-import { Calendar, Mail, BarChart3, Zap } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Calendar, Mail, BarChart3, Zap, ChevronRight } from "lucide-react";
+import { cn } from "@/app/components/ui/utils";
 
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
-import {
-  CAMPAIGN_STATUS_COLORS,
-  CAMPAIGN_STATUS_LABELS,
-} from "./campaign/campaign-data";
 import { TaskQueue } from "./TaskQueue";
 
 export function Overview() {
+  const navigate = useNavigate();
   const { taskItems: tasks, campaigns } = useAppData();
   // --- State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "assignee">("list");
-
-  // --- Campaign groupings ---
-  const sentCampaigns = campaigns.filter((c) => c.status === "sent");
-  const scheduledCampaigns = campaigns.filter((c) => c.status === "scheduled");
-  const autoCampaigns = campaigns.filter((c) => c.status === "auto");
 
   // --- Logic ---
   const assignees = Array.from(new Set(tasks.map((t) => t.assignee)));
@@ -56,7 +50,7 @@ export function Overview() {
     <div className="h-full flex flex-col bg-background overflow-auto font-sans">
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-6 sticky top-0 z-10">
-        <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
+        <h2 className="text-3xl font-semibold">Overview</h2>
         <p className="text-muted-foreground mt-1">
           Monitor active campaigns and manage follow-up workload
         </p>
@@ -64,139 +58,94 @@ export function Overview() {
 
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Campaign Status Snapshot */}
-          <div className="space-y-4">
-            <h3 className="text-2xl font-bold">Campaign Status</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Sent Campaigns Card */}
-              {sentCampaigns.length > 0 && (
-                <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-green-50/50 px-6 py-4 border-b border-green-100 flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${CAMPAIGN_STATUS_COLORS.sent}`}
-                    />
-                    <h4 className="font-bold text-green-900">
-                      {CAMPAIGN_STATUS_LABELS.sent} ({sentCampaigns.length})
-                    </h4>
-                  </div>
-                  <div className="divide-y divide-border max-h-64 overflow-y-auto">
-                    {sentCampaigns.map((campaign) => (
-                      <div
-                        key={campaign.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-primary" />
-                            <span className="font-semibold">
-                              {campaign.name}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {campaign.recipientCount} contacts
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{campaign.segmentName}</span>
-                          <div className="flex items-center gap-3">
-                            {campaign.sentAt && (
-                              <span>Sent {formatDate(campaign.sentAt)}</span>
-                            )}
-                            {campaign.openRate !== undefined && (
-                              <span className="text-green-600 font-medium">
-                                {campaign.openRate}% open rate
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {/* Campaign Status */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Campaign Status</h3>
+              <button
+                onClick={() => navigate("/email-workflows/campaigns")}
+                className="flex items-center gap-1 text-sm text-primary hover:underline font-medium"
+              >
+                View all <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-              {/* Scheduled Campaigns Card */}
-              {scheduledCampaigns.length > 0 && (
-                <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-blue-50/50 px-6 py-4 border-b border-blue-100 flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${CAMPAIGN_STATUS_COLORS.scheduled}`}
-                    />
-                    <h4 className="font-bold text-blue-900">
-                      {CAMPAIGN_STATUS_LABELS.scheduled} (
-                      {scheduledCampaigns.length})
-                    </h4>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {scheduledCampaigns.map((campaign) => (
-                      <div
-                        key={campaign.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-primary" />
-                            <span className="font-semibold">
-                              {campaign.name}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {campaign.recipientCount} contacts
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{campaign.segmentName}</span>
-                          {campaign.scheduledFor && (
-                            <span>
-                              Sends {formatDate(campaign.scheduledFor)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="flex gap-3">
+              {campaigns.slice(0, 4).map((campaign) => {
+                const icon =
+                  campaign.status === "scheduled" ? (
+                    <Calendar className="w-3.5 h-3.5" />
+                  ) : campaign.status === "auto" ? (
+                    <Zap className="w-3.5 h-3.5" />
+                  ) : (
+                    <Mail className="w-3.5 h-3.5" />
+                  );
 
-              {/* Auto Campaigns Card */}
-              {autoCampaigns.length > 0 && (
-                <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-purple-50/50 px-6 py-4 border-b border-purple-100 flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${CAMPAIGN_STATUS_COLORS.auto}`}
-                    />
-                    <h4 className="font-bold text-purple-900">
-                      {CAMPAIGN_STATUS_LABELS.auto} ({autoCampaigns.length})
-                    </h4>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {autoCampaigns.map((campaign) => (
+                return (
+                  <div
+                    key={campaign.id}
+                    className={cn(
+                      "flex-1 min-w-0 flex flex-col gap-2.5 p-4 rounded-xl border cursor-pointer group transition-all hover:shadow-sm",
+                      campaign.hasNewActivity
+                        ? "bg-blue-50/60 border-blue-200 hover:border-blue-400"
+                        : "bg-card border-border hover:border-foreground/20",
+                    )}
+                    onClick={() =>
+                      navigate(`/email-workflows/campaigns/${campaign.id}`)
+                    }
+                  >
+                    {/* Icon + NEW badge */}
+                    <div className="flex items-center justify-between">
                       <div
-                        key={campaign.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
+                        className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center",
+                          campaign.status === "sent" &&
+                            "bg-green-100 text-green-600",
+                          campaign.status === "scheduled" &&
+                            "bg-blue-100 text-blue-600",
+                          campaign.status === "auto" &&
+                            "bg-purple-100 text-purple-600",
+                        )}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-primary" />
-                            <span className="font-semibold">
-                              {campaign.name}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {campaign.recipientCount} contacts
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{campaign.segmentName}</span>
-                          <span className="text-purple-600 font-medium">
-                            Triggers on segment entry
-                          </span>
-                        </div>
+                        {icon}
                       </div>
-                    ))}
+                      {campaign.hasNewActivity && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-bold rounded-full uppercase tracking-wide">
+                          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                          New
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Name + segment */}
+                    <div>
+                      <div className="font-semibold text-sm truncate">
+                        {campaign.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {campaign.segmentName}
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center gap-2 mt-auto">
+                      {campaign.openRate !== undefined && (
+                        <span className="text-xs font-semibold text-green-600">
+                          {campaign.openRate}% open
+                        </span>
+                      )}
+                      {campaign.scheduledFor && (
+                        <span className="text-xs text-muted-foreground">
+                          Sends {formatDate(campaign.scheduledFor)}
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {campaign.recipientCount} contacts
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
 

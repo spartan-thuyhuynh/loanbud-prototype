@@ -7,7 +7,9 @@
     "lastUpdatedAt": "2026-04-10T14:30:00.000Z",
     "createdBy": "John Doe",
     "createdAt": "2026-03-15T09:00:00.000Z",
-    "filters": []
+    "filters": [
+      { "field": "listingStatus", "operator": "=", "value": "New", "logic": "and" }
+    ]
   },
   {
     "id": "2",
@@ -17,7 +19,10 @@
     "lastUpdatedAt": "2026-04-08T11:15:00.000Z",
     "createdBy": "Sarah Chen",
     "createdAt": "2026-03-20T10:30:00.000Z",
-    "filters": []
+    "filters": [
+      { "field": "userType", "operator": "=", "value": "Broker", "logic": "and" },
+      { "field": "listingStatus", "operator": "!=", "value": "Declined", "logic": "and" }
+    ]
   },
   {
     "id": "3",
@@ -27,7 +32,10 @@
     "lastUpdatedAt": "2026-04-05T16:00:00.000Z",
     "createdBy": "Mike Johnson",
     "createdAt": "2026-03-10T08:45:00.000Z",
-    "filters": []
+    "filters": [
+      { "field": "userType", "operator": "!=", "value": "Lender", "logic": "or" },
+      { "field": "listingStatus", "operator": "=", "value": "Submitted", "logic": "and" }
+    ]
   },
   {
     "id": "4",
@@ -47,7 +55,9 @@
     "lastUpdatedAt": "2026-03-28T13:45:00.000Z",
     "createdBy": "Robert Wilson",
     "createdAt": "2026-02-15T10:00:00.000Z",
-    "filters": []
+    "filters": [
+      { "field": "userType", "operator": "=", "value": "Partner", "logic": "and" }
+    ]
   },
   {
     "id": "6",
@@ -57,6 +67,8 @@
     "lastUpdatedAt": "2026-03-25T10:20:00.000Z",
     "createdBy": "Lisa Anderson",
     "createdAt": "2026-02-10T09:30:00.000Z",
-    "filters": []
+    "filters": [
+      { "field": "listingStatus", "operator": "=", "value": "On Hold", "logic": "and" }
+    ]
   }
 ]

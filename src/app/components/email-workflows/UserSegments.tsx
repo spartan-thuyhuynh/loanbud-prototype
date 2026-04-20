@@ -204,8 +204,13 @@ export function UserSegments() {
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-primary" />
+                    <button
+                      onClick={() =>
+                        navigate(`/email-workflows/user-segments/${segment.id}`)
+                      }
+                      className="flex items-center gap-2 hover:underline text-left"
+                    >
+                      <Users className="w-4 h-4 text-primary shrink-0" />
                       <span
                         className="font-medium max-w-[220px] truncate block"
                         title={segment.name}
@@ -216,7 +221,7 @@ export function UserSegments() {
                       >
                         {segment.name}
                       </span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4">
                     <span style={{ fontFamily: "var(--font-mono)" }}>

@@ -140,7 +140,7 @@ export function CampaignDetail() {
       <CampaignMetricsHeader
         campaign={campaign}
         driftedCount={driftedContacts.length}
-        onBack={() => navigate("/email-workflows/campaigns")}
+        onBack={() => navigate(-1)}
       />
 
       {/* Tab bar */}

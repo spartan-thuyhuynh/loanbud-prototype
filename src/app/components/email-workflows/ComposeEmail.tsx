@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Check, Phone, Mail, Voicemail, Pencil, Zap, Calendar, Workflow, Users, UserCircle, Tag } from "lucide-react";
+import { Plus, Trash2, Check, Phone, Mail, Voicemail, Pencil, Zap, Calendar, Workflow, Users, UserCircle, Tag, MessageSquare } from "lucide-react";
 import type { Segment } from "@/app/types";
 import { store } from "@/app/data/store";
 import { sampleTemplates } from "./campaign/campaign-data";
@@ -150,10 +150,14 @@ export function ComposeEmail() {
   const [body, setBody] = useState("");
 
 
+  const [channel, setChannel] = useState<"email" | "sms">("email");
+
   // Delivery / send-mode state
   const [sendMode, setSendMode] = useState<"now" | "scheduled" | "auto">("now");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [triggerDelayMinutes, setTriggerDelayMinutes] = useState(0);
+  const [customDelayMinutes, setCustomDelayMinutes] = useState("");
 
   // 2. Multi-Reminder State — pre-populated with 14-day cadence
   const [reminders, setReminders] = useState<Reminder[]>(default14DayCadence);
@@ -231,6 +235,38 @@ export function ComposeEmail() {
                 {/* LEFT PANEL — Campaign configuration */}
                 <div className="w-72 shrink-0 space-y-5">
 
+                  {/* Channel */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Channel
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={channel === "email" ? "default" : "outline"}
+                        onClick={() => setChannel("email")}
+                        className="gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        Email
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={channel === "sms" ? "default" : "outline"}
+                        onClick={() => setChannel("sms")}
+                        className="gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        SMS
+                      </Button>
+                    </div>
+                    {channel === "sms" && (
+                      <p className="text-xs text-muted-foreground">
+                        SMS will be sent from your registered number
+                      </p>
+                    )}
+                  </div>
+
                   {/* Campaign Name */}
                   <div className="space-y-1.5">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -293,8 +329,8 @@ export function ComposeEmail() {
                     </Select>
                   </div>
 
-                  {/* Sender */}
-                  <div className="space-y-2">
+                  {/* Sender — email only */}
+                  {channel === "email" && <div className="space-y-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Sender
                     </p>
@@ -342,94 +378,134 @@ export function ComposeEmail() {
                         />
                       </div>
                     )}
-                  </div>
+                  </div>}
                 </div>
 
-                {/* RIGHT PANEL — Email content */}
+                {/* RIGHT PANEL — Email or SMS content */}
                 <div className="flex-1 min-w-0 space-y-4">
 
-                  {/* Quick Templates */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Quick Templates
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {sampleTemplates.map((tpl, idx) => {
-                        const isSelected = selectedTemplateId === String(idx);
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => handleTemplateSelect(idx)}
-                            className={`relative p-3 text-left border-2 rounded-lg text-xs transition-all ${
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:border-primary/40"
-                            }`}
-                          >
-                            {isSelected && (
-                              <span className="absolute top-2 right-2">
-                                <Check className="w-3.5 h-3.5 text-primary" />
-                              </span>
-                            )}
-                            <p className="font-semibold pr-4">{tpl.name}</p>
-                            <p className="text-muted-foreground mt-0.5 truncate">{tpl.subject}</p>
-                            <div className="flex gap-1 mt-1.5">
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-blue-200"
-                              >
-                                {tpl.category}
-                              </Badge>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Compose card */}
-                  <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
-                    {/* Subject row */}
-                    <div className="flex items-center border-b border-border px-4 py-2.5">
-                      <span className="w-14 text-xs font-medium text-muted-foreground shrink-0">Subj</span>
-                      <div className="flex-1 min-w-0">
-                        <Input
-                          placeholder="Subject line..."
-                          value={subject}
-                          onChange={(e) => setSubject(e.target.value)}
-                          className="border-0 shadow-none h-8 focus-visible:ring-0 px-0 font-medium"
-                        />
+                  {channel === "email" && <>
+                    {/* Quick Templates */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Quick Templates
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {sampleTemplates.map((tpl, idx) => {
+                          const isSelected = selectedTemplateId === String(idx);
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleTemplateSelect(idx)}
+                              className={`relative p-3 text-left border-2 rounded-lg text-xs transition-all ${
+                                isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/40"
+                              }`}
+                            >
+                              {isSelected && (
+                                <span className="absolute top-2 right-2">
+                                  <Check className="w-3.5 h-3.5 text-primary" />
+                                </span>
+                              )}
+                              <p className="font-semibold pr-4">{tpl.name}</p>
+                              <p className="text-muted-foreground mt-0.5 truncate">{tpl.subject}</p>
+                              <div className="flex gap-1 mt-1.5">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-blue-200"
+                                >
+                                  {tpl.category}
+                                </Badge>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Body area */}
-                    <Textarea
-                      placeholder="Email body..."
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      className="border-0 shadow-none resize-none focus-visible:ring-0 px-4 py-3 min-h-[280px] rounded-none"
-                    />
+                    {/* Email compose card */}
+                    <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
+                      {/* Subject row */}
+                      <div className="flex items-center border-b border-border px-4 py-2.5">
+                        <span className="w-14 text-xs font-medium text-muted-foreground shrink-0">Subj</span>
+                        <div className="flex-1 min-w-0">
+                          <Input
+                            placeholder="Subject line..."
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            className="border-0 shadow-none h-8 focus-visible:ring-0 px-0 font-medium"
+                          />
+                        </div>
+                      </div>
 
-                    {/* Toolbar row */}
-                    <div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/30">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[11px] font-mono text-primary"
-                        onClick={() => insertTag("first_name")}
-                      >
-                        + first_name
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[11px] font-mono text-primary"
-                        onClick={() => insertTag("listing_name")}
-                      >
-                        + listing_name
-                      </Button>
+                      {/* Body area */}
+                      <Textarea
+                        placeholder="Email body..."
+                        value={body}
+                        onChange={(e) => setBody(e.target.value)}
+                        className="border-0 shadow-none resize-none focus-visible:ring-0 px-4 py-3 min-h-[280px] rounded-none"
+                      />
+
+                      {/* Toolbar row */}
+                      <div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/30">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[11px] font-mono text-primary"
+                          onClick={() => insertTag("first_name")}
+                        >
+                          + first_name
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[11px] font-mono text-primary"
+                          onClick={() => insertTag("listing_name")}
+                        >
+                          + listing_name
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  </>}
+
+                  {channel === "sms" && <>
+                    {/* SMS compose card */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Message
+                      </p>
+                      <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
+                        <Textarea
+                          placeholder="SMS message body... e.g. Hi {{first_name}}, this is LoanBud — just checking in on your listing."
+                          value={body}
+                          onChange={(e) => setBody(e.target.value)}
+                          className="border-0 shadow-none resize-none focus-visible:ring-0 px-4 py-3 min-h-[280px] rounded-none"
+                        />
+                        <div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/30">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[11px] font-mono text-primary"
+                            onClick={() => insertTag("first_name")}
+                          >
+                            + first_name
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[11px] font-mono text-primary"
+                            onClick={() => insertTag("listing_name")}
+                          >
+                            + listing_name
+                          </Button>
+                          <span className="ml-auto text-[10px] text-muted-foreground">
+                            {body.length} chars
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>}
                 </div>
               </div>
 
@@ -439,7 +515,11 @@ export function ComposeEmail() {
                 </Button>
                 <Button
                   onClick={() => setStep(2)}
-                  disabled={!selectedSegmentId || !subject.trim() || !campaignName.trim()}
+                  disabled={
+                    !selectedSegmentId ||
+                    !campaignName.trim() ||
+                    (channel === "email" ? !subject.trim() : !body.trim())
+                  }
                 >
                   Next: Configure Tasks →
                 </Button>
@@ -635,6 +715,7 @@ export function ComposeEmail() {
                   <h3 className="text-lg font-semibold">Review & Send</h3>
                   <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
                     {reminders.length} follow-up task{reminders.length !== 1 ? "s" : ""} · {eligibleRecipients.length} recipients
+                    {sendMode === "auto" && triggerDelayMinutes > 0 && ` · +${triggerDelayMinutes} min delay`}
                   </span>
                 </div>
 
@@ -683,11 +764,20 @@ export function ComposeEmail() {
                         </div>
                         <div className="flex items-center gap-3 px-4 py-3">
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0">
-                            <UserCircle className="w-3 h-3" />
-                            Sender
+                            {channel === "sms" ? <MessageSquare className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
+                            Channel
                           </div>
-                          <p className="text-sm font-semibold">{senderLabel}</p>
+                          <p className="text-sm font-semibold capitalize">{channel}</p>
                         </div>
+                        {channel === "email" && (
+                          <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0">
+                              <UserCircle className="w-3 h-3" />
+                              Sender
+                            </div>
+                            <p className="text-sm font-semibold">{senderLabel}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -730,40 +820,67 @@ export function ComposeEmail() {
                     </div>
                   </div>
 
-                  {/* Right column: email preview styled like an email client */}
+                  {/* Right column: message preview */}
                   <div>
                     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
                       <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email Preview</span>
-                        <span className="text-xs text-muted-foreground">
-                          {senderLabel}
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {channel === "sms" ? "SMS Preview" : "Email Preview"}
                         </span>
+                        {channel === "email" && (
+                          <span className="text-xs text-muted-foreground">{senderLabel}</span>
+                        )}
                       </div>
-                      {/* Email chrome */}
-                      <div className="px-5 pt-4 pb-3 border-b border-border space-y-2.5">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-primary">LB</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <p className="text-sm font-semibold">{senderLabel}</p>
-                              <span className="text-xs text-muted-foreground shrink-0">to {selectedSegment?.name ?? "segment"}</span>
+
+                      {channel === "email" && <>
+                        {/* Email chrome */}
+                        <div className="px-5 pt-4 pb-3 border-b border-border space-y-2.5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-bold text-primary">LB</span>
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">{subject || <span className="italic">No subject</span>}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="text-sm font-semibold">{senderLabel}</p>
+                                <span className="text-xs text-muted-foreground shrink-0">to {selectedSegment?.name ?? "segment"}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{subject || <span className="italic">No subject</span>}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      {/* Subject line */}
-                      <div className="px-5 pt-3 pb-1">
-                        <p className="text-sm font-semibold">{subject || <span className="text-muted-foreground italic">No subject</span>}</p>
-                      </div>
-                      {/* Body */}
-                      <div className="px-5 pb-5 flex-1 overflow-auto min-h-72">
-                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                          {body || <span className="text-muted-foreground italic">No body</span>}
-                        </p>
-                      </div>
+                        {/* Subject line */}
+                        <div className="px-5 pt-3 pb-1">
+                          <p className="text-sm font-semibold">{subject || <span className="text-muted-foreground italic">No subject</span>}</p>
+                        </div>
+                        {/* Body */}
+                        <div className="px-5 pb-5 flex-1 overflow-auto min-h-72">
+                          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                            {body || <span className="text-muted-foreground italic">No body</span>}
+                          </p>
+                        </div>
+                      </>}
+
+                      {channel === "sms" && <>
+                        {/* SMS phone mockup */}
+                        <div className="flex flex-col items-center justify-center flex-1 px-8 py-8 gap-4">
+                          <div className="w-full max-w-xs bg-muted/40 rounded-2xl border border-border p-4 space-y-3">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground pb-2 border-b border-border">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>Text Message · {selectedSegment?.name ?? "segment"}</span>
+                            </div>
+                            <div className="flex justify-end">
+                              <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[85%]">
+                                <p className="text-sm whitespace-pre-wrap leading-snug">
+                                  {body || <span className="italic opacity-60">No message</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground text-right">
+                              {body.length} chars · ~{Math.ceil(body.length / 160)} SMS segment{Math.ceil(body.length / 160) !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                      </>}
                     </div>
                   </div>
                 </div>
@@ -781,7 +898,9 @@ export function ComposeEmail() {
                       </span>
                     )}
                     {sendMode === "auto" && (
-                      <span className="text-xs text-purple-600 font-medium">Active on segment entry</span>
+                      <span className="text-xs text-purple-600 font-medium">
+                        Active on segment entry{triggerDelayMinutes > 0 ? ` · +${triggerDelayMinutes} min` : ""}
+                      </span>
                     )}
                   </div>
 
@@ -859,6 +978,50 @@ export function ComposeEmail() {
                     </button>
                   </div>
 
+                  {/* Auto-trigger delay picker */}
+                  {sendMode === "auto" && (
+                    <div className="px-4 pb-4 border-t border-purple-100">
+                      <div className="mt-3 flex items-center gap-2 bg-purple-50/80 rounded-lg px-4 py-3 flex-wrap">
+                        <Workflow className="w-4 h-4 text-purple-500 shrink-0" />
+                        <span className="text-xs font-medium text-purple-700 shrink-0">Delay after entry:</span>
+                        {([
+                          { label: "Immediately", value: 0 },
+                          { label: "+15 min", value: 15 },
+                          { label: "+30 min", value: 30 },
+                          { label: "+1 hr", value: 60 },
+                        ] as const).map(({ label, value }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => { setTriggerDelayMinutes(value); setCustomDelayMinutes(""); }}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                              triggerDelayMinutes === value && customDelayMinutes === ""
+                                ? "bg-purple-600 text-white"
+                                : "bg-white border border-purple-200 text-purple-700 hover:bg-purple-100"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                        <div className="flex items-center gap-1.5 ml-1">
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Custom"
+                            value={customDelayMinutes}
+                            onChange={(e) => {
+                              setCustomDelayMinutes(e.target.value);
+                              const n = parseInt(e.target.value, 10);
+                              if (!isNaN(n) && n > 0) setTriggerDelayMinutes(n);
+                            }}
+                            className="h-7 w-20 text-xs border-purple-200 bg-white focus-visible:ring-purple-300"
+                          />
+                          <span className="text-xs text-purple-600">min</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Schedule date/time picker — shown inline below tiles */}
                   {sendMode === "scheduled" && (
                     <div className="px-4 pb-4 border-t border-blue-100">
@@ -912,6 +1075,8 @@ export function ComposeEmail() {
                         scheduledAt: sendMode === "scheduled"
                           ? new Date(`${scheduleDate}T${scheduleTime}`)
                           : null,
+                        channel,
+                        triggerDelayMinutes: sendMode === "auto" ? triggerDelayMinutes : undefined,
                       })
                     }
                   >

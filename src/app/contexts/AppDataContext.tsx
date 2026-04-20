@@ -209,11 +209,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       id: `email-${Date.now()}-${i}`,
       contactId: c.id,
       contactName: `${c.firstName} ${c.lastName}`,
-      subject: params.subject,
+      subject: params.channel === "sms" ? "" : params.subject,
       senderIdentity: params.senderIdentity,
       status: "Sent" as const,
       sequenceDay: 0,
       sentAt: now,
+      channel: (params.channel ?? "email") as "email" | "sms",
     }));
 
     const newTasks: Task[] = [];
@@ -272,6 +273,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }),
       templateId: "",
       templateName: "",
+      channel: (params.channel ?? "email") as "email" | "sms",
+      ...(sendMode === "auto" && params.triggerDelayMinutes != null
+        ? { triggerDelayMinutes: params.triggerDelayMinutes }
+        : {}),
     };
 
     const updatedHistory = [...emailHistory, ...newEmails];

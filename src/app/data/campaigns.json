@@ -10,6 +10,7 @@
     "sentAt": "2026-04-10T00:00:00.000Z",
     "recipientCount": 45,
     "openRate": 68.5,
+    "hasNewActivity": true,
     "followUpTasks": [
       { "daysAfter": 0, "taskType": "Call", "description": "Initial follow-up call" },
       { "daysAfter": 3, "taskType": "Call", "description": "Day 3 check-in" }

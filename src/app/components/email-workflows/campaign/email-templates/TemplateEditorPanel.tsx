@@ -78,36 +78,6 @@ export function TemplateEditorPanel({
       </div>
 
       <div>
-        <label className="block text-sm mb-2 text-muted-foreground">
-          Sender Type
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={() => onChangeSenderType("brand")}
-            className={`p-4 border-2 rounded-lg transition-all ${
-              senderType === "brand"
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50"
-            }`}
-          >
-            <Sparkles className="w-6 h-6 mb-2 mx-auto text-primary" />
-            <div className="text-sm font-medium">Brand Voice</div>
-          </button>
-          <button
-            onClick={() => onChangeSenderType("agent")}
-            className={`p-4 border-2 rounded-lg transition-all ${
-              senderType === "agent"
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50"
-            }`}
-          >
-            <User className="w-6 h-6 mb-2 mx-auto text-primary" />
-            <div className="text-sm font-medium">Agent Personal</div>
-          </button>
-        </div>
-      </div>
-
-      <div>
         <div className="flex items-center justify-between mb-2">
           <label className="block text-sm text-muted-foreground">
             Subject Line

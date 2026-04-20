@@ -83,6 +83,7 @@ export interface EmailRecord {
   status: "Sent" | "Delivered" | "Opened";
   sequenceDay: number;
   sentAt: Date;
+  channel?: "email" | "sms";
 }
 
 export interface Task {
@@ -99,6 +100,13 @@ export interface Task {
   disposition?: "Answered" | "VM Left" | "No Answer" | "Not Needed" | string;
 }
 
+export interface FilterRule {
+  field: "listingStatus" | "userType";
+  operator: "=" | "!=";
+  value: string;
+  logic: "and" | "or";
+}
+
 export interface Segment {
   id: string;
   name: string;
@@ -107,7 +115,7 @@ export interface Segment {
   lastUpdatedAt: Date;
   createdBy: string;
   createdAt: Date;
-  filters: unknown[];
+  filters: FilterRule[];
 }
 
 export interface TaskItem {

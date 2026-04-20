@@ -16,6 +16,7 @@ import {
   TaskQueue,
 } from "./components/email-workflows";
 import { CampaignDetail } from "./components/email-workflows/CampaignDetail";
+import { SegmentDetail } from "./components/email-workflows/SegmentDetail";
 import { PlaceholderView } from "./components/ui/PlaceholderView";
 import {
   FileText,
@@ -67,6 +68,7 @@ export const router = createBrowserRouter(
           { path: "campaigns/:id", element: <CampaignDetail /> },
           { path: "flow-builder", element: <FlowBuilder /> },
           { path: "user-segments", element: <UserSegments /> },
+          { path: "user-segments/:id", element: <SegmentDetail /> },
           { path: "user-segments/builder", element: <SegmentsView /> },
           { path: "templates", element: <TemplatesView /> },
           { path: "history", element: <EmailHistory /> },

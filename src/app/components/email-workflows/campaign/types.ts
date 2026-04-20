@@ -1,4 +1,5 @@
-import type { Contact } from "@/app/types";
+import type { Contact, FilterRule } from "@/app/types";
+export type { FilterRule };
 
 export type CampaignStatus = "draft" | "scheduled" | "sent" | "auto";
 
@@ -40,6 +41,9 @@ export interface Campaign {
   recipientCount: number;
   openRate?: number;
   followUpTasks: FollowUpTask[];
+  channel?: "email" | "sms";
+  triggerDelayMinutes?: number;
+  hasNewActivity?: boolean;
 }
 
 export interface CampaignDetailContact {
@@ -71,14 +75,6 @@ export type BulkActionType =
   | "move-segment"
   | "remove-segment"
   | "exclude";
-
-export interface FilterRule {
-  field: "listingStatus" | "userType";
-  operator: "=" | "!=";
-  value: string;
-  /** connector linking this filter to the next one */
-  logic: "and" | "or";
-}
 
 export interface FilterGroup {
   id: string;

@@ -19,15 +19,6 @@ export function InsightFilterCards({
 }: InsightFilterCardsProps) {
   return (
     <div className="border-b border-border bg-card px-8 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3
-          className="text-lg"
-          style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-        >
-          Review & Take Action
-        </h3>
-      </div>
-
       <div className="flex gap-2">
         <button
           onClick={onFilterDrifted}
