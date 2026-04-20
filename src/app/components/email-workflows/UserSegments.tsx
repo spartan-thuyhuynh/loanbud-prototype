@@ -157,12 +157,6 @@ export function UserSegments() {
                   className="px-6 py-4 text-left text-sm text-muted-foreground"
                   style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
                 >
-                  Contact Count
-                </th>
-                <th
-                  className="px-6 py-4 text-left text-sm text-muted-foreground"
-                  style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-                >
                   Status
                 </th>
 
@@ -222,11 +216,6 @@ export function UserSegments() {
                         {segment.name}
                       </span>
                     </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span style={{ fontFamily: "var(--font-mono)" }}>
-                      {segment.contactCount.toLocaleString()}
-                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span

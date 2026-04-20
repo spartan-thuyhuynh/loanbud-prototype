@@ -31,10 +31,12 @@ export type EmailWorkflowView =
   | "overview"
   | "compose"
   | "campaigns"
+  | "flows"
   | "user-segments"
   | "flow-builder"
   | "templates"
-  | "history";
+  | "history"
+  | "tasks";
 
 export type View = MainSection | CRMView | EmailWorkflowView;
 
@@ -119,7 +121,6 @@ export interface Segment {
 }
 
 export interface TaskItem {
-  disposition: string;
   id: string;
   contactName: string;
   contactId: string;
@@ -128,14 +129,61 @@ export interface TaskItem {
   source: string;
   sourceType: "campaign" | "flow" | "manual";
   dueDate: Date;
-  assignee: string;
+  assignee?: string;
   status: "pending" | "completed" | "overdue";
+  disposition?: string;
   ruleId?: string;
   ruleName?: string;
   triggerContext?: string;
   notes?: string;
   completedAt?: Date;
   outcome?: string;
+}
+
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  order: number;
+  dayOffset: number;
+  actionType: "email" | "sms" | "call-reminder";
+  templateId?: string;
+  templateName?: string;
+  senderIdentity?: string;
+  subject?: string;
+  body?: string;
+  smsTemplateId?: string;
+  smsTemplateName?: string;
+  message?: string;
+  note?: string;
+  reminderDaysBefore?: number;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  segmentId: string;
+  segmentName: string;
+  status: "active" | "draft" | "paused";
+  steps: WorkflowStep[];
+  createdAt: Date;
+  createdBy: string;
+  enrolledCount: number;
+}
+
+export interface WorkflowStepProgress {
+  stepId: string;
+  status: "pending" | "done" | "skipped";
+  completedAt?: Date;
+}
+
+export interface WorkflowEnrollment {
+  id: string;
+  workflowId: string;
+  contactId: string;
+  startDate: Date;
+  status: "active" | "completed" | "paused";
+  stepProgress: WorkflowStepProgress[];
 }
 
 export type ApplicationStage =

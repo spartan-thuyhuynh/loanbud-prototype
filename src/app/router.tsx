@@ -14,6 +14,9 @@ import {
   EmailHistory,
   ComposeEmail,
   TaskQueue,
+  WorkflowList,
+  WorkflowBuilder,
+  WorkflowBoard,
 } from "./components/email-workflows";
 import { CampaignDetail } from "./components/email-workflows/CampaignDetail";
 import { SegmentDetail } from "./components/email-workflows/SegmentDetail";
@@ -66,6 +69,10 @@ export const router = createBrowserRouter(
           { path: "overview", element: <Overview /> },
           { path: "campaigns", element: <Campaigns /> },
           { path: "campaigns/:id", element: <CampaignDetail /> },
+          { path: "flows", element: <WorkflowList /> },
+          { path: "flows/new", element: <WorkflowBuilder /> },
+          { path: "flows/:id/edit", element: <WorkflowBuilder /> },
+          { path: "flows/:id/board", element: <WorkflowBoard /> },
           { path: "flow-builder", element: <FlowBuilder /> },
           { path: "user-segments", element: <UserSegments /> },
           { path: "user-segments/:id", element: <SegmentDetail /> },

@@ -1,58 +1,61 @@
-import { Mail, CheckCircle2, Eye, Send, Clock } from 'lucide-react';
+import { Mail, CheckCircle2, Eye, Send, Clock, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAppData } from '@/app/contexts/AppDataContext';
+import type { EmailRecord } from '@/app/types';
 
-const statusConfig = {
+const statusConfig: Record<
+  EmailRecord['status'],
+  { icon: React.ElementType; color: string; bgColor: string; borderColor: string; label: string }
+> = {
   Sent: {
     icon: Send,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
+    label: 'Sent',
   },
   Delivered: {
     icon: CheckCircle2,
     color: 'text-green-600',
     bgColor: 'bg-green-50',
     borderColor: 'border-green-200',
+    label: 'Delivered',
   },
   Opened: {
     icon: Eye,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
+    label: 'Opened',
   },
 };
 
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 export function EmailHistory() {
   const { emailHistory: history } = useAppData();
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  };
 
-  // Simulate status progression for demo
-  const getSimulatedStatus = (email: EmailRecord): EmailRecord['status'] => {
-    const minutesSinceSent =
-      (new Date().getTime() - email.sentAt.getTime()) / 1000 / 60;
-    if (minutesSinceSent > 2) return 'Opened';
-    if (minutesSinceSent > 1) return 'Delivered';
-    return email.status;
-  };
+  const totalSent = history.length;
+  const totalDelivered = history.filter((e) => e.status === 'Delivered' || e.status === 'Opened').length;
+  const totalOpened = history.filter((e) => e.status === 'Opened').length;
 
-  // Group by campaign/sequence
-  const groupedHistory = history.reduce((acc, email) => {
-    const key = `${email.sequenceDay}-${email.subject}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(email);
-    return acc;
-  }, {} as Record<string, EmailRecord[]>);
+  const groupedHistory = history.reduce(
+    (acc, email) => {
+      const key = `${email.sequenceDay}-${email.subject}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(email);
+      return acc;
+    },
+    {} as Record<string, EmailRecord[]>,
+  );
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -60,22 +63,22 @@ export function EmailHistory() {
       <div className="border-b border-border bg-card px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-              Email History & Audit Trail
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Track email delivery and engagement
-            </p>
+            <h2 className="text-3xl font-semibold">Email History</h2>
+            <p className="text-muted-foreground mt-1">Track email delivery and engagement</p>
           </div>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-6">
             <div className="text-center">
-              <div className="text-sm text-muted-foreground">Total Sent</div>
-              <div
-                className="text-3xl text-primary"
-                style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-              >
-                {history.length}
-              </div>
+              <div className="text-2xl font-semibold font-mono text-blue-600">{totalSent}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Sent</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-semibold font-mono text-green-600">{totalDelivered}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Delivered</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-semibold font-mono text-purple-600">{totalOpened}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Opened</div>
             </div>
           </div>
         </div>
@@ -85,169 +88,135 @@ export function EmailHistory() {
         {history.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <Mail className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-xl mb-2" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                No Email History Yet
-              </h3>
-              <p className="text-muted-foreground">
-                Send your first email campaign to see it here
-              </p>
+              <Mail className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
+              <h3 className="text-xl font-semibold mb-2">No Email History Yet</h3>
+              <p className="text-muted-foreground text-sm">Send your first email campaign to see it here</p>
             </div>
           </div>
         ) : (
-          <div className="max-w-6xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-4">
             {Object.entries(groupedHistory)
               .reverse()
               .map(([key, emails]) => {
                 const firstEmail = emails[0];
-                const sentCount = emails.filter(
-                  (e) => getSimulatedStatus(e) === 'Sent'
-                ).length;
+                const sentCount = emails.filter((e) => e.status === 'Sent').length;
                 const deliveredCount = emails.filter(
-                  (e) => getSimulatedStatus(e) === 'Delivered'
+                  (e) => e.status === 'Delivered' || e.status === 'Opened',
                 ).length;
-                const openedCount = emails.filter(
-                  (e) => getSimulatedStatus(e) === 'Opened'
-                ).length;
+                const openedCount = emails.filter((e) => e.status === 'Opened').length;
+                const total = emails.length;
+
+                const openedPct = total > 0 ? (openedCount / total) * 100 : 0;
+                const deliveredPct = total > 0 ? ((deliveredCount - openedCount) / total) * 100 : 0;
+                const sentPct = total > 0 ? (sentCount / total) * 100 : 0;
 
                 return (
-                  <div
-                    key={key}
-                    className="bg-card border border-border rounded-lg overflow-hidden"
-                  >
-                    {/* Campaign Header */}
+                  <div key={key} className="bg-card border border-border rounded-xl overflow-hidden">
+                    {/* Group header */}
                     <div className="bg-primary/5 border-b border-border px-6 py-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3
-                              className="text-xl"
-                              style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}
-                            >
-                              {firstEmail.subject}
-                            </h3>
-                            <span className="px-3 py-1 bg-accent/20 text-accent border border-accent/30 rounded-full text-xs">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <h3 className="text-base font-semibold truncate">{firstEmail.subject}</h3>
+                            <span className="shrink-0 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded-full uppercase tracking-wide">
                               Day {firstEmail.sequenceDay}
                             </span>
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              <span>{formatDate(firstEmail.sentAt)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4" />
-                              <span>{firstEmail.senderIdentity}</span>
-                            </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              {formatDate(firstEmail.sentAt)}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5" />
+                              {firstEmail.senderIdentity}
+                            </span>
+                            <span>{total} recipient{total !== 1 ? 's' : ''}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-5 shrink-0">
                           <div className="text-center">
-                            <div
-                              className="text-2xl text-blue-600"
-                              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                            >
-                              {sentCount}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Sent</div>
+                            <div className="text-xl font-semibold font-mono text-blue-600">{sentCount}</div>
+                            <div className="text-[10px] text-muted-foreground">Sent</div>
                           </div>
                           <div className="text-center">
-                            <div
-                              className="text-2xl text-green-600"
-                              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                            >
-                              {deliveredCount}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Delivered</div>
+                            <div className="text-xl font-semibold font-mono text-green-600">{deliveredCount}</div>
+                            <div className="text-[10px] text-muted-foreground">Delivered</div>
                           </div>
                           <div className="text-center">
-                            <div
-                              className="text-2xl text-purple-600"
-                              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                            >
-                              {openedCount}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Opened</div>
+                            <div className="text-xl font-semibold font-mono text-purple-600">{openedCount}</div>
+                            <div className="text-[10px] text-muted-foreground">Opened</div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Engagement Bar */}
-                      <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full flex">
-                          <div
-                            className="bg-purple-600"
-                            style={{
-                              width: `${(openedCount / emails.length) * 100}%`,
-                            }}
-                          />
-                          <div
-                            className="bg-green-600"
-                            style={{
-                              width: `${(deliveredCount / emails.length) * 100}%`,
-                            }}
-                          />
-                          <div
-                            className="bg-blue-600"
-                            style={{
-                              width: `${(sentCount / emails.length) * 100}%`,
-                            }}
-                          />
+                      {/* Engagement bar */}
+                      <div className="mt-3">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
+                          <div className="bg-purple-500 transition-all" style={{ width: `${openedPct}%` }} />
+                          <div className="bg-green-500 transition-all" style={{ width: `${deliveredPct}%` }} />
+                          <div className="bg-blue-400 transition-all" style={{ width: `${sentPct}%` }} />
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+                            Opened
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                            Delivered
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                            Sent
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Individual Recipients */}
+                    {/* Recipient rows */}
                     <div className="divide-y divide-border">
                       {emails.map((email) => {
-                        const currentStatus = getSimulatedStatus(email);
-                        const config = statusConfig[currentStatus];
+                        const config = statusConfig[email.status];
                         const StatusIcon = config.icon;
+                        const isSms = email.channel === 'sms';
 
                         return (
                           <div
                             key={email.id}
-                            className="px-6 py-4 hover:bg-muted/30 transition-colors"
+                            className="px-6 py-3.5 flex items-center gap-4 hover:bg-muted/30 transition-colors"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4 flex-1">
-                                <div
-                                  className={`p-2 rounded-lg ${config.bgColor} border ${config.borderColor}`}
-                                >
-                                  <StatusIcon className={`w-5 h-5 ${config.color}`} />
-                                </div>
-                                <div className="flex-1">
-                                  <Link to={`/crm/contacts/${email.contactId}`} className="font-medium text-primary hover:underline">{email.contactName}</Link>
-                                  <div className="text-sm text-muted-foreground">
-                                    {email.contactId}
-                                  </div>
-                                </div>
-                              </div>
+                            <div className={`p-2 rounded-lg shrink-0 ${config.bgColor} border ${config.borderColor}`}>
+                              <StatusIcon className={`w-4 h-4 ${config.color}`} />
+                            </div>
 
-                              <div className="flex items-center gap-6">
-                                <div className="text-right">
-                                  <div
-                                    className={`text-sm ${config.color}`}
-                                    style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}
-                                  >
-                                    {currentStatus}
-                                  </div>
-                                  <div
-                                    className="text-xs text-muted-foreground"
-                                    style={{ fontFamily: 'var(--font-mono)' }}
-                                  >
-                                    {formatDate(email.sentAt)}
-                                  </div>
-                                </div>
+                            <div className="flex-1 min-w-0">
+                              <Link
+                                to={`/crm/contacts/${email.contactId}`}
+                                className="text-sm font-medium text-primary hover:underline"
+                              >
+                                {email.contactName}
+                              </Link>
+                            </div>
 
-                                {currentStatus === 'Opened' && (
-                                  <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded-full">
-                                    <span className="text-xs text-purple-700">
-                                      Engaged
-                                    </span>
-                                  </div>
-                                )}
+                            <div className="flex items-center gap-3 shrink-0">
+                              {isSms && (
+                                <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-muted text-muted-foreground rounded-full">
+                                  <MessageSquare className="w-3 h-3" />
+                                  SMS
+                                </span>
+                              )}
+                              {email.status === 'Opened' && (
+                                <span className="text-[10px] px-2 py-0.5 bg-purple-50 border border-purple-200 text-purple-700 rounded-full">
+                                  Engaged
+                                </span>
+                              )}
+                              <div className="text-right min-w-[100px]">
+                                <div className={`text-xs font-semibold ${config.color}`}>{config.label}</div>
+                                <div className="text-[10px] text-muted-foreground font-mono">
+                                  {formatDate(email.sentAt)}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -257,21 +226,6 @@ export function EmailHistory() {
                   </div>
                 );
               })}
-
-            {/* Phase 2 Placeholder */}
-            <div className="bg-muted/30 border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <div className="text-muted-foreground">
-                <h4 className="text-lg mb-2" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
-                  Coming in Phase 2
-                </h4>
-                <p className="text-sm mb-4">
-                  Analytics Funnels • SMS Tracking • Response Management
-                </p>
-                <div className="inline-block px-4 py-2 bg-card border border-border rounded-lg text-xs">
-                  Future Feature Placeholder
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

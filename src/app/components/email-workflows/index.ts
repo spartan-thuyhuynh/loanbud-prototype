@@ -10,3 +10,6 @@ export { UserSegments } from './UserSegments';
 export { SegmentsView } from './SegmentsView';
 export { TemplatesView } from './TemplatesView';
 export { EmailWorkflowsSidebar } from './EmailWorkflowsSidebar';
+export { WorkflowList } from './WorkflowList';
+export { WorkflowBuilder } from './WorkflowBuilder';
+export { WorkflowBoard } from './WorkflowBoard';

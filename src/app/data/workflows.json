@@ -1,0 +1,80 @@
+[
+  {
+    "id": "wf-1",
+    "name": "New Broker Onboarding",
+    "description": "Nurture new brokers from first listing through activation",
+    "segmentId": "1",
+    "segmentName": "Leads from first marketing checkers",
+    "status": "active",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 3,
+    "steps": [
+      {
+        "id": "step-wf1-1",
+        "name": "Send Email Step",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-1",
+        "templateName": "New Listing Claim",
+        "senderIdentity": "John Smith <john@loanbuds.com>",
+        "subject": "Claim Your Listing - Fast Approval Available",
+        "body": "Hi {{first_name}},\n\nI noticed your listing and wanted to reach out personally.\n\nWe specialize in fast approvals and competitive rates.\n\nBest regards,\nThe LoanBud Team"
+      },
+      {
+        "id": "step-wf1-2",
+        "name": "Call Reminder Step",
+        "order": 2,
+        "dayOffset": 3,
+        "actionType": "call-reminder",
+        "note": "Follow up on email sent Day 0. Ask if they reviewed our offer.",
+        "reminderDaysBefore": 1
+      },
+      {
+        "id": "step-wf1-3",
+        "name": "Send SMS Step",
+        "order": 3,
+        "dayOffset": 7,
+        "actionType": "sms",
+        "smsTemplateId": "sms-1",
+        "smsTemplateName": "Day 7 Check-in",
+        "message": "Hi {{first_name}}, just checking in on your listing application. Reply anytime — we're here to help!"
+      }
+    ]
+  },
+  {
+    "id": "wf-2",
+    "name": "Re-engagement Flow",
+    "description": "Win back inactive partners with a structured touchpoint series",
+    "segmentId": "2",
+    "segmentName": "Email_checker_first[firstname]_test1",
+    "status": "draft",
+    "createdAt": "2026-04-10T14:30:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 0,
+    "steps": [
+      {
+        "id": "step-wf2-1",
+        "name": "Send Email Step",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-2",
+        "templateName": "Day 3 Follow-up",
+        "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
+        "subject": "We miss you — let's reconnect",
+        "body": "Hi {{first_name}},\n\nWe haven't heard from you in a while and wanted to reconnect.\n\nWe have some exciting new programs that might be a great fit for you.\n\nBest,\nLoanBud Team"
+      },
+      {
+        "id": "step-wf2-2",
+        "name": "Call Reminder Step",
+        "order": 2,
+        "dayOffset": 5,
+        "actionType": "call-reminder",
+        "note": "Check if they opened the re-engagement email. Offer a quick intro call.",
+        "reminderDaysBefore": 1
+      }
+    ]
+  }
+]

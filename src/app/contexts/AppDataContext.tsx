@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment } from "../types";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
 
@@ -41,6 +41,17 @@ interface AppDataContextValue {
   handleCreateSegment: (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => void;
   handleUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
   handleDeleteSegment: (segmentId: string) => void;
+  // Workflow data
+  workflows: Workflow[];
+  workflowEnrollments: WorkflowEnrollment[];
+  // Workflow handlers
+  handleCreateWorkflow: (w: Omit<Workflow, "id" | "createdAt" | "enrolledCount">) => void;
+  handleUpdateWorkflow: (id: string, updates: Partial<Workflow>) => void;
+  handleDeleteWorkflow: (id: string) => void;
+  handleEnrollContacts: (workflowId: string, contactIds: string[], startDate: Date) => void;
+  handleActivateWorkflow: (workflowId: string) => void;
+  handleAdvanceStep: (enrollmentId: string, stepId: string) => void;
+  handleMoveToStep: (enrollmentId: string, targetStepId: string | "completed") => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -54,6 +65,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [segments, setSegments] = useState<Segment[]>(store.segments.read());
   const [applications] = useState<Application[]>(store.applications.read());
   const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(store.businessAcquisitions.read());
+  const [workflows, setWorkflows] = useState<Workflow[]>(store.workflows.read());
+  const [workflowEnrollments, setWorkflowEnrollments] = useState<WorkflowEnrollment[]>(store.workflowEnrollments.read());
 
   const handleCompleteTask = (taskId: string, disposition: string) => {
     const updatedTasks = tasks.map((t) =>
@@ -329,6 +342,334 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.segments.write(updated);
   };
 
+  const buildCallReminderTaskItems = (
+    workflow: Workflow,
+    enrollments: WorkflowEnrollment[],
+    allContacts: Contact[],
+  ): TaskItem[] => {
+    const callSteps = workflow.steps.filter((s: WorkflowStep) => s.actionType === "call-reminder");
+    if (callSteps.length === 0) return [];
+    const items: TaskItem[] = [];
+    for (const enrollment of enrollments) {
+      const contact = allContacts.find((c) => c.id === enrollment.contactId);
+      for (const step of callSteps) {
+        const offsetDays = Math.max(0, step.dayOffset - (step.reminderDaysBefore ?? 0));
+        const dueDate = new Date(enrollment.startDate);
+        dueDate.setDate(dueDate.getDate() + offsetDays);
+        items.push({
+          id: `taskitem-call-${enrollment.id}-${step.id}`,
+          contactId: enrollment.contactId,
+          contactName: contact ? `${contact.firstName} ${contact.lastName}` : enrollment.contactId,
+          contactStatus: contact?.listingStatus ?? "",
+          taskType: "Call",
+          source: workflow.name,
+          sourceType: "flow",
+          dueDate,
+          status: "pending",
+          ruleId: step.id,
+          ruleName: step.name,
+          ...(step.note ? { triggerContext: step.note } : {}),
+        });
+      }
+    }
+    return items;
+  };
+
+  const handleCreateWorkflow = (w: Omit<Workflow, "id" | "createdAt" | "enrolledCount">) => {
+    const newWorkflow: Workflow = {
+      ...w,
+      id: `workflow-${Date.now()}`,
+      createdAt: new Date(),
+      enrolledCount: 0,
+    };
+
+    // Auto-enroll matching segment contacts
+    const segment = segments.find((s) => s.id === w.segmentId);
+    const matchContact = (contact: Contact, filters: FilterRule[]): boolean => {
+      if (filters.length === 0) return true;
+      const record = contact as unknown as Record<string, string>;
+      let result = filters[0].operator === "="
+        ? record[filters[0].field] === filters[0].value
+        : record[filters[0].field] !== filters[0].value;
+      for (let i = 1; i < filters.length; i++) {
+        const f = filters[i];
+        const next = f.operator === "=" ? record[f.field] === f.value : record[f.field] !== f.value;
+        result = filters[i - 1].logic === "and" ? result && next : result || next;
+      }
+      return result;
+    };
+    const matchedContacts = segment
+      ? contacts.filter((c) => matchContact(c, segment.filters))
+      : [];
+    const startDate = new Date();
+    const newEnrollments: WorkflowEnrollment[] = matchedContacts.map((c) => ({
+      id: `enroll-${Date.now()}-${c.id}`,
+      workflowId: newWorkflow.id,
+      contactId: c.id,
+      startDate,
+      status: "active" as const,
+      stepProgress: newWorkflow.steps.map((s) => ({ stepId: s.id, status: "pending" as const })),
+    }));
+    newWorkflow.enrolledCount = matchedContacts.length;
+
+    const callTasks = buildCallReminderTaskItems(newWorkflow, newEnrollments, contacts);
+    const updatedWorkflows = [...workflows, newWorkflow];
+    const updatedEnrollments = [...workflowEnrollments, ...newEnrollments];
+    const updatedItems = callTasks.length > 0 ? [...taskItems, ...callTasks] : taskItems;
+
+    setWorkflows(updatedWorkflows);
+    setWorkflowEnrollments(updatedEnrollments);
+    if (callTasks.length > 0) setTaskItems(updatedItems);
+    store.workflows.write(updatedWorkflows);
+    store.workflowEnrollments.write(updatedEnrollments);
+    if (callTasks.length > 0) store.taskItems.write(updatedItems);
+  };
+
+  const handleUpdateWorkflow = (id: string, updates: Partial<Workflow>) => {
+    const updated = workflows.map((wf) => (wf.id === id ? { ...wf, ...updates } : wf));
+    setWorkflows(updated);
+    store.workflows.write(updated);
+  };
+
+  const handleDeleteWorkflow = (id: string) => {
+    const updatedWorkflows = workflows.filter((wf) => wf.id !== id);
+    const updatedEnrollments = workflowEnrollments.filter((e) => e.workflowId !== id);
+    setWorkflows(updatedWorkflows);
+    setWorkflowEnrollments(updatedEnrollments);
+    store.workflows.write(updatedWorkflows);
+    store.workflowEnrollments.write(updatedEnrollments);
+  };
+
+  const handleEnrollContacts = (workflowId: string, contactIds: string[], startDate: Date) => {
+    const workflow = workflows.find((wf) => wf.id === workflowId);
+    if (!workflow) return;
+    const alreadyEnrolled = new Set(
+      workflowEnrollments.filter((e) => e.workflowId === workflowId).map((e) => e.contactId),
+    );
+    const newIds = contactIds.filter((id) => !alreadyEnrolled.has(id));
+    if (newIds.length === 0) return;
+    const newEnrollments: WorkflowEnrollment[] = newIds.map((contactId) => ({
+      id: `enroll-${Date.now()}-${contactId}`,
+      workflowId,
+      contactId,
+      startDate,
+      status: "active" as const,
+      stepProgress: workflow.steps.map((s: WorkflowStep) => ({ stepId: s.id, status: "pending" as const })),
+    }));
+    const updatedEnrollments = [...workflowEnrollments, ...newEnrollments];
+    const updatedWorkflows = workflows.map((wf) =>
+      wf.id === workflowId ? { ...wf, enrolledCount: wf.enrolledCount + newIds.length } : wf,
+    );
+    const callTasks = buildCallReminderTaskItems(workflow, newEnrollments, contacts);
+    const updatedItems = callTasks.length > 0 ? [...taskItems, ...callTasks] : taskItems;
+
+    setWorkflowEnrollments(updatedEnrollments);
+    setWorkflows(updatedWorkflows);
+    if (callTasks.length > 0) setTaskItems(updatedItems);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.workflows.write(updatedWorkflows);
+    if (callTasks.length > 0) store.taskItems.write(updatedItems);
+  };
+
+  // Generates varied mock step progress so the board looks populated when a workflow starts
+  function generateMockProgress(steps: WorkflowStep[], idx: number): WorkflowStepProgress[] {
+    const sorted = [...steps].sort((a, b) => a.dayOffset - b.dayOffset);
+    const now = new Date();
+    const progress: WorkflowStepProgress[] = sorted.map((s) => ({ stepId: s.id, status: "pending" as const }));
+
+    const markDone = (stepId: string) => {
+      const p = progress.find((p) => p.stepId === stepId);
+      if (p) { p.status = "done"; p.completedAt = now; }
+    };
+
+    const emailSteps = sorted.filter((s) => s.actionType === "email");
+    const smsSteps = sorted.filter((s) => s.actionType === "sms");
+
+    switch (idx % 5) {
+      case 0: // fresh — all pending
+        break;
+      case 1: // first email sent, rest pending
+        if (emailSteps[0]) markDone(emailSteps[0].id);
+        break;
+      case 2: // first email + first SMS done, rest pending
+        if (emailSteps[0]) markDone(emailSteps[0].id);
+        if (smsSteps[0]) markDone(smsSteps[0].id);
+        break;
+      case 3: // first two steps done
+        if (sorted[0]) markDone(sorted[0].id);
+        if (sorted[1]) markDone(sorted[1].id);
+        break;
+      case 4: // all email and SMS done, calls pending
+        sorted.forEach((s) => {
+          if (s.actionType === "email" || s.actionType === "sms") markDone(s.id);
+        });
+        break;
+    }
+
+    return progress;
+  }
+
+  const handleActivateWorkflow = (workflowId: string) => {
+    const workflow = workflows.find((wf) => wf.id === workflowId);
+    if (!workflow) return;
+
+    const alreadyEnrolled = new Set(
+      workflowEnrollments.filter((e) => e.workflowId === workflowId).map((e) => e.contactId),
+    );
+
+    // Pick up to 8 contacts not already enrolled
+    const available = contacts.filter((c) => !alreadyEnrolled.has(c.id));
+    const selected = available.slice(0, 8);
+
+    const now = new Date();
+    const newEnrollments: WorkflowEnrollment[] = selected.map((contact, idx) => {
+      const startDate = new Date(now.getTime() - idx * 2 * 24 * 60 * 60 * 1000);
+      const stepProgress = generateMockProgress(workflow.steps, idx);
+      const allDone = stepProgress.every((p) => p.status === "done" || p.status === "skipped");
+      return {
+        id: `enroll-${workflowId}-${contact.id}-${Date.now() + idx}`,
+        workflowId,
+        contactId: contact.id,
+        startDate,
+        status: allDone ? ("completed" as const) : ("active" as const),
+        stepProgress,
+      };
+    });
+
+    const updatedEnrollments = [...workflowEnrollments, ...newEnrollments];
+    const updatedWorkflows = workflows.map((wf) =>
+      wf.id === workflowId
+        ? { ...wf, status: "active" as const, enrolledCount: wf.enrolledCount + newEnrollments.length }
+        : wf,
+    );
+
+    setWorkflowEnrollments(updatedEnrollments);
+    setWorkflows(updatedWorkflows);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.workflows.write(updatedWorkflows);
+  };
+
+  const handleAdvanceStep = (enrollmentId: string, stepId: string) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    if (!workflow) return;
+    const step = workflow.steps.find((s: WorkflowStep) => s.id === stepId);
+    if (!step) return;
+    const contact = contacts.find((c) => c.id === enrollment.contactId);
+
+    const now = new Date();
+    const updatedProgress = enrollment.stepProgress.map((p) =>
+      p.stepId === stepId ? { ...p, status: "done" as const, completedAt: now } : p,
+    );
+    const allDone = updatedProgress.every((p) => p.status === "done" || p.status === "skipped");
+    const updatedEnrollment: WorkflowEnrollment = {
+      ...enrollment,
+      stepProgress: updatedProgress,
+      status: allDone ? "completed" : "active",
+    };
+
+    const updatedEnrollments = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? updatedEnrollment : e,
+    );
+    const updatedWorkflows = allDone
+      ? workflows.map((wf) =>
+          wf.id === workflow.id
+            ? { ...wf, enrolledCount: Math.max(0, wf.enrolledCount - 1) }
+            : wf,
+        )
+      : workflows;
+
+    let updatedItems: TaskItem[];
+    if (step.actionType === "call-reminder") {
+      // Complete the pre-created call reminder task instead of creating a new one
+      const taskId = `taskitem-call-${enrollmentId}-${stepId}`;
+      updatedItems = taskItems.map((ti) =>
+        ti.id === taskId ? { ...ti, status: "completed" as const, completedAt: now } : ti,
+      );
+    } else {
+      const triggerMap: Record<string, string> = {
+        email: step.subject ?? "",
+        sms: (step.message ?? "").slice(0, 80),
+      };
+      const taskTypeMap: Record<string, string> = { email: "Email", sms: "SMS" };
+      const uniqueId = `${enrollmentId}-${stepId}-${Date.now()}`;
+      const newTaskItem: TaskItem = {
+        id: `taskitem-flow-${uniqueId}`,
+        contactId: enrollment.contactId,
+        contactName: contact ? `${contact.firstName} ${contact.lastName}` : enrollment.contactId,
+        contactStatus: contact?.listingStatus ?? "",
+        taskType: taskTypeMap[step.actionType] ?? step.actionType,
+        source: workflow.name,
+        sourceType: "flow",
+        dueDate: now,
+        assignee: step.senderIdentity ?? "",
+        status: "pending",
+        triggerContext: triggerMap[step.actionType] ?? "",
+      };
+      updatedItems = [...taskItems, newTaskItem];
+    }
+
+    setWorkflowEnrollments(updatedEnrollments);
+    setWorkflows(updatedWorkflows);
+    setTaskItems(updatedItems);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.workflows.write(updatedWorkflows);
+    store.taskItems.write(updatedItems);
+  };
+
+  const handleMoveToStep = (enrollmentId: string, targetStepId: string | "completed") => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    if (!workflow) return;
+
+    const sortedSteps = [...workflow.steps].sort((a: WorkflowStep, b: WorkflowStep) => a.dayOffset - b.dayOffset);
+    const targetIndex =
+      targetStepId === "completed"
+        ? sortedSteps.length
+        : sortedSteps.findIndex((s: WorkflowStep) => s.id === targetStepId);
+    if (targetIndex === -1) return;
+
+    const now = new Date();
+    const finalProgress = enrollment.stepProgress.map((p) => {
+      const stepIndex = sortedSteps.findIndex((s: WorkflowStep) => s.id === p.stepId);
+      if (stepIndex === -1) return p;
+      if (stepIndex < targetIndex) {
+        return { ...p, status: "done" as const, completedAt: p.completedAt ?? now };
+      }
+      return { stepId: p.stepId, status: "pending" as const };
+    });
+
+    const allDone = finalProgress.every((p) => p.status === "done" || p.status === "skipped");
+    const wasCompleted = enrollment.status === "completed";
+    const updatedEnrollment: WorkflowEnrollment = {
+      ...enrollment,
+      stepProgress: finalProgress,
+      status: allDone ? "completed" : "active",
+    };
+
+    const updatedEnrollments = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? updatedEnrollment : e,
+    );
+
+    let updatedWorkflows = workflows;
+    if (!wasCompleted && allDone) {
+      updatedWorkflows = workflows.map((wf) =>
+        wf.id === workflow.id ? { ...wf, enrolledCount: Math.max(0, wf.enrolledCount - 1) } : wf,
+      );
+    } else if (wasCompleted && !allDone) {
+      updatedWorkflows = workflows.map((wf) =>
+        wf.id === workflow.id ? { ...wf, enrolledCount: wf.enrolledCount + 1 } : wf,
+      );
+    }
+
+    setWorkflowEnrollments(updatedEnrollments);
+    setWorkflows(updatedWorkflows);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.workflows.write(updatedWorkflows);
+  };
+
   return (
     <AppDataContext.Provider
       value={{
@@ -354,6 +695,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleCreateSegment,
         handleUpdateSegment,
         handleDeleteSegment,
+        workflows,
+        workflowEnrollments,
+        handleCreateWorkflow,
+        handleUpdateWorkflow,
+        handleDeleteWorkflow,
+        handleEnrollContacts,
+        handleActivateWorkflow,
+        handleAdvanceStep,
+        handleMoveToStep,
       }}
     >
       {children}

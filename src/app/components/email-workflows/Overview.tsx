@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Calendar, Mail, BarChart3, Zap, ChevronRight } from "lucide-react";
+import { BarChart3, ChevronRight, GitBranch, FileText, PauseCircle } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
 
 import type { TaskItem } from "@/app/types";
@@ -9,12 +9,20 @@ import { TaskQueue } from "./TaskQueue";
 
 export function Overview() {
   const navigate = useNavigate();
-  const { taskItems: tasks, campaigns } = useAppData();
+  const { taskItems: tasks, workflows, workflowEnrollments } = useAppData();
   // --- State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "assignee">("list");
 
   // --- Logic ---
+  const activeEnrollmentsByWorkflow = workflowEnrollments.reduce(
+    (acc, e) => {
+      if (e.status === "active") acc[e.workflowId] = (acc[e.workflowId] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
   const assignees = Array.from(new Set(tasks.map((t) => t.assignee)));
 
   const filteredTasks = tasks.filter((task) => {
@@ -38,32 +46,24 @@ export function Overview() {
     return { label: "Low", color: "text-green-600" };
   };
 
-  const formatDate = (date: Date | undefined) => {
-    if (!date) return "";
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   return (
     <div className="h-full flex flex-col bg-background overflow-auto font-sans">
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-6 sticky top-0 z-10">
         <h2 className="text-3xl font-semibold">Overview</h2>
         <p className="text-muted-foreground mt-1">
-          Monitor active campaigns and manage follow-up workload
+          Monitor active workflows and manage follow-up workload
         </p>
       </div>
 
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Campaign Status */}
+          {/* Workflow Activity */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold">Campaign Status</h3>
+              <h3 className="text-xl font-semibold">Workflow Activity</h3>
               <button
-                onClick={() => navigate("/email-workflows/campaigns")}
+                onClick={() => navigate("/email-workflows/flows")}
                 className="flex items-center gap-1 text-sm text-primary hover:underline font-medium"
               >
                 View all <ChevronRight className="w-3.5 h-3.5" />
@@ -71,76 +71,76 @@ export function Overview() {
             </div>
 
             <div className="flex gap-3">
-              {campaigns.slice(0, 4).map((campaign) => {
-                const icon =
-                  campaign.status === "scheduled" ? (
-                    <Calendar className="w-3.5 h-3.5" />
-                  ) : campaign.status === "auto" ? (
-                    <Zap className="w-3.5 h-3.5" />
-                  ) : (
-                    <Mail className="w-3.5 h-3.5" />
-                  );
+              {workflows.slice(0, 4).map((workflow) => {
+                const isActive = workflow.status === "active";
+                const isPaused = workflow.status === "paused";
+                const activeCount = activeEnrollmentsByWorkflow[workflow.id] ?? 0;
+
+                const icon = isActive ? (
+                  <GitBranch className="w-3.5 h-3.5" />
+                ) : isPaused ? (
+                  <PauseCircle className="w-3.5 h-3.5" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5" />
+                );
 
                 return (
                   <div
-                    key={campaign.id}
+                    key={workflow.id}
                     className={cn(
                       "flex-1 min-w-0 flex flex-col gap-2.5 p-4 rounded-xl border cursor-pointer group transition-all hover:shadow-sm",
-                      campaign.hasNewActivity
-                        ? "bg-blue-50/60 border-blue-200 hover:border-blue-400"
-                        : "bg-card border-border hover:border-foreground/20",
+                      isActive
+                        ? "bg-green-50/60 border-green-200 hover:border-green-400"
+                        : isPaused
+                          ? "bg-amber-50/60 border-amber-200 hover:border-amber-400"
+                          : "bg-card border-border hover:border-foreground/20",
                     )}
                     onClick={() =>
-                      navigate(`/email-workflows/campaigns/${campaign.id}`)
+                      navigate(`/email-workflows/flows/${workflow.id}/board`)
                     }
                   >
-                    {/* Icon + NEW badge */}
+                    {/* Icon + status badge */}
                     <div className="flex items-center justify-between">
                       <div
                         className={cn(
                           "w-7 h-7 rounded-lg flex items-center justify-center",
-                          campaign.status === "sent" &&
-                            "bg-green-100 text-green-600",
-                          campaign.status === "scheduled" &&
-                            "bg-blue-100 text-blue-600",
-                          campaign.status === "auto" &&
-                            "bg-purple-100 text-purple-600",
+                          isActive && "bg-green-100 text-green-600",
+                          isPaused && "bg-amber-100 text-amber-600",
+                          !isActive && !isPaused && "bg-muted text-muted-foreground",
                         )}
                       >
                         {icon}
                       </div>
-                      {campaign.hasNewActivity && (
-                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-bold rounded-full uppercase tracking-wide">
-                          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-                          New
-                        </span>
-                      )}
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize",
+                          isActive && "bg-green-100 text-green-700",
+                          isPaused && "bg-amber-100 text-amber-700",
+                          !isActive && !isPaused && "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {workflow.status}
+                      </span>
                     </div>
 
                     {/* Name + segment */}
                     <div>
                       <div className="font-semibold text-sm truncate">
-                        {campaign.name}
+                        {workflow.name}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {campaign.segmentName}
+                        {workflow.segmentName}
                       </div>
                     </div>
 
                     {/* Footer */}
                     <div className="flex items-center gap-2 mt-auto">
-                      {campaign.openRate !== undefined && (
-                        <span className="text-xs font-semibold text-green-600">
-                          {campaign.openRate}% open
-                        </span>
-                      )}
-                      {campaign.scheduledFor && (
-                        <span className="text-xs text-muted-foreground">
-                          Sends {formatDate(campaign.scheduledFor)}
-                        </span>
-                      )}
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {campaign.recipientCount} contacts
+                      <span className="text-xs text-muted-foreground">
+                        {workflow.steps.length} steps
+                      </span>
+                      <span className="text-xs text-muted-foreground">·</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {activeCount} enrolled
                       </span>
                     </div>
                   </div>

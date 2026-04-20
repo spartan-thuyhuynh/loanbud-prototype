@@ -1,4 +1,4 @@
-import { Save, Sparkles, User } from "lucide-react";
+import { Save } from "lucide-react";
 import { templateCategories } from "../campaign-data";
 
 interface TemplateEditorPanelProps {
@@ -19,12 +19,12 @@ export function TemplateEditorPanel({
   templateName,
   subject,
   body,
-  senderType,
+  senderType: _senderType,
   category,
   onChangeTemplateName,
   onChangeSubject,
   onChangeBody,
-  onChangeSenderType,
+  onChangeSenderType: _onChangeSenderType,
   onChangeCategory,
   onSave,
 }: TemplateEditorPanelProps) {
