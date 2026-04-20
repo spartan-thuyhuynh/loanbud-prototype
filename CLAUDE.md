@@ -27,13 +27,16 @@ LoanBud CRM Phase 1 Prototype — React SPA for loan management.
 
 ## Key Source Paths
 
-- `src/app/App.tsx` — root component, routing, nav structure
+- `src/app/router.tsx` — route definitions
+- `src/app/App.tsx` — root component, layout, nav structure
+- `src/app/contexts/AppDataContext.tsx` — shared state and all data mutation handlers
 - `src/app/components/ui/` — Shadcn UI primitives (do not modify unless necessary)
-- `src/app/components/crm/` — CRM feature components (CRMSidebar, ContactList, etc.)
+- `src/app/components/crm/` — CRM feature components (CRMSidebar, ContactList, ContactDetail)
+- `src/app/components/applications/` — ApplicationList, BusinessAcquisitionList
 - `src/app/components/email-workflows/` — Email workflow feature components
 - `src/app/types/index.ts` — shared TypeScript interfaces and view/section union types
 - `src/app/data/store.ts` — localStorage-backed data store (source of truth at runtime)
-- `src/app/data/*.json` — seed data files: contacts, segments, tasks, taskItems, emailHistory, campaigns
+- `src/app/data/*.json` — seed data files: contacts, segments, tasks, taskItems, emailHistory, campaigns, applications, businessAcquisitions
 
 ## Coding Conventions
 
@@ -49,3 +52,13 @@ LoanBud CRM Phase 1 Prototype — React SPA for loan management.
 - React Context API for shared state (no Redux, no Zustand)
 - No backend calls — all data flows from `store.ts` (which seeds from JSON files) or local component state
 - `store.ts` exposes typed getters/setters per entity; always go through it rather than importing JSON directly
+- All shared state and mutation handlers live in `AppDataContext` (`useAppData()` hook)
+
+## Reference Docs
+
+Detailed reference files are in `.claude/memory/`:
+- `project_structure.md` — full route table, component tree, path aliases
+- `types_reference.md` — all TypeScript interfaces (Contact, Task, Application, BusinessAcquisitionRecord, etc.)
+- `data_layer.md` — store API, AppDataContext handlers, seed files
+- `design_system.md` — color tokens, fonts, sidebar theme, Figma design rules
+- `tech_stack.md` — package versions, build config

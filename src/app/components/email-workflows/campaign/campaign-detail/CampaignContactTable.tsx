@@ -6,6 +6,7 @@ import {
   Phone,
   Edit,
   Users,
+  UserMinus,
 } from "lucide-react";
 import type { CampaignDetailContact } from "../types";
 
@@ -14,6 +15,7 @@ interface CampaignContactTableProps {
   selectedContacts: string[];
   onSelectAll: () => void;
   onSelectContact: (id: string) => void;
+  onRemoveContact: (id: string) => void;
 }
 
 function getEngagementColor(engagement: string): string {
@@ -47,6 +49,7 @@ export function CampaignContactTable({
   selectedContacts,
   onSelectAll,
   onSelectContact,
+  onRemoveContact,
 }: CampaignContactTableProps) {
   return (
     <div className="flex-1 overflow-auto">
@@ -127,7 +130,8 @@ export function CampaignContactTable({
                 </div>
               </td>
               <td className="px-6 py-4">
-                <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                <div className="text-sm font-medium truncate">{contact.listingName}</div>
+                <span className="mt-1 inline-block px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
                   {contact.status}
                 </span>
               </td>
@@ -179,6 +183,13 @@ export function CampaignContactTable({
                     title="Update status"
                   >
                     <Edit className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => onRemoveContact(contact.id)}
+                    className="p-2 hover:bg-red-50 rounded-lg transition-all"
+                    title="Remove from campaign"
+                  >
+                    <UserMinus className="w-4 h-4 text-muted-foreground hover:text-red-600" />
                   </button>
                 </div>
               </td>

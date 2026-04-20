@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, Plus, Trash2, Check } from "lucide-react";
+import { Plus, Trash2, Check, Phone, Mail, Voicemail, Pencil, Zap, Calendar, Workflow, Users, UserCircle, Tag } from "lucide-react";
 import type { Segment } from "@/app/types";
 import { store } from "@/app/data/store";
 import { sampleTemplates } from "./campaign/campaign-data";
@@ -20,6 +20,7 @@ import {
 // New Interface for Multi-Reminders
 interface Reminder {
   id: string;
+  name: string;
   type: string;
   dueDate: string;
   objective: string;
@@ -41,6 +42,7 @@ function default14DayCadence(): Reminder[] {
   return [
     {
       id: "cadence-0",
+      name: "Opening Call",
       type: "Call",
       dueDate: addDays(today, 0),
       objective: "Introduce yourself, confirm the contact received the opening email, and explain the next step",
@@ -48,6 +50,7 @@ function default14DayCadence(): Reminder[] {
     },
     {
       id: "cadence-3",
+      name: "Document Follow-up",
       type: "Call",
       dueDate: addDays(today, 3),
       objective: "Explain which documents are needed and how to upload them in LoanBud",
@@ -55,6 +58,7 @@ function default14DayCadence(): Reminder[] {
     },
     {
       id: "cadence-7",
+      name: "Action Reminder",
       type: "Call",
       dueDate: addDays(today, 7),
       objective: "Re-state action needed and confirm commitment date",
@@ -62,6 +66,7 @@ function default14DayCadence(): Reminder[] {
     },
     {
       id: "cadence-14",
+      name: "Final Follow-up",
       type: "Call",
       dueDate: addDays(today, 14),
       objective: "Final follow-up — close the loop and confirm next steps or conclude the sequence",
@@ -133,31 +138,43 @@ export function ComposeEmail() {
 
   // 1. Unified State
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [campaignName, setCampaignName] = useState("");
+  const [campaignDescription, setCampaignDescription] = useState("");
   const [selectedSegmentId, setSelectedSegmentId] =
     useState(preSelectedSegmentId);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [senderIdentity, setSenderIdentity] = useState<"brand" | "agent">(
-    "brand",
-  );
-  const [agentName, setAgentName] = useState("");
+  const [senderIdentity, setSenderIdentity] = useState<"brand" | "loan-officer" | "custom">("brand");
+  const [senderEmail, setSenderEmail] = useState("");
+  const [customSenderName, setCustomSenderName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [showBodyPreview, setShowBodyPreview] = useState(false);
+
+
+  // Delivery / send-mode state
+  const [sendMode, setSendMode] = useState<"now" | "scheduled" | "auto">("now");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
 
   // 2. Multi-Reminder State — pre-populated with 14-day cadence
   const [reminders, setReminders] = useState<Reminder[]>(default14DayCadence);
+  const [selectedReminderId, setSelectedReminderId] = useState<string>(() => default14DayCadence()[0].id);
 
   // Logic Helpers
   const addReminder = () => {
-    setReminders([
-      ...reminders,
-      { id: Date.now().toString(), type: "Call", dueDate: "", objective: "" },
-    ]);
+    const newId = Date.now().toString();
+    setReminders((prev) => [...prev, { id: newId, name: "New Task", type: "Call", dueDate: "", objective: "" }]);
+    setSelectedReminderId(newId);
   };
 
   const removeReminder = (id: string) => {
-    if (reminders.length > 1)
-      setReminders(reminders.filter((r) => r.id !== id));
+    const filtered = reminders.filter((r) => r.id !== id);
+    if (filtered.length === 0) return;
+    setReminders(filtered);
+    if (selectedReminderId === id) {
+      const idx = reminders.findIndex((r) => r.id === id);
+      const fallback = reminders[idx > 0 ? idx - 1 : 1];
+      setSelectedReminderId(fallback?.id ?? filtered[0].id);
+    }
   };
 
   const updateReminder = (id: string, field: keyof Reminder, value: string) => {
@@ -175,57 +192,168 @@ export function ComposeEmail() {
     setSelectedTemplateId(String(idx));
     setSubject(tpl.subject);
     setBody(tpl.body);
-    setSenderIdentity(tpl.senderType);
+    setSenderIdentity(tpl.senderType === "agent" ? "loan-officer" : "brand");
   };
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId);
   const eligibleRecipients = contacts.filter((c) => !c.optedOut);
   const optedOutCount = contacts.filter((c) => c.optedOut).length;
 
+  const senderLabel =
+    senderIdentity === "brand"
+      ? "LoanBud Brand"
+      : senderIdentity === "loan-officer"
+        ? "Assigned Loan Officer"
+        : customSenderName
+          ? senderEmail
+            ? `${customSenderName} <${senderEmail}>`
+            : customSenderName
+          : senderEmail || "Custom";
+
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card px-8 py-6">
-        <h2 className="text-2xl font-semibold mb-4">New Campaign</h2>
-        <StepIndicator current={step} />
+      <div className="border-b border-border bg-card px-8 py-6 flex items-center gap-8">
+        <h2 className="text-2xl font-semibold shrink-0">New Campaign</h2>
+        <div className="ml-auto w-80 shrink-0">
+          <StepIndicator current={step} />
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
 
-          {/* STEP 1: SEGMENT + CONTENT */}
+          {/* STEP 1: COMPOSE */}
           {step === 1 && (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="flex flex-col gap-6">
+              <div className="flex gap-6 items-start">
 
-                {/* Left: Segment & Template */}
-                <div className="space-y-6">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-semibold">
-                      1. Select User Segment
-                    </label>
+                {/* LEFT PANEL — Campaign configuration */}
+                <div className="w-72 shrink-0 space-y-5">
+
+                  {/* Campaign Name */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Campaign Name
+                    </p>
+                    <Input
+                      placeholder="e.g. April Broker Outreach"
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                      className="font-medium"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Description{" "}
+                      <span className="normal-case tracking-normal font-normal text-muted-foreground/60">
+                        (optional)
+                      </span>
+                    </p>
+                    <Textarea
+                      placeholder="What is this campaign for?"
+                      value={campaignDescription}
+                      onChange={(e) => setCampaignDescription(e.target.value)}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+
+                  {/* Audience */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Audience
+                    </p>
                     <Select
                       value={selectedSegmentId}
-                      onValueChange={setSelectedSegmentId}
+                      onValueChange={(id) => {
+                        setSelectedSegmentId(id);
+                        if (!campaignName.trim()) {
+                          const seg = segments.find((s) => s.id === id);
+                          if (seg) {
+                            setCampaignName(
+                              `${seg.name} - ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+                            );
+                          }
+                        }
+                      }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Choose a segment..." />
                       </SelectTrigger>
                       <SelectContent>
                         {segments.map((seg) => (
                           <SelectItem key={seg.id} value={seg.id}>
-                            {seg.name} ({seg.contactCount.toLocaleString()} contacts)
+                            {seg.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="grid gap-2">
-                    <label className="text-sm font-semibold">
-                      2. Quick Templates
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
+                  {/* Sender */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Sender
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant={senderIdentity === "brand" ? "default" : "outline"}
+                        onClick={() => setSenderIdentity("brand")}
+                      >
+                        Brand Voice
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={senderIdentity === "loan-officer" ? "default" : "outline"}
+                        onClick={() => setSenderIdentity("loan-officer")}
+                      >
+                        Loan Officer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={senderIdentity === "custom" ? "default" : "outline"}
+                        onClick={() => setSenderIdentity("custom")}
+                      >
+                        Custom Email
+                      </Button>
+                    </div>
+                    {senderIdentity === "loan-officer" && (
+                      <p className="text-xs text-muted-foreground">
+                        Sends as each contact's assigned loan officer
+                      </p>
+                    )}
+                    {senderIdentity === "custom" && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Display name..."
+                          value={customSenderName}
+                          onChange={(e) => setCustomSenderName(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                        <Input
+                          placeholder="email@example.com"
+                          value={senderEmail}
+                          onChange={(e) => setSenderEmail(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT PANEL — Email content */}
+                <div className="flex-1 min-w-0 space-y-4">
+
+                  {/* Quick Templates */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Quick Templates
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {sampleTemplates.map((tpl, idx) => {
                         const isSelected = selectedTemplateId === String(idx);
                         return (
@@ -244,9 +372,7 @@ export function ComposeEmail() {
                               </span>
                             )}
                             <p className="font-semibold pr-4">{tpl.name}</p>
-                            <p className="text-muted-foreground mt-0.5 truncate">
-                              {tpl.subject}
-                            </p>
+                            <p className="text-muted-foreground mt-0.5 truncate">{tpl.subject}</p>
                             <div className="flex gap-1 mt-1.5">
                               <Badge
                                 variant="secondary"
@@ -260,78 +386,49 @@ export function ComposeEmail() {
                       })}
                     </div>
                   </div>
-                </div>
 
-                {/* Right: Sender Identity & Editor */}
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold">
-                    3. Email Content
-                  </label>
-
-                  {/* Sender toggle */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={senderIdentity === "brand" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setSenderIdentity("brand")}
-                    >
-                      Brand Voice
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={senderIdentity === "agent" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setSenderIdentity("agent")}
-                    >
-                      Specific Agent
-                    </Button>
-                  </div>
-
-                  {senderIdentity === "agent" && (
-                    <Input
-                      placeholder="Agent name..."
-                      value={agentName}
-                      onChange={(e) => setAgentName(e.target.value)}
-                    />
-                  )}
-
-                  <Input
-                    placeholder="Subject line..."
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="font-medium"
-                  />
-
-                  <div className="grid gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Body</span>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-[11px] font-mono text-primary"
-                          onClick={() => insertTag("first_name")}
-                        >
-                          + first_name
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-[11px] font-mono text-primary"
-                          onClick={() => insertTag("listing_name")}
-                        >
-                          + listing_name
-                        </Button>
+                  {/* Compose card */}
+                  <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
+                    {/* Subject row */}
+                    <div className="flex items-center border-b border-border px-4 py-2.5">
+                      <span className="w-14 text-xs font-medium text-muted-foreground shrink-0">Subj</span>
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          placeholder="Subject line..."
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          className="border-0 shadow-none h-8 focus-visible:ring-0 px-0 font-medium"
+                        />
                       </div>
                     </div>
+
+                    {/* Body area */}
                     <Textarea
-                      rows={9}
                       placeholder="Email body..."
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
-                      className="resize-none"
+                      className="border-0 shadow-none resize-none focus-visible:ring-0 px-4 py-3 min-h-[280px] rounded-none"
                     />
+
+                    {/* Toolbar row */}
+                    <div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/30">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[11px] font-mono text-primary"
+                        onClick={() => insertTag("first_name")}
+                      >
+                        + first_name
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[11px] font-mono text-primary"
+                        onClick={() => insertTag("listing_name")}
+                      >
+                        + listing_name
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -342,7 +439,7 @@ export function ComposeEmail() {
                 </Button>
                 <Button
                   onClick={() => setStep(2)}
-                  disabled={!selectedSegmentId || !subject.trim()}
+                  disabled={!selectedSegmentId || !subject.trim() || !campaignName.trim()}
                 >
                   Next: Configure Tasks →
                 </Button>
@@ -351,238 +448,481 @@ export function ComposeEmail() {
           )}
 
           {/* STEP 2: MULTI-REMINDERS */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Follow-up Tasks</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={addReminder}
-                  className="gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Task
-                </Button>
-              </div>
+          {step === 2 && (() => {
+            const activeReminder = reminders.find((r) => r.id === selectedReminderId) ?? reminders[0];
+            const getDayDiff = (dueDate: string) => {
+              if (!dueDate) return null;
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const due = new Date(dueDate + "T00:00:00");
+              const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+              return diff >= 0 ? diff : null;
+            };
+            const formatDueDate = (dueDate: string) => {
+              if (!dueDate) return null;
+              const d = new Date(dueDate + "T00:00:00");
+              return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            };
+            return (
+              <div className="space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Follow-up Tasks</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      These tasks will be created for every contact in the selected segment.
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={addReminder} className="gap-1.5 shrink-0">
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Task
+                  </Button>
+                </div>
 
-              <div className="space-y-3">
-                {reminders.map((reminder, idx) => (
-                  <div
-                    key={reminder.id}
-                    className="p-5 border border-border rounded-xl bg-card shadow-sm relative group"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Task {idx + 1}
-                        </span>
-                        {reminder.dueDate && (() => {
-                          const today = new Date(); today.setHours(0,0,0,0);
-                          const due = new Date(reminder.dueDate + "T00:00:00");
-                          const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
-                          return diff >= 0 ? (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">Day {diff}</span>
-                          ) : null;
-                        })()}
+                <div className="flex gap-4 border border-border rounded-xl overflow-hidden bg-card shadow-sm min-h-[520px]">
+
+                  {/* Left: task list */}
+                  <div className="w-48 shrink-0 border-r border-border flex flex-col">
+                    {reminders.map((reminder) => {
+                      const isActive = reminder.id === activeReminder.id;
+                      const IconMap = { Call: Phone, Email: Mail, Voicemail: Voicemail } as const;
+                      const Icon = IconMap[reminder.type as keyof typeof IconMap] ?? Phone;
+                      return (
+                        <button
+                          key={reminder.id}
+                          type="button"
+                          onClick={() => setSelectedReminderId(reminder.id)}
+                          className={`flex flex-col gap-1 px-4 py-3 text-left border-b border-border last:border-b-0 transition-colors ${
+                            isActive ? "bg-primary/8 border-l-2 border-l-primary" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <span className={`text-xs font-semibold truncate ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                            {reminder.name || "Untitled"}
+                          </span>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Icon className="w-3 h-3" />
+                            {reminder.type}
+                          </div>
+                          {formatDueDate(reminder.dueDate) && (
+                            <span className="text-[10px] text-muted-foreground/70">
+                              {formatDueDate(reminder.dueDate)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right: detail panel */}
+                  <div className="flex-1 p-6 space-y-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="relative flex items-center group/name flex-1 min-w-0">
+                          <Pencil className="absolute left-0 w-3.5 h-3.5 text-muted-foreground/50 group-focus-within/name:text-primary transition-colors pointer-events-none shrink-0" />
+                          <Input
+                            value={activeReminder.name}
+                            onChange={(e) => updateReminder(activeReminder.id, "name", e.target.value)}
+                            placeholder="Task name..."
+                            className="border-0 shadow-none pl-5 pr-0 h-9 text-base font-semibold focus-visible:ring-0 focus-visible:border-b focus-visible:border-border rounded-none"
+                          />
+                        </div>
+                        {getDayDiff(activeReminder.dueDate) !== null && (
+                          <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium shrink-0">
+                            Day {getDayDiff(activeReminder.dueDate)}
+                          </span>
+                        )}
                       </div>
                       {reminders.length > 1 && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removeReminder(reminder.id)}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() => removeReminder(activeReminder.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div className="grid grid-cols-2 gap-5">
                       <div className="grid gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider">
-                          Type
-                        </label>
-                        <Select
-                          value={reminder.type}
-                          onValueChange={(v) =>
-                            updateReminder(reminder.id, "type", v)
-                          }
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Call">Call</SelectItem>
-                            <SelectItem value="Email">Email</SelectItem>
-                            <SelectItem value="Voicemail">Voicemail</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider">Type</label>
+                        <div className="flex gap-2">
+                          {([
+                            { value: "Call", icon: Phone, label: "Call" },
+                            { value: "Email", icon: Mail, label: "Email" },
+                            { value: "Voicemail", icon: Voicemail, label: "Voicemail" },
+                          ] as const).map(({ value, icon: Icon, label }) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => updateReminder(activeReminder.id, "type", value)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                activeReminder.type === value
+                                  ? "bg-primary text-primary-foreground"
+                                  : "border border-border bg-card text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="grid gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider">
-                          Due Date
-                        </label>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider">Due Date</label>
                         <Input
                           type="date"
                           className="h-9"
-                          value={reminder.dueDate}
-                          onChange={(e) =>
-                            updateReminder(reminder.id, "dueDate", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wider">
-                          {reminder.type === "Email" ? "Email Objective" : "Call Objective"}
-                        </label>
-                        <Input
-                          className="h-9"
-                          placeholder="e.g. Check receipt"
-                          value={reminder.objective}
-                          onChange={(e) =>
-                            updateReminder(reminder.id, "objective", e.target.value)
-                          }
+                          value={activeReminder.dueDate}
+                          onChange={(e) => updateReminder(activeReminder.id, "dueDate", e.target.value)}
                         />
                       </div>
                     </div>
-                    {(reminder.type === "Call" || reminder.type === "Voicemail") && (
-                      <div className="grid gap-1.5 mt-3">
+
+                    <div className="grid gap-1.5">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wider">
+                        {activeReminder.type === "Email" ? "Email Objective" : "Call Objective"}
+                      </label>
+                      <Input
+                        className="h-9"
+                        placeholder="e.g. Check receipt"
+                        value={activeReminder.objective}
+                        onChange={(e) => updateReminder(activeReminder.id, "objective", e.target.value)}
+                      />
+                    </div>
+
+                    {(activeReminder.type === "Call" || activeReminder.type === "Voicemail") && (
+                      <div className="grid gap-1.5">
                         <label className="text-xs text-muted-foreground uppercase tracking-wider">
-                          Voicemail Script <span className="normal-case tracking-normal text-muted-foreground/60">(optional — shown to agent if no answer)</span>
+                          Voicemail Script{" "}
+                          <span className="normal-case tracking-normal text-muted-foreground/60">
+                            (optional — shown to agent if no answer)
+                          </span>
                         </label>
                         <Textarea
-                          rows={2}
+                          rows={3}
                           placeholder="e.g. Hi {{first_name}}, this is [Name] from LoanBud — please give me a call back at [phone]."
-                          value={reminder.vmScript ?? ""}
-                          onChange={(e) =>
-                            updateReminder(reminder.id, "vmScript", e.target.value)
-                          }
+                          value={activeReminder.vmScript ?? ""}
+                          onChange={(e) => updateReminder(activeReminder.id, "vmScript", e.target.value)}
                           className="resize-none text-sm"
                         />
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                </div>
 
-              <div className="flex justify-between pt-4 border-t border-border">
-                <Button variant="outline" onClick={() => setStep(1)}>
-                  ← Back
-                </Button>
-                <Button onClick={() => setStep(3)}>
-                  Next: Review →
-                </Button>
+                <div className="flex justify-between pt-4 border-t border-border">
+                  <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
+                  <Button onClick={() => setStep(3)}>Next: Review →</Button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* STEP 3: REVIEW & SEND */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold">Review & Send</h3>
-
-              <div className="bg-card border border-border rounded-xl divide-y overflow-hidden shadow-sm">
-                <div className="px-5 py-3 bg-muted/40">
-                  <span className="text-sm font-semibold">Campaign Summary</span>
-                </div>
-
-                <div className="px-5 py-4 grid grid-cols-3 text-sm items-center">
-                  <span className="text-muted-foreground">Target Segment</span>
-                  <span className="col-span-2 font-medium">
-                    {selectedSegment?.name}
-                    <span className="text-muted-foreground font-normal ml-2">
-                      ({selectedSegment?.contactCount.toLocaleString()} contacts)
-                    </span>
+          {step === 3 && (() => {
+            const fmtDate = (d: string) => d
+              ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              : "—";
+            const TaskIconMap = { Call: Phone, Email: Mail, Voicemail: Voicemail } as const;
+            const typeColors: Record<string, string> = {
+              Call: "bg-blue-50 text-blue-600 border-blue-100",
+              Email: "bg-green-50 text-green-600 border-green-100",
+              Voicemail: "bg-amber-50 text-amber-600 border-amber-100",
+            };
+            return (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Review & Send</h3>
+                  <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                    {reminders.length} follow-up task{reminders.length !== 1 ? "s" : ""} · {eligibleRecipients.length} recipients
                   </span>
                 </div>
 
-                <div className="px-5 py-4 grid grid-cols-3 text-sm items-center">
-                  <span className="text-muted-foreground">Eligible</span>
-                  <div className="col-span-2 flex gap-2">
-                    <Badge className="bg-green-100 text-green-700 border-green-200">
-                      {eligibleRecipients.length} eligible
-                    </Badge>
-                    <Badge className="bg-red-100 text-red-600 border-red-200">
-                      {optedOutCount} opted out
-                    </Badge>
+                <div className="grid grid-cols-2 gap-5 items-stretch">
+
+                  {/* Left column */}
+                  <div className="space-y-4">
+
+                    {/* Campaign stat strip */}
+                    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Campaign</span>
+                        <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-100">Ready</span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        <div className="flex items-start gap-3 px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0 pt-0.5">
+                            <Pencil className="w-3 h-3" />
+                            Name
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{campaignName || "—"}</p>
+                            {campaignDescription && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{campaignDescription}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0">
+                            <Tag className="w-3 h-3" />
+                            Segment
+                          </div>
+                          <p className="text-sm font-semibold">{selectedSegment?.name ?? "—"}</p>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0">
+                            <Users className="w-3 h-3" />
+                            Recipients
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">{eligibleRecipients.length} eligible</span>
+                            {optedOutCount > 0 && (
+                              <span className="text-xs text-red-500">{optedOutCount} opted out</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-24 shrink-0">
+                            <UserCircle className="w-3 h-3" />
+                            Sender
+                          </div>
+                          <p className="text-sm font-semibold">{senderLabel}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tasks timeline card */}
+                    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Follow-up Tasks</span>
+                        <span className="text-xs text-muted-foreground">{reminders.length} tasks</span>
+                      </div>
+                      <div className={`px-5 py-4 space-y-0 ${reminders.length > 4 ? "max-h-72 overflow-y-auto" : ""}`}>
+                        {reminders.map((r, idx) => {
+                          const TaskIcon = TaskIconMap[r.type as keyof typeof TaskIconMap] ?? Phone;
+                          const colorClass = typeColors[r.type] ?? "bg-muted text-muted-foreground border-border";
+                          const isLast = idx === reminders.length - 1;
+                          return (
+                            <div key={r.id} className="flex gap-3">
+                              {/* Timeline spine */}
+                              <div className="flex flex-col items-center">
+                                <div className={`flex items-center justify-center w-7 h-7 rounded-full border text-xs shrink-0 ${colorClass}`}>
+                                  <TaskIcon className="w-3.5 h-3.5" />
+                                </div>
+                                {!isLast && <div className="w-px flex-1 my-1 bg-border" />}
+                              </div>
+                              {/* Content */}
+                              <div className={`flex-1 min-w-0 ${isLast ? "" : "pb-4"}`}>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-sm font-medium">{r.name || "Untitled"}</span>
+                                  {r.dueDate && (
+                                    <span className="text-xs text-muted-foreground shrink-0">{fmtDate(r.dueDate)}</span>
+                                  )}
+                                </div>
+                                {r.objective && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{r.objective}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right column: email preview styled like an email client */}
+                  <div>
+                    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
+                      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email Preview</span>
+                        <span className="text-xs text-muted-foreground">
+                          {senderLabel}
+                        </span>
+                      </div>
+                      {/* Email chrome */}
+                      <div className="px-5 pt-4 pb-3 border-b border-border space-y-2.5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-primary">LB</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-semibold">{senderLabel}</p>
+                              <span className="text-xs text-muted-foreground shrink-0">to {selectedSegment?.name ?? "segment"}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{subject || <span className="italic">No subject</span>}</p>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Subject line */}
+                      <div className="px-5 pt-3 pb-1">
+                        <p className="text-sm font-semibold">{subject || <span className="text-muted-foreground italic">No subject</span>}</p>
+                      </div>
+                      {/* Body */}
+                      <div className="px-5 pb-5 flex-1 overflow-auto min-h-72">
+                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                          {body || <span className="text-muted-foreground italic">No body</span>}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="px-5 py-4 grid grid-cols-3 text-sm items-start">
-                  <span className="text-muted-foreground">Subject</span>
-                  <span className="col-span-2 font-medium">{subject}</span>
-                </div>
+                {/* Delivery card */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                  <div className="px-5 py-3 bg-muted/40 border-b border-border flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery</span>
+                    {sendMode === "now" && (
+                      <span className="text-xs text-muted-foreground">Ready to send</span>
+                    )}
+                    {sendMode === "scheduled" && scheduleDate && (
+                      <span className="text-xs text-blue-600 font-medium">
+                        Scheduled for {new Date(`${scheduleDate}T${scheduleTime}`).toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {scheduleTime}
+                      </span>
+                    )}
+                    {sendMode === "auto" && (
+                      <span className="text-xs text-purple-600 font-medium">Active on segment entry</span>
+                    )}
+                  </div>
 
-                <div className="px-5 py-4 grid grid-cols-3 text-sm items-start">
-                  <span className="text-muted-foreground">Sender</span>
-                  <span className="col-span-2">
-                    {senderIdentity === "brand" ? "LoanBud Brand" : `Agent: ${agentName}`}
-                  </span>
-                </div>
+                  <div className="p-4 grid grid-cols-3 gap-3">
+                    {/* Send Now tile */}
+                    <button
+                      type="button"
+                      onClick={() => setSendMode("now")}
+                      className={`relative flex flex-col items-start gap-2.5 rounded-xl border-2 p-4 text-left transition-all ${
+                        sendMode === "now"
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-muted/30"
+                      }`}
+                    >
+                      {sendMode === "now" && (
+                        <span className="absolute top-3 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        </span>
+                      )}
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sendMode === "now" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold leading-tight">Send Now</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Deliver immediately to all eligible contacts</p>
+                      </div>
+                    </button>
 
-                <div className="px-5 py-4 grid grid-cols-3 text-sm items-start">
-                  <span className="text-muted-foreground">Tasks</span>
-                  <div className="col-span-2 space-y-1">
-                    {reminders.map((r, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <Badge variant="outline">{r.type}</Badge>
-                        <span>due {r.dueDate || "—"}</span>
-                        {r.objective && (
-                          <span className="text-muted-foreground italic truncate">
-                            "{r.objective}"
-                          </span>
+                    {/* Schedule tile */}
+                    <button
+                      type="button"
+                      onClick={() => setSendMode("scheduled")}
+                      className={`relative flex flex-col items-start gap-2.5 rounded-xl border-2 p-4 text-left transition-all ${
+                        sendMode === "scheduled"
+                          ? "border-blue-500 bg-blue-50/60 shadow-sm"
+                          : "border-border hover:border-blue-300 hover:bg-muted/30"
+                      }`}
+                    >
+                      {sendMode === "scheduled" && (
+                        <span className="absolute top-3 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
+                          <Check className="w-2.5 h-2.5 text-white" />
+                        </span>
+                      )}
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sendMode === "scheduled" ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold leading-tight">Schedule</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Choose a future date and time to send</p>
+                      </div>
+                    </button>
+
+                    {/* Auto tile */}
+                    <button
+                      type="button"
+                      onClick={() => setSendMode("auto")}
+                      className={`relative flex flex-col items-start gap-2.5 rounded-xl border-2 p-4 text-left transition-all ${
+                        sendMode === "auto"
+                          ? "border-purple-500 bg-purple-50/60 shadow-sm"
+                          : "border-border hover:border-purple-300 hover:bg-muted/30"
+                      }`}
+                    >
+                      {sendMode === "auto" && (
+                        <span className="absolute top-3 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500">
+                          <Check className="w-2.5 h-2.5 text-white" />
+                        </span>
+                      )}
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sendMode === "auto" ? "bg-purple-100 text-purple-600" : "bg-muted text-muted-foreground"}`}>
+                        <Workflow className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold leading-tight">Auto-trigger</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">Send when a contact enters this segment</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Schedule date/time picker — shown inline below tiles */}
+                  {sendMode === "scheduled" && (
+                    <div className="px-4 pb-4 border-t border-blue-100">
+                      <div className="mt-3 flex items-center gap-3 bg-blue-50/80 rounded-lg px-4 py-3">
+                        <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
+                        <span className="text-xs font-medium text-blue-700 shrink-0">Send on</span>
+                        <Input
+                          type="date"
+                          className="h-8 w-40 text-sm border-blue-200 bg-white focus-visible:ring-blue-300"
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                        />
+                        <span className="text-xs text-blue-500 shrink-0">at</span>
+                        <Input
+                          type="time"
+                          className="h-8 w-28 text-sm border-blue-200 bg-white focus-visible:ring-blue-300"
+                          value={scheduleTime}
+                          onChange={(e) => setScheduleTime(e.target.value)}
+                        />
+                        {!scheduleDate && (
+                          <span className="text-xs text-blue-400 italic">— pick a date to continue</span>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="px-5 py-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Email Body Preview</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => setShowBodyPreview((v) => !v)}
-                    >
-                      {showBodyPreview ? "Hide" : "Show"}
-                    </Button>
-                  </div>
-                  {showBodyPreview && (
-                    <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/50 rounded-lg p-3 max-h-48 overflow-auto text-foreground">
-                      {body}
-                    </pre>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              <div className="flex justify-between pt-2">
-                <Button variant="outline" onClick={() => setStep(2)}>
-                  ← Back
-                </Button>
-                <Button
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 font-semibold shadow px-6"
-                  onClick={() =>
-                    onSend({
-                      reminders,
-                      subject,
-                      body,
-                      segmentId: selectedSegmentId,
-                      segmentName: selectedSegment?.name,
-                      recipients: eligibleRecipients,
-                      senderIdentity:
-                        senderIdentity === "brand" ? "Brand" : agentName,
-                      campaignName: `${selectedSegment?.name} - ${new Date().toLocaleDateString()}`,
-                    })
-                  }
-                >
-                  <Send className="w-4 h-4" />
-                  Confirm & Send to {eligibleRecipients.length} contacts
-                </Button>
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
+                  <Button
+                    className={`gap-2 font-semibold shadow px-6 ${
+                      sendMode === "scheduled"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : sendMode === "auto"
+                          ? "bg-purple-600 hover:bg-purple-700 text-white"
+                          : "bg-accent text-accent-foreground hover:bg-accent/90"
+                    }`}
+                    disabled={sendMode === "scheduled" && !scheduleDate}
+                    onClick={() =>
+                      onSend({
+                        reminders,
+                        subject,
+                        body,
+                        segmentId: selectedSegmentId,
+                        segmentName: selectedSegment?.name,
+                        recipients: eligibleRecipients,
+                        senderIdentity: senderLabel,
+                        campaignName: campaignName.trim() || `${selectedSegment?.name} - ${new Date().toLocaleDateString()}`,
+                        campaignDescription: campaignDescription.trim() || undefined,
+                        sendMode,
+                        scheduledAt: sendMode === "scheduled"
+                          ? new Date(`${scheduleDate}T${scheduleTime}`)
+                          : null,
+                      })
+                    }
+                  >
+                    {sendMode === "now" && <><Zap className="w-4 h-4" />Confirm & Send to {eligibleRecipients.length} contacts</>}
+                    {sendMode === "scheduled" && <><Calendar className="w-4 h-4" />Schedule Campaign</>}
+                    {sendMode === "auto" && <><Workflow className="w-4 h-4" />Activate Auto Campaign</>}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>

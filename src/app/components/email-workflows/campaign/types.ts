@@ -1,6 +1,6 @@
 import type { Contact } from "@/app/types";
 
-export type CampaignStatus = "draft" | "scheduled" | "sent";
+export type CampaignStatus = "draft" | "scheduled" | "sent" | "auto";
 
 export interface ComposeSubmitParams {
   recipients: Contact[];
@@ -29,6 +29,7 @@ export interface FollowUpTask {
 export interface Campaign {
   id: string;
   name: string;
+  description?: string;
   segmentId: string;
   segmentName: string;
   templateId: string;
@@ -46,6 +47,7 @@ export interface CampaignDetailContact {
   name: string;
   email: string;
   status: string;
+  listingName: string;
   engagement: "opened" | "clicked" | "delivered" | "no-response";
   stillInSegment: boolean;
   driftReason?: string;

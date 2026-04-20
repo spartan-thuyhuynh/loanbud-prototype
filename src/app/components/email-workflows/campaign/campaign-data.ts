@@ -24,12 +24,14 @@ export const CAMPAIGN_STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-500",
   scheduled: "bg-blue-500",
   sent: "bg-green-500",
+  auto: "bg-purple-500",
 };
 
 export const CAMPAIGN_STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   scheduled: "Scheduled",
   sent: "Sent",
+  auto: "Auto",
 };
 
 export const templateCategories = [

@@ -163,7 +163,7 @@ export function Campaigns() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-1">
                           <h3
                             className="text-lg"
                             style={{
@@ -179,6 +179,9 @@ export function Campaigns() {
                             {CAMPAIGN_STATUS_LABELS[campaign.status]}
                           </span>
                         </div>
+                        {campaign.description && (
+                          <p className="text-sm text-muted-foreground mb-2">{campaign.description}</p>
+                        )}
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4" />

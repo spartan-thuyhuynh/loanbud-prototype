@@ -31,6 +31,8 @@ interface AppDataContextValue {
     vmScript?: string;
     assignee?: string;
   }) => void;
+  // Remove a contact from a campaign and cancel their pending campaign tasks
+  handleRemoveContactFromCampaign: (contactId: string, campaignName: string) => void;
   // Campaign/compose handler (navigation handled by the caller)
   handleCompose: (params: any) => void;
 }
@@ -167,6 +169,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
+  const handleRemoveContactFromCampaign = (contactId: string, campaignName: string) => {
+    const updatedTasks = tasks.filter(
+      (t) => !(t.contactId === contactId && t.status === "pending"),
+    );
+    const updatedItems = taskItems.filter(
+      (ti) =>
+        !(
+          ti.contactId === contactId &&
+          ti.sourceType === "campaign" &&
+          ti.source === campaignName &&
+          ti.status === "pending"
+        ),
+    );
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+  };
+
   const handleUpdateContact = (contactId: string, updates: Partial<Contact>) => {
     const updated = contacts.map((c) =>
       c.id === contactId ? { ...c, ...updates } : c,
@@ -224,13 +245,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    const sendMode: "now" | "scheduled" | "auto" = params.sendMode ?? "now";
     const newCampaign: Campaign = {
       id: `campaign-${Date.now()}`,
       name: params.campaignName || "Campaign",
+      description: params.campaignDescription,
       segmentId: params.segmentId,
       segmentName: params.segmentName,
-      status: "sent",
-      sentAt: now,
+      status: sendMode === "now" ? "sent" : sendMode === "scheduled" ? "scheduled" : "auto",
+      ...(sendMode === "now" ? { sentAt: now } : {}),
+      ...(sendMode === "scheduled" && params.scheduledAt ? { scheduledFor: params.scheduledAt } : {}),
       recipientCount: params.recipients.length,
       followUpTasks: params.reminders.map((r: any) => ({
         taskType: r.type,
@@ -275,6 +299,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleBulkDeleteTask,
         handleUpdateContact,
         handleCreateTask,
+        handleRemoveContactFromCampaign,
         handleCompose,
       }}
     >
