@@ -15,12 +15,16 @@ interface SegmentBuilderProps {
   onSaveSegment: (segment: SavedSegment) => void;
   onDeleteSegment: (id: string) => void;
   onBack?: () => void;
+  initialName?: string;
+  initialDescription?: string;
 }
 
 export function SegmentBuilder({
   contacts,
   onSaveSegment,
   onBack,
+  initialName,
+  initialDescription,
 }: SegmentBuilderProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [excludeContacts, setExcludeContacts] = useState(false);
@@ -261,6 +265,8 @@ export function SegmentBuilder({
         isOpen={showSaveModal}
         onSave={handleSave}
         onClose={() => setShowSaveModal(false)}
+        initialName={initialName}
+        initialDescription={initialDescription}
       />
     </div>
   );

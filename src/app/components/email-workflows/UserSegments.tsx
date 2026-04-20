@@ -1,16 +1,14 @@
-import { useState } from "react";
 import { Plus, Edit, Trash2, Users, User as UserIcon } from "lucide-react";
-import type { Segment } from "@/app/types";
+import { useState } from "react";
 import { Button } from "../ui/button";
-import { store } from "@/app/data/store";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { useAppData } from "@/app/contexts/AppDataContext";
 
 export function UserSegments() {
   const navigate = useNavigate();
-  const onEditSegment = () => navigate("/email-workflows/user-segments/builder");
+  const { segments, handleDeleteSegment } = useAppData();
   const onCompose = (segmentId: string) => navigate("/email-workflows/compose", { state: { segmentId } });
-
-  const [segments, _setSegments] = useState<Segment[]>(store.segments.read());
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
@@ -77,7 +75,7 @@ export function UserSegments() {
           <Button
             variant="default"
             className="px-3 py-1.5 text-sm"
-            onClick={onEditSegment}
+            onClick={() => navigate("/email-workflows/user-segments/builder")}
           >
             <Plus className="w-4 h-4" />
             Create Segment
@@ -266,13 +264,21 @@ export function UserSegments() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={onEditSegment}
+                        onClick={() =>
+                          navigate("/email-workflows/user-segments/builder", {
+                            state: { segmentId: segment.id },
+                          })
+                        }
                         className="p-2 hover:bg-muted rounded-lg transition-all"
                         title="Edit segment"
                       >
                         <Edit className="w-4 h-4 text-muted-foreground" />
                       </button>
                       <button
+                        onClick={() => {
+                          handleDeleteSegment(segment.id);
+                          toast.success("Segment deleted.");
+                        }}
                         className="p-2 hover:bg-destructive/10 rounded-lg transition-all"
                         title="Delete segment"
                       >

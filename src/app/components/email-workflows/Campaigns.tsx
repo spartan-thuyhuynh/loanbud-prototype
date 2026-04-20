@@ -8,29 +8,30 @@ import {
   Mail,
   CheckSquare,
   Eye,
+  Trash2,
 } from "lucide-react";
 import type { Campaign } from "./campaign/types";
 import {
   CAMPAIGN_STATUS_COLORS,
   CAMPAIGN_STATUS_LABELS,
 } from "./campaign/campaign-data";
-import { CampaignDetail } from "./CampaignDetail";
 import { Button } from "../ui/button";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 
 export function Campaigns() {
-  const { campaigns } = useAppData();
+  const { campaigns, handleDeleteCampaign } = useAppData();
   const navigate = useNavigate();
   const onCompose = () => navigate("/email-workflows/compose");
 
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
-    null,
-  );
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  if (selectedCampaign) {
-    return <CampaignDetail onBack={() => setSelectedCampaign(null)} />;
-  }
+  const handleDelete = (campaign: Campaign) => {
+    handleDeleteCampaign(campaign.id);
+    setConfirmDeleteId(null);
+    toast.success(`"${campaign.name}" deleted.`);
+  };
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -158,11 +159,13 @@ export function Campaigns() {
                 {campaigns.map((campaign) => (
                   <div
                     key={campaign.id}
-                    className="p-6 hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => setSelectedCampaign(campaign)}
+                    className="p-6 hover:bg-muted/20 transition-colors group"
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => navigate(`/email-workflows/campaigns/${campaign.id}`)}
+                      >
                         <div className="flex items-center gap-3 mb-1">
                           <h3
                             className="text-lg"
@@ -199,21 +202,53 @@ export function Campaigns() {
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        {campaign.status === "sent" && campaign.sentAt && (
-                          <div className="text-sm text-muted-foreground">
-                            Sent {campaign.sentAt.toLocaleDateString()}
-                          </div>
-                        )}
-                        {campaign.status === "scheduled" &&
-                          campaign.scheduledFor && (
-                            <div className="flex items-center gap-2 text-sm text-blue-600">
-                              <Clock className="w-4 h-4" />
-                              <span>
-                                {campaign.scheduledFor.toLocaleDateString()}
-                              </span>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          {campaign.status === "sent" && campaign.sentAt && (
+                            <div className="text-sm text-muted-foreground">
+                              Sent {campaign.sentAt.toLocaleDateString()}
                             </div>
                           )}
+                          {campaign.status === "scheduled" &&
+                            campaign.scheduledFor && (
+                              <div className="flex items-center gap-2 text-sm text-blue-600">
+                                <Clock className="w-4 h-4" />
+                                <span>
+                                  {campaign.scheduledFor.toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+
+                        {/* Delete button — visible on hover or when confirming */}
+                        {confirmDeleteId === campaign.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Delete?</span>
+                            <button
+                              onClick={() => handleDelete(campaign)}
+                              className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(campaign.id);
+                            }}
+                            className="p-2 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded-lg transition-all"
+                            title="Delete campaign"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </button>
+                        )}
                       </div>
                     </div>
 

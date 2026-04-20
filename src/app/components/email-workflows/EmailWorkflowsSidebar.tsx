@@ -29,6 +29,11 @@ export const EmailWorkflowsSidebar = ({ items }: EmailWorkflowsSidebarProps) => 
               }
             >
               <span className="flex-1 text-left">{item.label}</span>
+              {item.id === "flow-builder" && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-100 text-amber-700 leading-none">
+                  SOON
+                </span>
+              )}
             </NavLink>
             {item.dividerAfter && (
               <div className="border-t border-black/20 my-3" />

@@ -4,15 +4,19 @@ interface SaveSegmentModalProps {
   isOpen: boolean;
   onSave: (name: string, description: string) => void;
   onClose: () => void;
+  initialName?: string;
+  initialDescription?: string;
 }
 
 export function SaveSegmentModal({
   isOpen,
   onSave,
   onClose,
+  initialName = "",
+  initialDescription = "",
 }: SaveSegmentModalProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
 
   if (!isOpen) return null;
 

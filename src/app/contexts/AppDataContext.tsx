@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord } from "../types";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
 
@@ -10,6 +10,7 @@ interface AppDataContextValue {
   tasks: Task[];
   taskItems: TaskItem[];
   campaigns: Campaign[];
+  segments: Segment[];
   applications: Application[];
   businessAcquisitions: BusinessAcquisitionRecord[];
   // Task handlers
@@ -35,6 +36,11 @@ interface AppDataContextValue {
   handleRemoveContactFromCampaign: (contactId: string, campaignName: string) => void;
   // Campaign/compose handler (navigation handled by the caller)
   handleCompose: (params: any) => void;
+  handleDeleteCampaign: (campaignId: string) => void;
+  // Segment handlers
+  handleCreateSegment: (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => void;
+  handleUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
+  handleDeleteSegment: (segmentId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -45,6 +51,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
   const [taskItems, setTaskItems] = useState<TaskItem[]>(store.taskItems.read());
   const [campaigns, setCampaigns] = useState<Campaign[]>(store.campaigns.read());
+  const [segments, setSegments] = useState<Segment[]>(store.segments.read());
   const [applications] = useState<Application[]>(store.applications.read());
   const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(store.businessAcquisitions.read());
 
@@ -256,10 +263,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       ...(sendMode === "now" ? { sentAt: now } : {}),
       ...(sendMode === "scheduled" && params.scheduledAt ? { scheduledFor: params.scheduledAt } : {}),
       recipientCount: params.recipients.length,
-      followUpTasks: params.reminders.map((r: any) => ({
-        taskType: r.type,
-        description: r.objective,
-      })),
+      followUpTasks: params.reminders.map((r: any) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const due = new Date(r.dueDate + "T00:00:00");
+        const daysAfter = Math.max(0, Math.round((due.getTime() - today.getTime()) / 86400000));
+        return { daysAfter, taskType: r.type, description: r.objective };
+      }),
       templateId: "",
       templateName: "",
     };
@@ -281,6 +291,39 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // Navigation after compose is handled by the ComposeEmail component
   };
 
+  const handleDeleteCampaign = (campaignId: string) => {
+    const updated = campaigns.filter((c) => c.id !== campaignId);
+    setCampaigns(updated);
+    store.campaigns.write(updated);
+  };
+
+  const handleCreateSegment = (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => {
+    const now = new Date();
+    const newSegment: Segment = {
+      ...segment,
+      id: `segment-${Date.now()}`,
+      createdAt: now,
+      lastUpdatedAt: now,
+    };
+    const updated = [...segments, newSegment];
+    setSegments(updated);
+    store.segments.write(updated);
+  };
+
+  const handleUpdateSegment = (segmentId: string, updates: Partial<Segment>) => {
+    const updated = segments.map((s) =>
+      s.id === segmentId ? { ...s, ...updates, lastUpdatedAt: new Date() } : s,
+    );
+    setSegments(updated);
+    store.segments.write(updated);
+  };
+
+  const handleDeleteSegment = (segmentId: string) => {
+    const updated = segments.filter((s) => s.id !== segmentId);
+    setSegments(updated);
+    store.segments.write(updated);
+  };
+
   return (
     <AppDataContext.Provider
       value={{
@@ -289,6 +332,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         tasks,
         taskItems,
         campaigns,
+        segments,
         applications,
         businessAcquisitions,
         handleCompleteTask,
@@ -301,6 +345,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleCreateTask,
         handleRemoveContactFromCampaign,
         handleCompose,
+        handleDeleteCampaign,
+        handleCreateSegment,
+        handleUpdateSegment,
+        handleDeleteSegment,
       }}
     >
       {children}

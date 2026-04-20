@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams, useNavigate } from "react-router";
 import { UserMinus, Users, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import type { CampaignDetailContact, CampaignMetrics, BulkActionType } from "./campaign/types";
@@ -13,84 +14,14 @@ import { useAppData } from "@/app/contexts/AppDataContext";
 
 type DetailTab = "contacts" | "tasks";
 
-interface CampaignDetailProps {
-  onBack: () => void;
-}
+export function CampaignDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { campaigns, taskItems, emailHistory, contacts, handleRemoveContactFromCampaign } = useAppData();
 
-export function CampaignDetail({ onBack }: CampaignDetailProps) {
-  const { taskItems, handleRemoveContactFromCampaign } = useAppData();
+  const rawCampaign = campaigns.find((c) => c.id === id);
+
   const [activeTab, setActiveTab] = useState<DetailTab>("contacts");
-  const [campaign] = useState<CampaignMetrics>({
-    id: "1",
-    name: "New Broker Outreach - April",
-    segmentName: "New Broker Listings",
-    sentAt: new Date(2026, 3, 10),
-    recipientCount: 45,
-    deliveryRate: 97.8,
-    openRate: 68.5,
-    clickRate: 24.4,
-    noResponseCount: 14,
-  });
-
-  const campaignTasks = taskItems.filter(
-    (ti) => ti.sourceType === "campaign" && ti.source === campaign.name,
-  );
-
-  const [campaignContacts, setCampaignContacts] = useState<CampaignDetailContact[]>([
-    {
-      id: "1",
-      name: "James Lee",
-      email: "james.lee@example.com",
-      status: "Submitted",
-      listingName: "123 Oak Street",
-      engagement: "clicked",
-      stillInSegment: false,
-      driftReason: 'Status changed to "Submitted"',
-      lastUpdated: new Date(2026, 3, 12),
-    },
-    {
-      id: "2",
-      name: "Michael Rodriguez",
-      email: "michael.r@example.com",
-      status: "New",
-      listingName: "456 Maple Ave",
-      engagement: "opened",
-      stillInSegment: true,
-      lastUpdated: new Date(2026, 3, 11),
-    },
-    {
-      id: "3",
-      name: "Emily Thompson",
-      email: "emily.t@example.com",
-      status: "Draft",
-      listingName: "789 Pine Rd",
-      engagement: "no-response",
-      stillInSegment: false,
-      driftReason: 'Status changed to "Draft"',
-      lastUpdated: new Date(2026, 3, 13),
-    },
-    {
-      id: "4",
-      name: "David Patel",
-      email: "david.patel@example.com",
-      status: "New",
-      listingName: "321 Elm Blvd",
-      engagement: "no-response",
-      stillInSegment: true,
-      lastUpdated: new Date(2026, 3, 10),
-    },
-    {
-      id: "5",
-      name: "Jessica Williams",
-      email: "j.williams@example.com",
-      status: "New",
-      listingName: "654 Cedar Ln",
-      engagement: "opened",
-      stillInSegment: true,
-      lastUpdated: new Date(2026, 3, 14),
-    },
-  ]);
-
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [filterEngagement, setFilterEngagement] = useState("all");
@@ -98,7 +29,64 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<BulkActionType>("create-tasks");
 
-  const filteredContacts = campaignContacts.filter((contact) => {
+  // Build initial contact list from task items — must be called before any early return
+  const campaignTaskItems = rawCampaign
+    ? taskItems.filter((ti) => ti.sourceType === "campaign" && ti.source === rawCampaign.name)
+    : [];
+  const campaignContactIds = [...new Set(campaignTaskItems.map((ti) => ti.contactId))];
+  const initialCampaignContacts: CampaignDetailContact[] = campaignContactIds.map((contactId) => {
+    const contact = contacts.find((c) => c.id === contactId);
+    const latestTask = campaignTaskItems
+      .filter((ti) => ti.contactId === contactId)
+      .sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime())[0];
+    const hadEmail = emailHistory.some((e) => e.contactId === contactId);
+    return {
+      id: contactId,
+      name: contact ? `${contact.firstName} ${contact.lastName}` : (latestTask?.contactName ?? contactId),
+      email: contact?.email ?? "",
+      status: contact?.listingStatus ?? "Unknown",
+      listingName: contact?.listingName ?? "",
+      engagement: hadEmail ? "delivered" : "no-response",
+      stillInSegment: true,
+      lastUpdated: latestTask?.dueDate ?? new Date(),
+    };
+  });
+  const [campaignContactsList, setCampaignContactsList] = useState<CampaignDetailContact[]>(initialCampaignContacts);
+
+  if (!rawCampaign) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Campaign not found.</p>
+          <button
+            onClick={() => navigate("/email-workflows/campaigns")}
+            className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+          >
+            Back to Campaigns
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const recipientCount = rawCampaign.recipientCount;
+  const campaign: CampaignMetrics = {
+    id: rawCampaign.id,
+    name: rawCampaign.name,
+    segmentName: rawCampaign.segmentName,
+    sentAt: rawCampaign.sentAt ?? rawCampaign.scheduledFor ?? new Date(),
+    recipientCount,
+    deliveryRate: 97,
+    openRate: rawCampaign.openRate ?? 0,
+    clickRate: 0,
+    noResponseCount: Math.round(recipientCount * 0.3),
+  };
+
+  const campaignTasks = taskItems.filter(
+    (ti) => ti.sourceType === "campaign" && ti.source === rawCampaign.name,
+  );
+
+  const filteredContacts = campaignContactsList.filter((contact) => {
     const matchesEngagement =
       filterEngagement === "all" || contact.engagement === filterEngagement;
     const matchesSegment =
@@ -108,9 +96,9 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
     return matchesEngagement && matchesSegment;
   });
 
-  const driftedContacts = campaignContacts.filter((c) => !c.stillInSegment);
-  const noResponseContacts = campaignContacts.filter((c) => c.engagement === "no-response");
-  const engagedButNoAction = campaignContacts.filter(
+  const driftedContacts = campaignContactsList.filter((c) => !c.stillInSegment);
+  const noResponseContacts = campaignContactsList.filter((c) => c.engagement === "no-response");
+  const engagedButNoAction = campaignContactsList.filter(
     (c) =>
       (c.engagement === "opened" || c.engagement === "clicked") &&
       c.stillInSegment,
@@ -134,10 +122,10 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
 
   const executeRemoveContact = () => {
     if (!removeConfirmId) return;
-    const contact = campaignContacts.find((c) => c.id === removeConfirmId);
-    setCampaignContacts((prev) => prev.filter((c) => c.id !== removeConfirmId));
+    const contact = campaignContactsList.find((c) => c.id === removeConfirmId);
+    setCampaignContactsList((prev) => prev.filter((c) => c.id !== removeConfirmId));
     setSelectedContacts((prev) => prev.filter((id) => id !== removeConfirmId));
-    handleRemoveContactFromCampaign(removeConfirmId, campaign.name);
+    handleRemoveContactFromCampaign(removeConfirmId, rawCampaign.name);
     setRemoveConfirmId(null);
     toast.success(`${contact?.name ?? "Contact"} removed from campaign. Scheduled tasks cancelled.`);
   };
@@ -152,7 +140,7 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
       <CampaignMetricsHeader
         campaign={campaign}
         driftedCount={driftedContacts.length}
-        onBack={onBack}
+        onBack={() => navigate("/email-workflows/campaigns")}
       />
 
       {/* Tab bar */}
@@ -168,7 +156,7 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
           <Users className="w-4 h-4" />
           Contacts
           <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-muted rounded-full">
-            {campaignContacts.length}
+            {campaignContactsList.length}
           </span>
         </button>
         <button
@@ -189,54 +177,65 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
 
       {activeTab === "contacts" && (
         <>
-          <InsightFilterCards
-            driftedCount={driftedContacts.length}
-            noResponseCount={noResponseContacts.length}
-            engagedNoActionCount={engagedButNoAction.length}
-            onFilterDrifted={() => {
-              setFilterSegmentMatch("no-longer-match");
-              setFilterEngagement("all");
-            }}
-            onFilterNoResponse={() => {
-              setFilterEngagement("no-response");
-              setFilterSegmentMatch("all");
-            }}
-            onFilterEngaged={() => {
-              setFilterEngagement("opened");
-              setFilterSegmentMatch("still-match");
-            }}
-          />
+          {campaignContactsList.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                <p>No contact data available for this campaign.</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <InsightFilterCards
+                driftedCount={driftedContacts.length}
+                noResponseCount={noResponseContacts.length}
+                engagedNoActionCount={engagedButNoAction.length}
+                onFilterDrifted={() => {
+                  setFilterSegmentMatch("no-longer-match");
+                  setFilterEngagement("all");
+                }}
+                onFilterNoResponse={() => {
+                  setFilterEngagement("no-response");
+                  setFilterSegmentMatch("all");
+                }}
+                onFilterEngaged={() => {
+                  setFilterEngagement("opened");
+                  setFilterSegmentMatch("still-match");
+                }}
+              />
 
-          <ContactFilterBar
-            filterEngagement={filterEngagement}
-            filterSegmentMatch={filterSegmentMatch}
-            filteredCount={filteredContacts.length}
-            totalCount={campaignContacts.length}
-            onChangeEngagement={setFilterEngagement}
-            onChangeSegmentMatch={setFilterSegmentMatch}
-            onClear={() => {
-              setFilterEngagement("all");
-              setFilterSegmentMatch("all");
-            }}
-          />
+              <ContactFilterBar
+                filterEngagement={filterEngagement}
+                filterSegmentMatch={filterSegmentMatch}
+                filteredCount={filteredContacts.length}
+                totalCount={campaignContactsList.length}
+                onChangeEngagement={setFilterEngagement}
+                onChangeSegmentMatch={setFilterSegmentMatch}
+                onClear={() => {
+                  setFilterEngagement("all");
+                  setFilterSegmentMatch("all");
+                }}
+              />
 
-          {selectedContacts.length > 0 && (
-            <BulkActionsBar
-              selectedCount={selectedContacts.length}
-              onCreateTasks={() => openBulkAction("create-tasks")}
-              onMoveSegment={() => openBulkAction("move-segment")}
-              onRemoveSegment={() => openBulkAction("remove-segment")}
-              onExclude={() => openBulkAction("exclude")}
-            />
+              {selectedContacts.length > 0 && (
+                <BulkActionsBar
+                  selectedCount={selectedContacts.length}
+                  onCreateTasks={() => openBulkAction("create-tasks")}
+                  onMoveSegment={() => openBulkAction("move-segment")}
+                  onRemoveSegment={() => openBulkAction("remove-segment")}
+                  onExclude={() => openBulkAction("exclude")}
+                />
+              )}
+
+              <CampaignContactTable
+                contacts={filteredContacts}
+                selectedContacts={selectedContacts}
+                onSelectAll={handleSelectAll}
+                onSelectContact={handleSelectContact}
+                onRemoveContact={confirmRemoveContact}
+              />
+            </>
           )}
-
-          <CampaignContactTable
-            contacts={filteredContacts}
-            selectedContacts={selectedContacts}
-            onSelectAll={handleSelectAll}
-            onSelectContact={handleSelectContact}
-            onRemoveContact={confirmRemoveContact}
-          />
         </>
       )}
 
@@ -259,7 +258,7 @@ export function CampaignDetail({ onBack }: CampaignDetailProps) {
       />
 
       {removeConfirmId && (() => {
-        const contact = campaignContacts.find((c) => c.id === removeConfirmId);
+        const contact = campaignContactsList.find((c) => c.id === removeConfirmId);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-card rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">

@@ -15,6 +15,7 @@ import {
   ComposeEmail,
   TaskQueue,
 } from "./components/email-workflows";
+import { CampaignDetail } from "./components/email-workflows/CampaignDetail";
 import { PlaceholderView } from "./components/ui/PlaceholderView";
 import {
   FileText,
@@ -63,6 +64,7 @@ export const router = createBrowserRouter(
           { index: true, element: <Navigate to="/email-workflows/overview" replace /> },
           { path: "overview", element: <Overview /> },
           { path: "campaigns", element: <Campaigns /> },
+          { path: "campaigns/:id", element: <CampaignDetail /> },
           { path: "flow-builder", element: <FlowBuilder /> },
           { path: "user-segments", element: <UserSegments /> },
           { path: "user-segments/builder", element: <SegmentsView /> },

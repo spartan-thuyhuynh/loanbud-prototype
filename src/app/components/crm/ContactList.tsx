@@ -4,21 +4,24 @@ import { Button } from "../ui/button";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useNavigate } from "react-router";
 
-interface FilterRule {
-  field: "listingStatus" | "userType";
-  value: string;
-}
+type ActiveView = "all" | "broker" | "lender" | "partner";
+
+const VIEW_CHIPS: { label: string; value: ActiveView }[] = [
+  { label: "All Contacts", value: "all" },
+  { label: "My Leads", value: "broker" },
+  { label: "Referral Partners", value: "partner" },
+  { label: "Saved View (1)", value: "lender" },
+];
 
 export function ContactList() {
   const { contacts } = useAppData();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, _setFilters] = useState<FilterRule[]>([]);
-  // Filter contacts based on search and segment filters
+  const [activeView, setActiveView] = useState<ActiveView>("all");
+
   const filteredContacts = useMemo(() => {
     let result = contacts;
 
-    // Apply search
     if (searchTerm) {
       result = result.filter(
         (c) =>
@@ -29,13 +32,12 @@ export function ContactList() {
       );
     }
 
-    // Apply filters (AND logic)
-    filters.forEach((filter) => {
-      result = result.filter((c) => c[filter.field] === filter.value);
-    });
+    if (activeView !== "all") {
+      result = result.filter((c) => c.userType.toLowerCase() === activeView);
+    }
 
     return result;
-  }, [contacts, searchTerm, filters]);
+  }, [contacts, searchTerm, activeView]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -52,26 +54,20 @@ export function ContactList() {
             {filteredContacts.length} contacts
           </p>
         </div>
-        {/* View Chips (Mock Examples) */}
+        {/* View Chips */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            "All Contacts",
-            "My Leads",
-            "Refferal Partners",
-            "Saved View (1)",
-          ].map((view, index) => (
-            <div
-              key={index}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm border ${
-                index === 0
-                  ? "bg-primary/10 text-primary border-primary/20 font-semibold"
-                  : "bg-muted text-muted-foreground border-border"
+          {VIEW_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              onClick={() => setActiveView(chip.value)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm border transition-colors ${
+                activeView === chip.value
+                  ? "bg-primary text-primary-foreground border-primary font-semibold"
+                  : "bg-muted text-muted-foreground border-border hover:bg-muted/70"
               }`}
-              style={{ cursor: "pointer" }}
-              // onClick: implement view switching logic here
             >
-              {view}
-            </div>
+              {chip.label}
+            </button>
           ))}
         </div>
         {/* Search Bar and Add Button Inline */}
