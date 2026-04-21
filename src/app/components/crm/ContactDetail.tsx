@@ -457,7 +457,7 @@ export function ContactDetail() {
         mode={modalMode}
         task={modalTask}
         onComplete={(taskId, dis, note) => { handleCompleteTask(taskId, dis, note); closeModal(); }}
-        onReschedule={(taskId, date) => { handleRescheduleTask(taskId, date); closeModal(); }}
+        onReschedule={(taskId, date, assignee, objective) => { handleRescheduleTask(taskId, date, assignee, objective); closeModal(); }}
         onDelete={(taskId) => { handleDeleteTask(taskId); closeModal(); }}
         onClose={closeModal}
       />

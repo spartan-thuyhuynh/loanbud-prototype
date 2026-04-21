@@ -9,7 +9,7 @@ interface TaskActionModalProps {
   mode: ModalMode;
   task: TaskItem | null;
   onComplete: (taskId: string, disposition: string, note?: string) => void;
-  onReschedule: (taskId: string, newDate: Date) => void;
+  onReschedule: (taskId: string, newDate: Date, assignee?: string, objective?: string) => void;
   onDelete: (taskId: string) => void;
   onClose: () => void;
 }
@@ -19,6 +19,12 @@ const dispositions = [
   "Voicemail Left",
   "No Answer — Voicemail Drop",
   "Not Needed",
+];
+
+const TEAM_MEMBERS = [
+  "John Doe",
+  "Mike Johnson",
+  "Sarah Chen",
 ];
 
 export function TaskActionModal({
@@ -31,6 +37,8 @@ export function TaskActionModal({
   onClose,
 }: TaskActionModalProps) {
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleAssignee, setRescheduleAssignee] = useState("");
+  const [rescheduleObjective, setRescheduleObjective] = useState("");
   const [note, setNote] = useState("");
   const [selectedDisposition, setSelectedDisposition] = useState<string | null>(null);
 
@@ -44,18 +52,30 @@ export function TaskActionModal({
   };
 
   const handleReschedule = () => {
-    if (rescheduleDate) {
-      onReschedule(task.id, new Date(rescheduleDate));
-      setRescheduleDate("");
-    }
+    const hasChanges = rescheduleDate || rescheduleAssignee || rescheduleObjective.trim();
+    if (!hasChanges) return;
+    const newDate = rescheduleDate ? new Date(rescheduleDate) : new Date(task.dueDate);
+    onReschedule(
+      task.id,
+      newDate,
+      rescheduleAssignee || undefined,
+      rescheduleObjective.trim() || undefined,
+    );
+    setRescheduleDate("");
+    setRescheduleAssignee("");
+    setRescheduleObjective("");
   };
 
   const handleClose = () => {
     setRescheduleDate("");
+    setRescheduleAssignee("");
+    setRescheduleObjective("");
     setNote("");
     setSelectedDisposition(null);
     onClose();
   };
+
+  const hasEditChanges = !!(rescheduleDate || rescheduleAssignee || rescheduleObjective.trim());
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -145,38 +165,72 @@ export function TaskActionModal({
           </>
         )}
 
-        {/* Reschedule mode */}
+        {/* Edit mode */}
         {mode === "reschedule" && (
           <>
             <h3
               className="text-2xl mb-1"
               style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
             >
-              Reschedule Task
+              Edit Task
             </h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              {task.contactName}
-            </p>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="text-sm text-muted-foreground">{task.contactName}</span>
+              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full uppercase tracking-tighter">
+                {task.taskType}
+              </span>
+            </div>
 
-            <div className="mb-6">
-              <label className="block text-sm mb-2 text-muted-foreground">
-                New Schedule Date
+            <div className="mb-5">
+              <label className="block text-xs text-muted-foreground mb-1.5">
+                Reschedule Date
               </label>
               <input
                 type="datetime-local"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
-                className="w-full px-4 py-2 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full px-4 py-2 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              />
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs text-muted-foreground mb-1.5">
+                Reassign To
+              </label>
+              <select
+                value={rescheduleAssignee}
+                onChange={(e) => setRescheduleAssignee(e.target.value)}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+              >
+                <option value="">
+                  {task.assignee ? `Current: ${task.assignee}` : "— Select assignee —"}
+                </option>
+                {TEAM_MEMBERS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-xs text-muted-foreground mb-1.5">
+                Objective / Note
+              </label>
+              <textarea
+                value={rescheduleObjective}
+                onChange={(e) => setRescheduleObjective(e.target.value)}
+                placeholder={task.triggerContext ?? "Add objective or note…"}
+                rows={3}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={handleReschedule}
-                disabled={!rescheduleDate}
+                disabled={!hasEditChanges}
                 className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Update Schedule
+                Save Changes
               </button>
               <button
                 onClick={handleClose}

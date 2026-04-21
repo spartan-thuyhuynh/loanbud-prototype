@@ -16,7 +16,7 @@ interface AppDataContextValue {
   businessAcquisitions: BusinessAcquisitionRecord[];
   // Task handlers
   handleCompleteTask: (taskId: string, disposition: string, note?: string) => void;
-  handleRescheduleTask: (taskId: string, newDate: Date) => void;
+  handleRescheduleTask: (taskId: string, newDate: Date, assignee?: string, objective?: string) => void;
   handleDeleteTask: (taskId: string) => void;
   handleBulkCompleteTask: (taskIds: string[], disposition: string, note?: string) => void;
   handleBulkRescheduleTask: (taskIds: string[], newDate: Date) => void;
@@ -107,12 +107,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
-  const handleRescheduleTask = (taskId: string, newDate: Date) => {
+  const handleRescheduleTask = (taskId: string, newDate: Date, assignee?: string, objective?: string) => {
     const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, scheduledFor: newDate } : t,
+      t.id === taskId ? { ...t, scheduledFor: newDate, ...(assignee !== undefined && { assignee }) } : t,
     );
     const updatedItems = taskItems.map((ti) =>
-      ti.id.includes(taskId) ? { ...ti, dueDate: newDate } : ti,
+      ti.id.includes(taskId)
+        ? {
+            ...ti,
+            dueDate: newDate,
+            ...(assignee !== undefined && { assignee }),
+            ...(objective !== undefined && { triggerContext: objective }),
+          }
+        : ti,
     );
     setTasks(updatedTasks);
     setTaskItems(updatedItems);

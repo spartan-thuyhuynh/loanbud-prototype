@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Calendar, CheckCircle2, Trash2, Plus, ArrowUp, ArrowDown, Search, BarChart3, Phone, Mail, X, Send } from "lucide-react";
+import { Pencil, CheckCircle2, Trash2, Plus, ArrowUp, ArrowDown, Search, BarChart3, Phone, Mail, X } from "lucide-react";
 import { Link } from "react-router";
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
@@ -7,6 +7,7 @@ import { TaskActionModal } from "./TaskActionModal";
 import { TaskBulkActionsBar } from "./TaskBulkActionsBar";
 import { TaskBulkActionModal } from "./TaskBulkActionModal";
 import { CreateTaskModal } from "./CreateTaskModal";
+import { QuickEmailModal } from "./QuickEmailModal";
 
 type ModalMode = "complete" | "reschedule" | "delete" | null;
 type DueDateFilter = "all" | "today" | "this-week" | "overdue";
@@ -80,63 +81,6 @@ function CallDialer({ phone, name, onClose }: { phone: string; name: string; onC
   );
 }
 
-// ── Email Composer Popover ────────────────────────────────────────
-function EmailComposer({ email, name, onClose }: { email: string; name: string; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
-
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [sent, setSent] = useState(false);
-
-  const handleSend = () => {
-    if (!subject.trim() && !body.trim()) return;
-    setSent(true);
-    setTimeout(onClose, 1200);
-  };
-
-  return (
-    <div ref={ref} className="absolute z-50 bg-card border border-border rounded-2xl shadow-xl p-5 w-80 top-8 left-0">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-muted-foreground">To: <span className="text-foreground">{name} &lt;{email}&gt;</span></span>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
-      </div>
-      {sent ? (
-        <div className="py-6 text-center text-green-600 text-sm font-medium">
-          <Send className="w-6 h-6 mx-auto mb-2" /> Sent!
-        </div>
-      ) : (
-        <>
-          <input
-            type="text"
-            placeholder="Subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-full mb-2 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <textarea
-            placeholder="Write a message…"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={5}
-            className="w-full mb-3 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!subject.trim() && !body.trim()}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send className="w-3.5 h-3.5" /> Send
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────
 export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMode, onViewModeToggle }: TaskQueueProps) {
@@ -165,8 +109,9 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
   const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Popover state: taskId → "phone" | "email"
-  const [openPopover, setOpenPopover] = useState<{ taskId: string; type: "phone" | "email" } | null>(null);
+  // Popover state: taskId → "phone" only (email uses full modal)
+  const [openPopover, setOpenPopover] = useState<{ taskId: string; type: "phone" } | null>(null);
+  const [emailModal, setEmailModal] = useState<{ email: string; name: string } | null>(null);
 
   const now = new Date();
 
@@ -238,9 +183,9 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
     overdue: allTasks.filter((t) => isOverdue(t)).length,
   };
 
-  const togglePopover = (taskId: string, type: "phone" | "email") => {
+  const togglePopover = (taskId: string) => {
     setOpenPopover((prev) =>
-      prev?.taskId === taskId && prev.type === type ? null : { taskId, type }
+      prev?.taskId === taskId ? null : { taskId, type: "phone" }
     );
   };
 
@@ -373,8 +318,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                 const phone = contact?.phone ?? "—";
                 const email = contact?.email ?? "—";
                 const overdueFlag = isOverdue(task);
-                const showPhone = openPopover?.taskId === task.id && openPopover.type === "phone";
-                const showEmail = openPopover?.taskId === task.id && openPopover.type === "email";
+                const showPhone = openPopover?.taskId === task.id;
                 return (
                   <tr
                     key={task.id}
@@ -394,8 +338,8 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                           <button onClick={() => openModal(task, "complete")} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openModal(task, "reschedule")} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
-                            <Calendar className="w-4 h-4" />
+                          <button onClick={() => openModal(task, "reschedule")} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit">
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button onClick={() => openModal(task, "delete")} className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
                             <Trash2 className="w-4 h-4" />
@@ -430,7 +374,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                       <div className="relative">
                         {contact && phone !== "—" ? (
                           <button
-                            onClick={() => togglePopover(task.id, "phone")}
+                            onClick={() => togglePopover(task.id)}
                             className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors group/phone"
                           >
                             <Phone className="w-3.5 h-3.5 text-muted-foreground group-hover/phone:text-primary" />
@@ -448,29 +392,20 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                         )}
                       </div>
                     </td>
-                    {/* Email cell with composer popover */}
+                    {/* Email cell — opens full QuickEmailModal */}
                     <td className="px-4 py-4">
-                      <div className="relative">
-                        {contact && email !== "—" ? (
-                          <button
-                            onClick={() => togglePopover(task.id, "email")}
-                            className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors group/email truncate max-w-full"
-                            title={email}
-                          >
-                            <Mail className="w-3.5 h-3.5 text-muted-foreground group-hover/email:text-primary shrink-0" />
-                            <span className="truncate">{email}</span>
-                          </button>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                        {showEmail && contact && (
-                          <EmailComposer
-                            email={email}
-                            name={task.contactName}
-                            onClose={() => setOpenPopover(null)}
-                          />
-                        )}
-                      </div>
+                      {contact && email !== "—" ? (
+                        <button
+                          onClick={() => setEmailModal({ email, name: task.contactName })}
+                          className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors group/email truncate max-w-full"
+                          title={email}
+                        >
+                          <Mail className="w-3.5 h-3.5 text-muted-foreground group-hover/email:text-primary shrink-0" />
+                          <span className="truncate">{email}</span>
+                        </button>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] rounded-full uppercase tracking-tighter">
@@ -529,7 +464,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
         mode={modalMode}
         task={modalTask}
         onComplete={(id, dis, note) => { handleCompleteTask(id, dis, note); closeModal(); }}
-        onReschedule={(id, date) => { handleRescheduleTask(id, date); closeModal(); }}
+        onReschedule={(id, date, assignee, objective) => { handleRescheduleTask(id, date, assignee, objective); closeModal(); }}
         onDelete={(id) => { handleDeleteTask(id); closeModal(); }}
         onClose={closeModal}
       />
@@ -545,6 +480,14 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
       />
 
       <CreateTaskModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
+
+      {emailModal && (
+        <QuickEmailModal
+          toEmail={emailModal.email}
+          toName={emailModal.name}
+          onClose={() => setEmailModal(null)}
+        />
+      )}
     </div>
   );
 }

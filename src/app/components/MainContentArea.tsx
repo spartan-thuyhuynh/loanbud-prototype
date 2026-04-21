@@ -40,7 +40,7 @@ interface MainContentAreaProps {
   onComposeFromSegment: (recipients: Contact[]) => void;
   onUpdateContact: (contactId: string, updates: Partial<Contact>) => void;
   onCompleteTask: (taskId: string, disposition: Task["disposition"]) => void;
-  onRescheduleTask: (taskId: string, newDate: Date) => void;
+  onRescheduleTask: (taskId: string, newDate: Date, assignee?: string) => void;
   onEditSegment: () => void;
   onBackFromSegmentBuilder: () => void;
 }
