@@ -85,7 +85,7 @@ export function UserSegments() {
 
       {/* Stats Bar */}
       <div className="border-b border-border bg-card px-8 py-4">
-        <div className="flex items-center gap-8">
+        <div className="max-w-7xl mx-auto flex items-center gap-8">
           {/* Total Segments */}
           <div className="flex-1">
             <div className="bg-white rounded-xl px-5 py-4 flex items-center gap-3 shadow-sm h-full">
@@ -131,7 +131,8 @@ export function UserSegments() {
       </div>
 
       {/* Segments Table */}
-      <div className="flex-1 overflow-auto px-8 py-6 ">
+      <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="max-w-7xl mx-auto">
         <div className="bg-card border border-border rounded-lg w-fit min-w-full">
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border sticky top-0">
@@ -292,12 +293,13 @@ export function UserSegments() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Footer with CTA */}
       {selectedSegments.length > 0 && (
         <div className="border-t border-border bg-card px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
               {selectedSegments.length} segment
               {selectedSegments.length !== 1 ? "s" : ""} selected

@@ -190,7 +190,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
   };
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-card max-w-7xl mx-auto w-full">
       {/* Header row: due date filter chips + show completed + New Task */}
       <div className="flex items-center justify-between px-5 py-2.5 border-b border-border gap-4">
         <div className="flex items-center gap-1">

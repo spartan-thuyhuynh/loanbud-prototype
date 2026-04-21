@@ -106,6 +106,7 @@ export function ContactList() {
 
       {/* Contact Table */}
       <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="max-w-7xl mx-auto">
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border">
@@ -199,6 +200,7 @@ export function ContactList() {
               <p>No contacts match your filters</p>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

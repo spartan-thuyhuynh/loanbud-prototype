@@ -74,21 +74,24 @@ export function WorkflowList() {
       </div>
 
       {/* Stats */}
-      <div className="px-8 py-4 flex gap-4 border-b border-border bg-card">
-        {[
-          { label: "Total Flows", value: totalFlows },
-          { label: "Active Flows", value: activeFlows },
-          { label: "Total Enrolled", value: totalEnrolled },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-border bg-background px-5 py-3 min-w-[120px]">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold text-foreground mt-0.5">{value}</p>
-          </div>
-        ))}
+      <div className="px-8 py-4 border-b border-border bg-card">
+        <div className="max-w-7xl mx-auto flex gap-4">
+          {[
+            { label: "Total Flows", value: totalFlows },
+            { label: "Active Flows", value: activeFlows },
+            { label: "Total Enrolled", value: totalEnrolled },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border border-border bg-background px-5 py-3 min-w-[120px]">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-2xl font-semibold text-foreground mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="max-w-7xl mx-auto">
         {workflows.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <LayoutList className="h-12 w-12 opacity-30" />
@@ -211,6 +214,7 @@ export function WorkflowList() {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

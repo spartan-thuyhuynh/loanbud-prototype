@@ -190,7 +190,7 @@ export function SegmentBuilder({
   const hasNoFilters = groups.every((g) => g.filters.length === 0);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
       {/* Header */}
       <div className="px-8 py-4 border-b border-border bg-card flex items-center justify-between">
         <div className="flex items-center gap-3">

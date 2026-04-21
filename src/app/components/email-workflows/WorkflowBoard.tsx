@@ -538,6 +538,7 @@ export function WorkflowBoard() {
           </div>
           {/* Table */}
           <div className="px-8 py-4 flex-1 overflow-auto">
+            <div className="max-w-7xl mx-auto">
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 border-b border-border">
@@ -624,6 +625,7 @@ export function WorkflowBoard() {
                   )}
                 </tbody>
               </table>
+            </div>
             </div>
           </div>
         </div>

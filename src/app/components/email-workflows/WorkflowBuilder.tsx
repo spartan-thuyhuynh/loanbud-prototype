@@ -779,7 +779,7 @@ export function WorkflowBuilder() {
 
         {/* ════════════ STEP 2: Configure Steps ════════════ */}
         {wizardStep === 1 && (
-          <div className="px-8 py-8 flex gap-8 items-start max-w-6xl">
+          <div className="px-8 py-8 flex gap-8 items-start max-w-6xl mx-auto w-full">
             {/* ── Main content ── */}
             <div className="flex-1 min-w-0 space-y-5">
               <StepIndicator current={1} steps={WIZARD_STEPS} />

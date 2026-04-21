@@ -127,6 +127,7 @@ export function ApplicationList() {
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-6">
+        <div className="max-w-7xl mx-auto">
         <div className="flex items-center mb-4">
           <h2
             className="text-3xl mr-6"
@@ -183,10 +184,12 @@ export function ApplicationList() {
           <span>Deactivate applications</span>
           <Switch />
         </div>
+        </div>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="max-w-7xl mx-auto">
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border">
@@ -275,6 +278,7 @@ export function ApplicationList() {
               <p>No applications match your filters.</p>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
