@@ -124,7 +124,7 @@ export function ApplicationList() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background overflow-auto">
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-6">
         <div className="max-w-7xl mx-auto">

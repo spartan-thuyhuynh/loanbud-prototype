@@ -1,1 +1,156 @@
-[]
+[
+  {
+    "id": "eh-001",
+    "contactId": "1",
+    "contactName": "James Lee",
+    "subject": "April Market Update — Working Capital Trends",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-002",
+    "contactId": "1",
+    "contactName": "James Lee",
+    "subject": "Q2 Funding Opportunities for Brokers",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-03-15T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-003",
+    "contactId": "2",
+    "contactName": "Sarah Chen",
+    "subject": "April Market Update — Equipment Financing Rates",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-004",
+    "contactId": "2",
+    "contactName": "Sarah Chen",
+    "subject": "New: Instant Equipment Pre-Approval Tool",
+    "senderIdentity": "product@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-03-20T09:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-005",
+    "contactId": "3",
+    "contactName": "Michael Rodriguez",
+    "subject": "April Market Update — Real Estate Bridge Loans",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-006",
+    "contactId": "3",
+    "contactName": "Michael Rodriguez",
+    "subject": "Case Study: $2.4M Bridge Loan Closed in 10 Days",
+    "senderIdentity": "marketing@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-03-10T09:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-007",
+    "contactId": "4",
+    "contactName": "Emily Thompson",
+    "subject": "April Market Update — SBA Loan Insights",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-008",
+    "contactId": "5",
+    "contactName": "David Patel",
+    "subject": "April Market Update — MCA & Short-Term Funding",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-009",
+    "contactId": "5",
+    "contactName": "David Patel",
+    "subject": "Flash Offer: Same-Day MCA Approval This Week Only",
+    "senderIdentity": "offers@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-03-25T10:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-010",
+    "contactId": "6",
+    "contactName": "Jessica Williams",
+    "subject": "April Market Update — Construction Lending",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-011",
+    "contactId": "7",
+    "contactName": "Robert Taylor",
+    "subject": "April Market Update — Inventory & Asset Financing",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Opened",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-012",
+    "contactId": "7",
+    "contactName": "Robert Taylor",
+    "subject": "Webinar Invite: Inventory Finance Best Practices",
+    "senderIdentity": "events@loanbud.com",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-03-18T09:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-013",
+    "contactId": "8",
+    "contactName": "Linda Martinez",
+    "subject": "April Market Update — SBA 504 Program Changes",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-014",
+    "contactId": "10",
+    "contactName": "Ashley Garcia",
+    "subject": "April Market Update — Equipment Lease Options",
+    "senderIdentity": "newsletters@loanbud.com",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-01T08:00:00.000Z",
+    "channel": "email"
+  }
+]

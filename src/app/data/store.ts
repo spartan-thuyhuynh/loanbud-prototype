@@ -10,6 +10,7 @@ import applicationsJson from "./applications.json";
 import businessAcquisitionsJson from "./businessAcquisitions.json";
 import workflowsJson from "./workflows.json";
 import workflowEnrollmentsJson from "./workflowEnrollments.json";
+import contactActivityJson from "./contactActivity.json";
 
 const KEYS = {
   contacts: "loanbudcrm:contacts",
@@ -148,7 +149,7 @@ export const store = {
     write: (data: WorkflowEnrollment[]) => write(KEYS.workflowEnrollments, data),
   },
   contactActivity: {
-    read: () => read<ContactActivityRecord>(KEYS.contactActivity, [], ["timestamp"]),
+    read: () => read<ContactActivityRecord>(KEYS.contactActivity, contactActivityJson as ContactActivityRecord[], ["timestamp"]),
     write: (data: ContactActivityRecord[]) => write(KEYS.contactActivity, data),
   },
 };
