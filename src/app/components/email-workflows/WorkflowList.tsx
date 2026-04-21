@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Pencil, Trash2, LayoutList, ChevronRight, PlayCircle, PauseCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, LayoutList, PlayCircle, PauseCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "../../contexts/AppDataContext";
 
@@ -64,7 +64,7 @@ export function WorkflowList() {
       {/* Header */}
       <div className="border-b border-border bg-card px-8 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Flows</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Flows</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage and track contact workflows</p>
         </div>
         <Button onClick={() => navigate("/email-workflows/flows/new")}>
@@ -107,7 +107,7 @@ export function WorkflowList() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border">
                 <tr>
-                  {["Name", "Segment", "Status", "Steps", "Activated", "Actions"].map((col) => (
+                  {["Actions", "Name", "Segment", "Status", "Steps", "Activated"].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {col}
                     </th>
@@ -121,39 +121,6 @@ export function WorkflowList() {
                     className="hover:bg-muted/20 transition-colors cursor-pointer"
                     onClick={() => handleRowClick(wf.id)}
                   >
-                    <td className="px-5 py-4">
-                      <div className="font-medium text-foreground">{wf.name}</div>
-                      {wf.description && (
-                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{wf.description}</div>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-muted-foreground">{wf.segmentName}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        wf.status === "active" ? "bg-green-100 text-green-700 border border-green-200"
-                        : wf.status === "paused" ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                        : "bg-gray-100 text-gray-700 border border-gray-200"
-                      }`}>
-                        {wf.status.charAt(0).toUpperCase() + wf.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-muted-foreground">
-                      <div className="flex flex-wrap gap-1">
-                        {wf.steps.slice(0, 3).map((s) => (
-                          <span key={s.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
-                            Day {s.dayOffset} · {ACTION_TYPE_LABELS[s.actionType] ?? s.actionType}
-                          </span>
-                        ))}
-                        {wf.steps.length > 3 && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">
-                            +{wf.steps.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-muted-foreground">
-                      {wf.status === "active" ? formatDate(wf.createdAt) : "—"}
-                    </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1">
                         {confirmDeleteId === wf.id ? (
@@ -197,16 +164,42 @@ export function WorkflowList() {
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              onClick={() => handleRowClick(wf.id)}
-                              title="View Board"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </button>
                           </>
                         )}
                       </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="font-medium text-foreground">{wf.name}</div>
+                      {wf.description && (
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{wf.description}</div>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-muted-foreground">{wf.segmentName}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        wf.status === "active" ? "bg-green-100 text-green-700 border border-green-200"
+                        : wf.status === "paused" ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                        : "bg-gray-100 text-gray-700 border border-gray-200"
+                      }`}>
+                        {wf.status.charAt(0).toUpperCase() + wf.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      <div className="flex flex-wrap gap-1">
+                        {wf.steps.slice(0, 3).map((s) => (
+                          <span key={s.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
+                            Day {s.dayOffset} · {ACTION_TYPE_LABELS[s.actionType] ?? s.actionType}
+                          </span>
+                        ))}
+                        {wf.steps.length > 3 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">
+                            +{wf.steps.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {wf.status === "active" ? formatDate(wf.createdAt) : "—"}
                     </td>
                   </tr>
                 ))}

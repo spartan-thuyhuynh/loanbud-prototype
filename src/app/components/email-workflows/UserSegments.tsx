@@ -152,6 +152,12 @@ export function UserSegments() {
                   className="px-6 py-4 text-left text-sm text-muted-foreground"
                   style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
                 >
+                  Actions
+                </th>
+                <th
+                  className="px-6 py-4 text-left text-sm text-muted-foreground"
+                  style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                >
                   Segment Name
                 </th>
                 <th
@@ -173,13 +179,6 @@ export function UserSegments() {
                 >
                   Created By
                 </th>
-
-                <th
-                  className="px-6 py-4 text-left text-sm text-muted-foreground"
-                  style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-                >
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -197,6 +196,31 @@ export function UserSegments() {
                       onChange={() => handleSelectSegment(segment.id)}
                       className="rounded border-border"
                     />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          navigate("/email-workflows/user-segments/builder", {
+                            state: { segmentId: segment.id },
+                          })
+                        }
+                        className="p-2 hover:bg-muted rounded-lg transition-all"
+                        title="Edit segment"
+                      >
+                        <Edit className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDeleteSegment(segment.id);
+                          toast.success("Segment deleted.");
+                        }}
+                        className="p-2 hover:bg-destructive/10 rounded-lg transition-all"
+                        title="Delete segment"
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <button
@@ -256,31 +280,6 @@ export function UserSegments() {
                     </div>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          navigate("/email-workflows/user-segments/builder", {
-                            state: { segmentId: segment.id },
-                          })
-                        }
-                        className="p-2 hover:bg-muted rounded-lg transition-all"
-                        title="Edit segment"
-                      >
-                        <Edit className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleDeleteSegment(segment.id);
-                          toast.success("Segment deleted.");
-                        }}
-                        className="p-2 hover:bg-destructive/10 rounded-lg transition-all"
-                        title="Delete segment"
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

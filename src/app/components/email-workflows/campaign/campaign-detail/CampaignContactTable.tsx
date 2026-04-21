@@ -71,6 +71,12 @@ export function CampaignContactTable({
               className="px-6 py-4 text-left text-sm text-muted-foreground"
               style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
             >
+              Actions
+            </th>
+            <th
+              className="px-6 py-4 text-left text-sm text-muted-foreground"
+              style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+            >
               Contact
             </th>
             <th
@@ -97,12 +103,6 @@ export function CampaignContactTable({
             >
               Last Updated
             </th>
-            <th
-              className="px-6 py-4 text-left text-sm text-muted-foreground"
-              style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-            >
-              Actions
-            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-card">
@@ -120,6 +120,29 @@ export function CampaignContactTable({
                   onChange={() => onSelectContact(contact.id)}
                   className="rounded border-border"
                 />
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex gap-2">
+                  <button
+                    className="p-2 hover:bg-muted rounded-lg transition-all"
+                    title="Create task"
+                  >
+                    <Phone className="w-4 h-4 text-primary" />
+                  </button>
+                  <button
+                    className="p-2 hover:bg-muted rounded-lg transition-all"
+                    title="Update status"
+                  >
+                    <Edit className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => onRemoveContact(contact.id)}
+                    className="p-2 hover:bg-red-50 rounded-lg transition-all"
+                    title="Remove from campaign"
+                  >
+                    <UserMinus className="w-4 h-4 text-muted-foreground hover:text-red-600" />
+                  </button>
+                </div>
               </td>
               <td className="px-6 py-4">
                 <div>
@@ -168,29 +191,6 @@ export function CampaignContactTable({
               <td className="px-6 py-4">
                 <div className="text-sm text-muted-foreground">
                   {contact.lastUpdated.toLocaleDateString()}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex gap-2">
-                  <button
-                    className="p-2 hover:bg-muted rounded-lg transition-all"
-                    title="Create task"
-                  >
-                    <Phone className="w-4 h-4 text-primary" />
-                  </button>
-                  <button
-                    className="p-2 hover:bg-muted rounded-lg transition-all"
-                    title="Update status"
-                  >
-                    <Edit className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => onRemoveContact(contact.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg transition-all"
-                    title="Remove from campaign"
-                  >
-                    <UserMinus className="w-4 h-4 text-muted-foreground hover:text-red-600" />
-                  </button>
                 </div>
               </td>
             </tr>

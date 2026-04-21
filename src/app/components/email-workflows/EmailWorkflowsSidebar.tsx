@@ -12,7 +12,7 @@ export const EmailWorkflowsSidebar = ({ items }: EmailWorkflowsSidebarProps) => 
         className="text-lg"
         style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
       >
-        Email Workflows
+        Workflows
       </h2>
     </div>
 

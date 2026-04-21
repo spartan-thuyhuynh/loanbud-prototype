@@ -543,7 +543,7 @@ export function WorkflowBoard() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 border-b border-border">
                   <tr>
-                    {["Contact", "Current Step", "Enrollment Status", "Start Date", "Actions"].map((col) => (
+                    {["Actions", "Contact", "Current Step", "Enrollment Status", "Start Date"].map((col) => (
                       <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         {col}
                       </th>
@@ -560,6 +560,18 @@ export function WorkflowBoard() {
                   ) : (
                     listRows.map(({ enrollment, contact, currentStep, colStepId }) => (
                       <tr key={enrollment.id} className="hover:bg-muted/10 transition-colors">
+                        <td className="px-5 py-3">
+                          {currentStep && colStepId !== "completed" ? (
+                            <button
+                              onClick={() => handleAdvance(enrollment.id, currentStep.id)}
+                              className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+                            >
+                              {ACTION_LABELS[currentStep.actionType] ?? currentStep.actionType}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="px-5 py-3">
                           {contact ? (
                             <div className="flex items-center gap-2">
@@ -607,18 +619,6 @@ export function WorkflowBoard() {
                         </td>
                         <td className="px-5 py-3 text-muted-foreground text-xs">
                           {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(enrollment.startDate)}
-                        </td>
-                        <td className="px-5 py-3">
-                          {currentStep && colStepId !== "completed" ? (
-                            <button
-                              onClick={() => handleAdvance(enrollment.id, currentStep.id)}
-                              className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
-                            >
-                              {ACTION_LABELS[currentStep.actionType] ?? currentStep.actionType}
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
                         </td>
                       </tr>
                     ))

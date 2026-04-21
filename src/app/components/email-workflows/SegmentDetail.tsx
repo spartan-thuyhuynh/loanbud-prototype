@@ -77,7 +77,7 @@ export function SegmentDetail() {
             </div>
             <div>
               <h1
-                className="text-2xl"
+                className="text-3xl"
                 style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
               >
                 {segment.name}

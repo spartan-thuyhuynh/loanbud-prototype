@@ -190,9 +190,16 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
   };
 
   return (
-    <div className="flex flex-col h-full bg-card max-w-7xl mx-auto w-full">
-      {/* Header row: due date filter chips + show completed + New Task */}
-      <div className="flex items-center justify-between px-5 py-2.5 border-b border-border gap-4">
+    <div className="flex flex-col h-full bg-background">
+      {/* Page header */}
+      <div className="border-b border-border bg-card px-8 py-5 shrink-0">
+        <h1 className="text-3xl font-semibold text-foreground">Tasks</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{allTasks.length} tasks</p>
+      </div>
+
+      <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Filter row: due date chips + show completed + New Task */}
+      <div className="flex items-center justify-between px-5 py-2.5 border-b border-border gap-4 shrink-0">
         <div className="flex items-center gap-1">
           {dueDateChips.map(({ key, label }) => {
             const active = dueDateFilter === key;
@@ -290,7 +297,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
               >
                 <div className="flex items-center gap-1.5">Contact <SortIcon field="name" /></div>
               </th>
-              <th className="w-[130px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Phone</th>
+              <th className="w-[160px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Phone</th>
               <th className="w-[190px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Email</th>
               <th className="w-[90px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Type</th>
               <th
@@ -370,7 +377,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                       </span>
                     </td>
                     {/* Phone cell with dialer popover */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="relative">
                         {contact && phone !== "—" ? (
                           <button
@@ -488,6 +495,7 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
           onClose={() => setEmailModal(null)}
         />
       )}
+      </div>
     </div>
   );
 }
