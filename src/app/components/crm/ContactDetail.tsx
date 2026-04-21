@@ -9,13 +9,17 @@ import {
   Calendar,
   Trash2,
   Clock,
+  PhoneCall,
+  MessageSquare,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { CreateTaskModal } from "@/app/components/email-workflows/CreateTaskModal";
 import { TaskActionModal } from "@/app/components/email-workflows/TaskActionModal";
-import type { TaskItem } from "@/app/types";
+import type { TaskItem, ContactActivityRecord } from "@/app/types";
 
 type TaskModalMode = "complete" | "reschedule" | "delete" | null;
+
+type ActivityEntry = ContactActivityRecord & { _ts: Date };
 
 const STATUS_COLORS: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
@@ -25,19 +29,6 @@ const STATUS_COLORS: Record<string, string> = {
   Declined: "bg-red-100 text-red-700",
 };
 
-const EMAIL_STATUS_COLORS: Record<string, string> = {
-  Sent: "bg-blue-100 text-blue-600",
-  Delivered: "bg-green-100 text-green-600",
-  Opened: "bg-purple-100 text-purple-600",
-};
-
-const SEQ_DAY_LABEL: Record<number, string> = {
-  0: "Day 0",
-  2: "Day 2",
-  6: "Day 6",
-  11: "Day 11",
-  14: "Day 14",
-};
 
 function formatDate(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
@@ -61,12 +52,13 @@ export function ContactDetail() {
     contacts,
     emailHistory,
     taskItems,
+    contactActivity,
     handleCompleteTask,
     handleRescheduleTask,
     handleDeleteTask,
   } = useAppData();
 
-  const [activeTab, setActiveTab] = useState<"timeline" | "tasks">("timeline");
+  const [activeTab, setActiveTab] = useState<"activity" | "tasks">("activity");
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
   const [modalMode, setModalMode] = useState<TaskModalMode>(null);
@@ -96,6 +88,24 @@ export function ContactDetail() {
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   const pendingTasks = contactTasks.filter((t) => t.status !== "completed");
+
+  // Unified activity feed: contactActivity records + campaign emailHistory records
+  const activityFeed: ActivityEntry[] = [
+    ...contactActivity
+      .filter((a) => a.contactId === contact.id)
+      .map((a) => ({ ...a, _ts: new Date(a.timestamp) })),
+    // Campaign emails from emailHistory (workflow email/SMS go through contactActivity)
+    ...contactEmails.map((e) => ({
+      id: e.id,
+      contactId: e.contactId,
+      type: (e.channel === "sms" ? "sms_sent" : "email_sent") as ContactActivityRecord["type"],
+      subject: e.subject || undefined,
+      source: e.senderIdentity,
+      assignee: e.senderIdentity,
+      timestamp: new Date(e.sentAt),
+      _ts: new Date(e.sentAt),
+    })),
+  ].sort((a, b) => b._ts.getTime() - a._ts.getTime());
 
   const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
 
@@ -209,7 +219,7 @@ export function ContactDetail() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Tab bar */}
           <div className="border-b border-border bg-card px-6 flex gap-6">
-            {(["timeline", "tasks"] as const).map((tab) => (
+            {(["activity", "tasks"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -219,41 +229,92 @@ export function ContactDetail() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab === "timeline" ? "Timeline" : `Tasks (${contactTasks.length})`}
+                {tab === "activity" ? `Activity (${activityFeed.length})` : `Tasks (${contactTasks.length})`}
               </button>
             ))}
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
-            {/* TIMELINE TAB */}
-            {activeTab === "timeline" && (
+            {/* ACTIVITY TAB — unified chronological history */}
+            {activeTab === "activity" && (
               <div>
-                {contactEmails.length === 0 ? (
-                  <EmptyState icon={Mail} message="No emails sent to this contact yet." />
+                {activityFeed.length === 0 ? (
+                  <EmptyState icon={Clock} message="No activity for this contact yet." />
                 ) : (
                   <div className="space-y-2">
-                    {contactEmails.map((email) => (
-                      <div key={email.id} className="flex items-start gap-4 p-4 bg-card border border-border rounded-xl">
-                        <div className={`mt-0.5 shrink-0 text-[10px] px-2 py-1 rounded-full font-medium uppercase tracking-wide ${EMAIL_STATUS_COLORS[email.status] ?? "bg-muted text-muted-foreground"}`}>
-                          {email.status}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{email.subject}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            From: {email.senderIdentity}
+                    {activityFeed.map((entry) => {
+                      const isCall = entry.type === "task_completed" && entry.taskType === "Call";
+                      const isEmail = entry.type === "email_sent";
+                      const isSms = entry.type === "sms_sent";
+                      const isTask = entry.type === "task_completed";
+
+                      const iconBg = isCall
+                        ? "bg-green-100 text-green-600"
+                        : isEmail
+                        ? "bg-blue-100 text-blue-600"
+                        : isSms
+                        ? "bg-purple-100 text-purple-600"
+                        : "bg-muted text-muted-foreground";
+
+                      const dispositionColors: Record<string, string> = {
+                        Answered: "bg-green-100 text-green-700",
+                        "Voicemail Left": "bg-amber-100 text-amber-700",
+                        "No Answer — Voicemail Drop": "bg-red-100 text-red-700",
+                        "Not Needed": "bg-muted text-muted-foreground",
+                      };
+
+                      const typeLabel = isCall
+                        ? "Call"
+                        : isEmail
+                        ? "Email"
+                        : isSms
+                        ? "SMS"
+                        : entry.taskType ?? "Task";
+
+                      return (
+                        <div key={entry.id} className="flex items-start gap-3 p-4 bg-card border border-border rounded-xl">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${iconBg}`}>
+                            {isCall && <PhoneCall className="w-4 h-4" />}
+                            {isEmail && <Mail className="w-4 h-4" />}
+                            {isSms && <MessageSquare className="w-4 h-4" />}
+                            {isTask && !isCall && <CheckCircle2 className="w-4 h-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium">{typeLabel}</span>
+                              {isTask && entry.disposition && (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${dispositionColors[entry.disposition] ?? "bg-muted text-muted-foreground"}`}>
+                                  {entry.disposition}
+                                </span>
+                              )}
+                            </div>
+                            {isEmail && entry.subject && (
+                              <div className="text-xs text-foreground mt-0.5 truncate">{entry.subject}</div>
+                            )}
+                            {isSms && entry.message && (
+                              <div className="text-xs text-foreground mt-0.5 line-clamp-2">{entry.message}</div>
+                            )}
+                            {entry.note && (
+                              <div className="text-xs text-muted-foreground italic mt-1">"{entry.note}"</div>
+                            )}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {entry.source && (
+                                <span className="text-xs text-muted-foreground">
+                                  {entry.source}{entry.stepName ? ` — ${entry.stepName}` : ""}
+                                </span>
+                              )}
+                              {entry.assignee && (
+                                <span className="text-xs text-muted-foreground">· {entry.assignee}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDate(entry._ts)}
                           </div>
                         </div>
-                        <div className="shrink-0 flex flex-col items-end gap-1">
-                          {SEQ_DAY_LABEL[email.sequenceDay] && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
-                              {SEQ_DAY_LABEL[email.sequenceDay]}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground">{formatDate(email.sentAt)}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -395,7 +456,7 @@ export function ContactDetail() {
         isOpen={modalMode !== null}
         mode={modalMode}
         task={modalTask}
-        onComplete={(taskId, dis) => { handleCompleteTask(taskId, dis); closeModal(); }}
+        onComplete={(taskId, dis, note) => { handleCompleteTask(taskId, dis, note); closeModal(); }}
         onReschedule={(taskId, date) => { handleRescheduleTask(taskId, date); closeModal(); }}
         onDelete={(taskId) => { handleDeleteTask(taskId); closeModal(); }}
         onClose={closeModal}

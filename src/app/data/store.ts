@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
@@ -22,6 +22,7 @@ const KEYS = {
   businessAcquisitions: "loanbudcrm:businessAcquisitions",
   workflows: "loanbudcrm:workflows",
   workflowEnrollments: "loanbudcrm:workflowEnrollments",
+  contactActivity: "loanbudcrm:contactActivity",
 } as const;
 
 function reviveDates<T extends Record<string, unknown>>(
@@ -145,5 +146,9 @@ export const store = {
         ["startDate"],
       ),
     write: (data: WorkflowEnrollment[]) => write(KEYS.workflowEnrollments, data),
+  },
+  contactActivity: {
+    read: () => read<ContactActivityRecord>(KEYS.contactActivity, [], ["timestamp"]),
+    write: (data: ContactActivityRecord[]) => write(KEYS.contactActivity, data),
   },
 };

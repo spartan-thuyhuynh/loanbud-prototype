@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { BarChart3, ChevronRight, GitBranch, FileText, PauseCircle } from "lucide-react";
+import {
+  BarChart3,
+  ChevronRight,
+  GitBranch,
+  FileText,
+  PauseCircle,
+} from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
 
 import type { TaskItem } from "@/app/types";
@@ -17,18 +23,21 @@ export function Overview() {
   // --- Logic ---
   const activeEnrollmentsByWorkflow = workflowEnrollments.reduce(
     (acc, e) => {
-      if (e.status === "active") acc[e.workflowId] = (acc[e.workflowId] ?? 0) + 1;
+      if (e.status === "active")
+        acc[e.workflowId] = (acc[e.workflowId] ?? 0) + 1;
       return acc;
     },
     {} as Record<string, number>,
   );
 
-  const assignees = Array.from(new Set(tasks.map((t) => t.assignee)));
+  const assignees = Array.from(
+    new Set(tasks.map((t) => t.assignee).filter((a): a is string => !!a)),
+  );
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.source.toLowerCase().includes(searchTerm.toLowerCase());
+      (task.source?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -74,7 +83,8 @@ export function Overview() {
               {workflows.slice(0, 4).map((workflow) => {
                 const isActive = workflow.status === "active";
                 const isPaused = workflow.status === "paused";
-                const activeCount = activeEnrollmentsByWorkflow[workflow.id] ?? 0;
+                const activeCount =
+                  activeEnrollmentsByWorkflow[workflow.id] ?? 0;
 
                 const icon = isActive ? (
                   <GitBranch className="w-3.5 h-3.5" />
@@ -106,7 +116,9 @@ export function Overview() {
                           "w-7 h-7 rounded-lg flex items-center justify-center",
                           isActive && "bg-green-100 text-green-600",
                           isPaused && "bg-amber-100 text-amber-600",
-                          !isActive && !isPaused && "bg-muted text-muted-foreground",
+                          !isActive &&
+                            !isPaused &&
+                            "bg-muted text-muted-foreground",
                         )}
                       >
                         {icon}
@@ -116,7 +128,9 @@ export function Overview() {
                           "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize",
                           isActive && "bg-green-100 text-green-700",
                           isPaused && "bg-amber-100 text-amber-700",
-                          !isActive && !isPaused && "bg-muted text-muted-foreground",
+                          !isActive &&
+                            !isPaused &&
+                            "bg-muted text-muted-foreground",
                         )}
                       >
                         {workflow.status}

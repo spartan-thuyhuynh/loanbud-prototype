@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress } from "../types";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
 
@@ -9,15 +9,16 @@ interface AppDataContextValue {
   emailHistory: EmailRecord[];
   tasks: Task[];
   taskItems: TaskItem[];
+  contactActivity: ContactActivityRecord[];
   campaigns: Campaign[];
   segments: Segment[];
   applications: Application[];
   businessAcquisitions: BusinessAcquisitionRecord[];
   // Task handlers
-  handleCompleteTask: (taskId: string, disposition: string) => void;
+  handleCompleteTask: (taskId: string, disposition: string, note?: string) => void;
   handleRescheduleTask: (taskId: string, newDate: Date) => void;
   handleDeleteTask: (taskId: string) => void;
-  handleBulkCompleteTask: (taskIds: string[], disposition: string) => void;
+  handleBulkCompleteTask: (taskIds: string[], disposition: string, note?: string) => void;
   handleBulkRescheduleTask: (taskIds: string[], newDate: Date) => void;
   handleBulkDeleteTask: (taskIds: string[]) => void;
   // Contact handlers
@@ -61,6 +62,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [emailHistory, setEmailHistory] = useState<EmailRecord[]>(store.emailHistory.read());
   const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
   const [taskItems, setTaskItems] = useState<TaskItem[]>(store.taskItems.read());
+  const [contactActivity, setContactActivity] = useState<ContactActivityRecord[]>(store.contactActivity.read());
   const [campaigns, setCampaigns] = useState<Campaign[]>(store.campaigns.read());
   const [segments, setSegments] = useState<Segment[]>(store.segments.read());
   const [applications] = useState<Application[]>(store.applications.read());
@@ -68,15 +70,39 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [workflows, setWorkflows] = useState<Workflow[]>(store.workflows.read());
   const [workflowEnrollments, setWorkflowEnrollments] = useState<WorkflowEnrollment[]>(store.workflowEnrollments.read());
 
-  const handleCompleteTask = (taskId: string, disposition: string) => {
+  const handleCompleteTask = (taskId: string, disposition: string, note?: string) => {
+    const now = new Date();
     const updatedTasks = tasks.map((t) =>
       t.id === taskId ? { ...t, status: "completed" as const, disposition } : t,
     );
+    const completedItem = taskItems.find((ti) => ti.id === taskId || ti.id.includes(taskId));
     const updatedItems = taskItems.map((ti) =>
-      ti.id.includes(taskId) ? { ...ti, status: "completed" as const, disposition } : ti,
+      ti.id === taskId || ti.id.includes(taskId)
+        ? { ...ti, status: "completed" as const, disposition, completedAt: now, ...(note ? { outcome: note } : {}) }
+        : ti,
     );
+    const newActivity: ContactActivityRecord = {
+      id: `activity-${Date.now()}`,
+      contactId: completedItem?.contactId ?? "",
+      type: "task_completed",
+      taskType: completedItem?.taskType,
+      disposition,
+      note: note || undefined,
+      source: completedItem?.source,
+      sourceType: completedItem?.sourceType,
+      stepName: completedItem?.ruleName,
+      assignee: completedItem?.assignee,
+      timestamp: now,
+    };
+    const updatedActivity = completedItem
+      ? [...contactActivity, newActivity]
+      : contactActivity;
     setTasks(updatedTasks);
     setTaskItems(updatedItems);
+    if (completedItem) {
+      setContactActivity(updatedActivity);
+      store.contactActivity.write(updatedActivity);
+    }
     store.tasks.write(updatedTasks);
     store.taskItems.write(updatedItems);
   };
@@ -103,18 +129,38 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
-  const handleBulkCompleteTask = (taskIds: string[], disposition: string) => {
+  const handleBulkCompleteTask = (taskIds: string[], disposition: string, note?: string) => {
+    const now = new Date();
     const idSet = new Set(taskIds);
     const updatedTasks = tasks.map((t) =>
       idSet.has(t.id) ? { ...t, status: "completed" as const, disposition } : t,
     );
+    const completedItems = taskItems.filter((ti) => taskIds.some((id) => ti.id === id || ti.id.includes(id)));
     const updatedItems = taskItems.map((ti) =>
-      taskIds.some((id) => ti.id.includes(id)) ? { ...ti, status: "completed" as const, disposition } : ti,
+      taskIds.some((id) => ti.id === id || ti.id.includes(id))
+        ? { ...ti, status: "completed" as const, disposition, completedAt: now, ...(note ? { outcome: note } : {}) }
+        : ti,
     );
+    const newActivities: ContactActivityRecord[] = completedItems.map((ti, i) => ({
+      id: `activity-bulk-${Date.now()}-${i}`,
+      contactId: ti.contactId,
+      type: "task_completed" as const,
+      taskType: ti.taskType,
+      disposition,
+      note: note || undefined,
+      source: ti.source,
+      sourceType: ti.sourceType,
+      stepName: ti.ruleName,
+      assignee: ti.assignee,
+      timestamp: now,
+    }));
+    const updatedActivity = [...contactActivity, ...newActivities];
     setTasks(updatedTasks);
     setTaskItems(updatedItems);
+    setContactActivity(updatedActivity);
     store.tasks.write(updatedTasks);
     store.taskItems.write(updatedItems);
+    store.contactActivity.write(updatedActivity);
   };
 
   const handleBulkRescheduleTask = (taskIds: string[], newDate: Date) => {
@@ -581,6 +627,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       : workflows;
 
     let updatedItems: TaskItem[];
+    let updatedActivity = contactActivity;
     if (step.actionType === "call-reminder") {
       // Complete the pre-created call reminder task instead of creating a new one
       const taskId = `taskitem-call-${enrollmentId}-${stepId}`;
@@ -608,11 +655,30 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         triggerContext: triggerMap[step.actionType] ?? "",
       };
       updatedItems = [...taskItems, newTaskItem];
+      // Log email/SMS actions to contact activity
+      const activityType = step.actionType === "sms" ? "sms_sent" : "email_sent";
+      const newActivity: ContactActivityRecord = {
+        id: `activity-flow-${uniqueId}`,
+        contactId: enrollment.contactId,
+        type: activityType,
+        source: workflow.name,
+        sourceType: "flow",
+        stepName: step.name,
+        subject: step.actionType === "email" ? step.subject : undefined,
+        message: step.actionType === "sms" ? step.message : undefined,
+        assignee: step.senderIdentity ?? "",
+        timestamp: now,
+      };
+      updatedActivity = [...contactActivity, newActivity];
     }
 
     setWorkflowEnrollments(updatedEnrollments);
     setWorkflows(updatedWorkflows);
     setTaskItems(updatedItems);
+    if (updatedActivity !== contactActivity) {
+      setContactActivity(updatedActivity);
+      store.contactActivity.write(updatedActivity);
+    }
     store.workflowEnrollments.write(updatedEnrollments);
     store.workflows.write(updatedWorkflows);
     store.taskItems.write(updatedItems);
@@ -677,6 +743,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         emailHistory,
         tasks,
         taskItems,
+        contactActivity,
         campaigns,
         segments,
         applications,

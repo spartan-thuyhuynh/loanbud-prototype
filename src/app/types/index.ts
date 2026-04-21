@@ -244,3 +244,19 @@ export interface BusinessAcquisitionRecord {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface ContactActivityRecord {
+  id: string;
+  contactId: string;
+  type: "task_completed" | "email_sent" | "sms_sent";
+  taskType?: string;
+  disposition?: string;
+  note?: string;
+  source?: string;
+  sourceType?: "campaign" | "flow" | "manual";
+  stepName?: string;
+  subject?: string;
+  message?: string;
+  assignee?: string;
+  timestamp: Date;
+}

@@ -6,13 +6,18 @@ interface TaskBulkActionModalProps {
   isOpen: boolean;
   mode: BulkMode;
   selectedCount: number;
-  onComplete: (disposition: string) => void;
+  onComplete: (disposition: string, note?: string) => void;
   onReschedule: (newDate: Date) => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-const dispositions = ["Answered", "VM Left", "No Answer", "Not Needed"];
+const dispositions = [
+  "Answered",
+  "Voicemail Left",
+  "No Answer — Voicemail Drop",
+  "Not Needed",
+];
 
 export function TaskBulkActionModal({
   isOpen,
@@ -24,10 +29,16 @@ export function TaskBulkActionModal({
   onClose,
 }: TaskBulkActionModalProps) {
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [note, setNote] = useState("");
 
   if (!isOpen) return null;
 
   const plural = selectedCount !== 1 ? "s" : "";
+
+  const handleComplete = (dis: string) => {
+    onComplete(dis, note.trim() || undefined);
+    setNote("");
+  };
 
   const handleReschedule = () => {
     if (rescheduleDate) {
@@ -38,6 +49,7 @@ export function TaskBulkActionModal({
 
   const handleClose = () => {
     setRescheduleDate("");
+    setNote("");
     onClose();
   };
 
@@ -53,14 +65,14 @@ export function TaskBulkActionModal({
             >
               Complete Tasks
             </h3>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-5">
               Select the call outcome for {selectedCount} task{plural}:
             </p>
-            <div className="grid grid-cols-2 gap-2 mb-8">
+            <div className="grid grid-cols-2 gap-2 mb-5">
               {dispositions.map((dis) => (
                 <button
                   key={dis}
-                  onClick={() => onComplete(dis)}
+                  onClick={() => handleComplete(dis)}
                   className="px-4 py-3 border border-border rounded-xl text-xs hover:bg-primary hover:text-white hover:border-primary transition-all text-left flex justify-between items-center group"
                 >
                   {dis}
@@ -79,6 +91,18 @@ export function TaskBulkActionModal({
                   </svg>
                 </button>
               ))}
+            </div>
+            <div className="mb-6">
+              <label className="block text-xs text-muted-foreground mb-1.5">
+                Note (optional)
+              </label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Add a note…"
+                rows={3}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              />
             </div>
             <div className="flex justify-end">
               <button

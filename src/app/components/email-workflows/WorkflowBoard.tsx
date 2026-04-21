@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus, CalendarDays } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -74,12 +74,10 @@ const STEP_TYPE_CONFIG: Record<string, { icon: React.ReactNode; iconBg: string; 
   },
 };
 
-function StepsTimeline({ steps, currentDay }: { steps: WorkflowStep[]; currentDay: number }) {
+function StepsTimeline({ steps }: { steps: WorkflowStep[] }) {
   const sorted = [...steps].sort((a, b) => a.dayOffset - b.dayOffset);
   if (sorted.length === 0) return null;
 
-  // Find the active step: last step whose dayOffset <= currentDay
-  const activeStep = [...sorted].reverse().find((s) => s.dayOffset <= currentDay) ?? sorted[0];
 
   return (
     <div className="border-b border-border bg-background px-6 py-4 overflow-x-auto">
@@ -92,36 +90,23 @@ function StepsTimeline({ steps, currentDay }: { steps: WorkflowStep[]; currentDa
             dayBg: "bg-muted",
             dayColor: "text-muted-foreground",
           };
-          const isPast = step.dayOffset < currentDay;
-          const isCurrent = step.id === activeStep.id;
           return (
             <div key={step.id} className="flex items-center gap-1">
-              <div className={`relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 shadow-sm transition-all border ${
-                isCurrent
-                  ? "bg-primary/5 border-primary/40 shadow-primary/10"
-                  : isPast
-                    ? "bg-muted/60 border-border opacity-60"
-                    : "bg-card border-border hover:shadow-md"
-              }`}>
-                {isCurrent && (
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full whitespace-nowrap leading-none">
-                    Now
-                  </span>
-                )}
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isCurrent || !isPast ? cfg.iconBg : "bg-muted"} ${isCurrent || !isPast ? cfg.iconColor : "text-muted-foreground"}`}>
-                  {isPast && !isCurrent ? <Check className="h-3.5 w-3.5 text-muted-foreground" /> : cfg.icon}
+              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
+                  {cfg.icon}
                 </div>
                 <div className="flex flex-col">
-                  <span className={`text-xs font-semibold leading-tight ${isCurrent ? "text-primary" : isPast ? "text-muted-foreground" : "text-foreground"}`}>{step.name}</span>
-                  <span className={`text-[10px] font-medium leading-tight ${isCurrent ? "text-primary/70" : cfg.dayColor}`}>
+                  <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
+                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
                     Day {step.dayOffset}
                   </span>
                 </div>
               </div>
               {idx < sorted.length - 1 && (
                 <div className="w-6 flex items-center justify-center">
-                  <div className={`h-px w-4 ${step.dayOffset < currentDay ? "bg-primary/40" : "bg-border"}`} />
-                  <div className={`w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] ${step.dayOffset < currentDay ? "border-l-primary/40" : "border-l-border"}`} />
+                  <div className="h-px w-4 bg-border" />
+                  <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-border" />
                 </div>
               )}
             </div>
@@ -341,14 +326,7 @@ export function WorkflowBoard() {
 
   const segment = segments.find((s) => s.id === workflow?.segmentId);
 
-  // Workflow current day: elapsed days since the earliest enrollment
-  const workflowCurrentDay = useMemo(() => {
-    if (myEnrollments.length === 0) return 0;
-    const earliest = myEnrollments.reduce((min, e) =>
-      new Date(e.startDate) < new Date(min.startDate) ? e : min,
-    );
-    return Math.floor((Date.now() - new Date(earliest.startDate).getTime()) / 86_400_000);
-  }, [myEnrollments]);
+
 
   // Map enrollment → column (first pending step, or "completed")
   const getContactColumn = (enrollment: WorkflowEnrollment): string => {
@@ -454,12 +432,6 @@ export function WorkflowBoard() {
               Segment: <span className="font-medium">{segment.name}</span>
             </span>
           )}
-          {myEnrollments.length > 0 && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Day {workflowCurrentDay}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2">
           {/* View toggle */}
@@ -487,7 +459,7 @@ export function WorkflowBoard() {
       </div>
 
       {/* Steps timeline */}
-      <StepsTimeline steps={sortedSteps} currentDay={workflowCurrentDay} />
+      <StepsTimeline steps={sortedSteps} />
 
       {/* Body */}
       {emptyState ? (

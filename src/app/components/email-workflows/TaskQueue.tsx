@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Calendar, CheckCircle2, Trash2, Plus, ArrowUp, ArrowDown, ArrowUpDown, Search, BarChart3 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Calendar, CheckCircle2, Trash2, Plus, ArrowUp, ArrowDown, Search, BarChart3, Phone, Mail, X, Send } from "lucide-react";
 import { Link } from "react-router";
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
@@ -9,6 +9,8 @@ import { TaskBulkActionModal } from "./TaskBulkActionModal";
 import { CreateTaskModal } from "./CreateTaskModal";
 
 type ModalMode = "complete" | "reschedule" | "delete" | null;
+type DueDateFilter = "all" | "today" | "this-week" | "overdue";
+type SortField = "dueDate" | "name" | "source";
 
 interface TaskQueueProps {
   tasks?: TaskItem[];
@@ -18,6 +20,125 @@ interface TaskQueueProps {
   onViewModeToggle?: () => void;
 }
 
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function isWithinDays(date: Date, days: number) {
+  const now = new Date();
+  const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  return date >= now && date <= limit;
+}
+
+// ── Call Dialer Popover ───────────────────────────────────────────
+function CallDialer({ phone, name, onClose }: { phone: string; name: string; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const digits = ["1","2","3","4","5","6","7","8","9","*","0","#"];
+  const [input, setInput] = useState(phone.replace(/\D/g, ""));
+
+  return (
+    <div ref={ref} className="absolute z-50 bg-card border border-border rounded-2xl shadow-xl p-5 w-64 top-8 left-0">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-muted-foreground truncate">{name}</span>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+      </div>
+      <div className="text-center text-lg font-semibold tracking-widest mb-3 bg-muted/40 rounded-xl py-2 px-3 min-h-[2.5rem]">
+        {input || <span className="text-muted-foreground text-sm">Enter number</span>}
+      </div>
+      <div className="grid grid-cols-3 gap-1.5 mb-3">
+        {digits.map((d) => (
+          <button
+            key={d}
+            onClick={() => setInput((v) => v + d)}
+            className="py-2.5 rounded-xl text-sm font-medium bg-muted/50 hover:bg-muted transition-colors"
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <a
+          href={`tel:${input}`}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors"
+        >
+          <Phone className="w-4 h-4" /> Call
+        </a>
+        <button
+          onClick={() => setInput((v) => v.slice(0, -1))}
+          className="px-3 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-sm text-muted-foreground transition-colors"
+        >
+          ⌫
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Email Composer Popover ────────────────────────────────────────
+function EmailComposer({ email, name, onClose }: { email: string; name: string; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const handleSend = () => {
+    if (!subject.trim() && !body.trim()) return;
+    setSent(true);
+    setTimeout(onClose, 1200);
+  };
+
+  return (
+    <div ref={ref} className="absolute z-50 bg-card border border-border rounded-2xl shadow-xl p-5 w-80 top-8 left-0">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-muted-foreground">To: <span className="text-foreground">{name} &lt;{email}&gt;</span></span>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+      </div>
+      {sent ? (
+        <div className="py-6 text-center text-green-600 text-sm font-medium">
+          <Send className="w-6 h-6 mx-auto mb-2" /> Sent!
+        </div>
+      ) : (
+        <>
+          <input
+            type="text"
+            placeholder="Subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full mb-2 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <textarea
+            placeholder="Write a message…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={5}
+            className="w-full mb-3 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!subject.trim() && !body.trim()}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Send className="w-3.5 h-3.5" /> Send
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMode, onViewModeToggle }: TaskQueueProps) {
   const {
     contacts,
@@ -30,49 +151,58 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
     handleBulkDeleteTask,
   } = useAppData();
 
-  const tasks = tasksProp ?? taskItems;
-
+  const allTasks = tasksProp ?? taskItems;
   const contactById = new Map(contacts.map((c) => [c.id, c]));
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState<ModalMode>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed" | "overdue">("pending");
+
+  const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>("all");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const pendingTasks = tasks
-    .filter((t) => statusFilter === "all" || t.status === statusFilter)
-    .sort((a, b) => {
-      const diff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      return sortDir === "asc" ? diff : -diff;
-    });
+  // Popover state: taskId → "phone" | "email"
+  const [openPopover, setOpenPopover] = useState<{ taskId: string; type: "phone" | "email" } | null>(null);
 
-  const openModal = (task: TaskItem, mode: ModalMode) => {
-    setModalTask(task);
-    setModalMode(mode);
+  const now = new Date();
+
+  const filtered = allTasks.filter((t) => {
+    if (!showCompleted && t.status === "completed") return false;
+    const due = new Date(t.dueDate);
+    if (dueDateFilter === "today" && !isSameDay(due, now)) return false;
+    if (dueDateFilter === "this-week" && !isWithinDays(due, 7)) return false;
+    if (dueDateFilter === "overdue" && !(due < now && t.status !== "completed")) return false;
+    return true;
+  });
+
+  const isOverdue = (t: TaskItem) => t.status === "overdue" || (new Date(t.dueDate) < now && t.status !== "completed");
+
+  const comparator = (a: TaskItem, b: TaskItem): number => {
+    if (sortField === "dueDate") return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    if (sortField === "name") return a.contactName.localeCompare(b.contactName);
+    return (a.source ?? "").localeCompare(b.source ?? "");
   };
-  const closeModal = () => {
-    setModalTask(null);
-    setModalMode(null);
-  };
+
+  const overdueTasks = filtered.filter(isOverdue).sort(comparator);
+  const nonOverdueTasks = filtered.filter((t) => !isOverdue(t)).sort(comparator);
+  const pendingTasks = [
+    ...(sortDir === "asc" ? overdueTasks : [...overdueTasks].reverse()),
+    ...(sortDir === "asc" ? nonOverdueTasks : [...nonOverdueTasks].reverse()),
+  ];
+
+  const openModal = (task: TaskItem, mode: ModalMode) => { setModalTask(task); setModalMode(mode); };
+  const closeModal = () => { setModalTask(null); setModalMode(null); };
 
   const handleSelectAll = () => {
-    if (
-      selectedTasks.length === pendingTasks.length &&
-      pendingTasks.length > 0
-    ) {
-      setSelectedTasks([]);
-    } else {
-      setSelectedTasks(pendingTasks.map((t) => t.id));
-    }
+    if (selectedTasks.length === pendingTasks.length && pendingTasks.length > 0) setSelectedTasks([]);
+    else setSelectedTasks(pendingTasks.map((t) => t.id));
   };
   const handleSelectTask = (id: string) => {
-    setSelectedTasks((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
-    );
+    setSelectedTasks((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
   };
 
   const openBulkModal = (mode: ModalMode) => setBulkMode(mode);
@@ -80,53 +210,89 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
 
   const formatDate = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(d);
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+  };
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+    setSelectedTasks([]);
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />;
+  };
+
+  const dueDateChips: { key: DueDateFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "today", label: "Today" },
+    { key: "this-week", label: "This Week" },
+    { key: "overdue", label: "Overdue" },
+  ];
+
+  const dueDateCounts: Record<DueDateFilter, number> = {
+    all: allTasks.filter((t) => t.status !== "completed").length,
+    today: allTasks.filter((t) => t.status !== "completed" && isSameDay(new Date(t.dueDate), now)).length,
+    "this-week": allTasks.filter((t) => t.status !== "completed" && isWithinDays(new Date(t.dueDate), 7)).length,
+    overdue: allTasks.filter((t) => isOverdue(t)).length,
+  };
+
+  const togglePopover = (taskId: string, type: "phone" | "email") => {
+    setOpenPopover((prev) =>
+      prev?.taskId === taskId && prev.type === type ? null : { taskId, type }
+    );
   };
 
   return (
     <div className="flex flex-col h-full bg-card">
-      {/* Header row 1: status chips + New Task */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border gap-4">
+      {/* Header row: due date filter chips + show completed + New Task */}
+      <div className="flex items-center justify-between px-5 py-2.5 border-b border-border gap-4">
         <div className="flex items-center gap-1">
-          {(["all", "pending", "overdue", "completed"] as const).map((s) => {
-            const count = s === "all" ? tasks.length : tasks.filter((t) => t.status === s).length;
-            const active = statusFilter === s;
-            const chipStyle: Record<string, { active: string; inactive: string }> = {
-              all:       { active: "bg-muted text-foreground border-border",                    inactive: "text-muted-foreground hover:bg-muted/60 border-border" },
-              pending:   { active: "bg-blue-50 text-blue-700 border-blue-200",                inactive: "text-muted-foreground hover:bg-muted/60 border-border" },
-              overdue:   { active: "bg-red-50 text-red-600 border-red-200",                   inactive: "text-muted-foreground hover:bg-muted/60 border-border" },
-              completed: { active: "bg-green-50 text-green-700 border-green-200",             inactive: "text-muted-foreground hover:bg-muted/60 border-border" },
-            };
-            const countStyle: Record<string, string> = {
-              all:       active ? "text-muted-foreground"  : "text-muted-foreground",
-              pending:   active ? "text-blue-500"      : "text-muted-foreground",
-              overdue:   active ? "text-red-400"       : "text-muted-foreground",
-              completed: active ? "text-green-500"     : "text-muted-foreground",
-            };
+          {dueDateChips.map(({ key, label }) => {
+            const active = dueDateFilter === key;
+            const count = dueDateCounts[key];
+            const isOverdueChip = key === "overdue";
             return (
               <button
-                key={s}
-                onClick={() => { setStatusFilter(s); setSelectedTasks([]); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active ? chipStyle[s].active : chipStyle[s].inactive}`}
+                key={key}
+                onClick={() => { setDueDateFilter(key); setSelectedTasks([]); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  active && isOverdueChip
+                    ? "bg-red-50 text-red-600 border-red-200"
+                    : active
+                    ? "bg-muted text-foreground border-border"
+                    : "text-muted-foreground hover:bg-muted/60 border-border"
+                }`}
               >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-                <span className={`text-[11px] font-semibold tabular-nums ${countStyle[s]}`}>{count}</span>
+                {label}
+                {count > 0 && (
+                  <span className={`text-[11px] font-semibold tabular-nums ${active && isOverdueChip ? "text-red-400" : "text-muted-foreground"}`}>
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:opacity-90 transition-opacity shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Task
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showCompleted}
+              onChange={(e) => { setShowCompleted(e.target.checked); setSelectedTasks([]); }}
+              className="rounded border-border"
+            />
+            Show completed
+          </label>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* Header row 2: search + view toggle (only when wired from parent) */}
@@ -154,88 +320,48 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
         </div>
       )}
 
-      <div
-        className={`flex-1 overflow-auto ${selectedTasks.length > 0 ? "pb-20" : ""}`}
-      >
-        <table className="w-full table-fixed min-w-[1400px]">
+      <div className={`flex-1 overflow-auto ${selectedTasks.length > 0 ? "pb-20" : ""}`}>
+        <table className="w-full table-fixed min-w-[1500px]">
           <thead className="bg-muted/50 border-b border-border sticky top-0">
             <tr>
               <th className="w-[50px] px-4 py-4 text-left">
                 <input
                   type="checkbox"
-                  checked={
-                    selectedTasks.length === pendingTasks.length &&
-                    pendingTasks.length > 0
-                  }
+                  checked={selectedTasks.length === pendingTasks.length && pendingTasks.length > 0}
                   onChange={handleSelectAll}
                   className="rounded border-border"
                 />
               </th>
+              <th className="w-[110px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Actions</th>
               <th
-                className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                className="w-[150px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+                onClick={() => toggleSort("dueDate")}
               >
-                Actions
+                <div className="flex items-center gap-1.5">Due Date <SortIcon field="dueDate" /></div>
               </th>
               <th
-                className="w-[150px] px-4 py-4 text-left text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-                onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}
+                className="w-[190px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+                onClick={() => toggleSort("name")}
               >
-                <div className="flex items-center gap-1.5">
-                  Due Date
-                  {sortDir === "asc"
-                    ? <ArrowUp className="w-3.5 h-3.5 text-primary" />
-                    : sortDir === "desc"
-                      ? <ArrowDown className="w-3.5 h-3.5 text-primary" />
-                      : <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}
-                </div>
+                <div className="flex items-center gap-1.5">Contact <SortIcon field="name" /></div>
               </th>
+              <th className="w-[130px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Phone</th>
+              <th className="w-[190px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Email</th>
+              <th className="w-[90px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Type</th>
               <th
-                className="w-[220px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                className="w-[170px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+                onClick={() => toggleSort("source")}
               >
-                Name / Listing
+                <div className="flex items-center gap-1.5">Source <SortIcon field="source" /></div>
               </th>
-              <th
-                className="w-[140px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-              >
-                Phone
-              </th>
-              <th
-                className="w-[180px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-              >
-                Email
-              </th>
-              <th
-                className="w-[110px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-              >
-                Status
-              </th>
-              <th
-                className="w-[100px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-              >
-                Type
-              </th>
-              <th
-                className="w-[220px] px-4 py-4 text-left text-sm text-muted-foreground"
-                style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-              >
-                Objective / VM Notes
-              </th>
+              <th className="w-[130px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Assignee</th>
+              <th className="w-[190px] px-4 py-4 text-left text-sm font-semibold text-muted-foreground">Objective / Notes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {pendingTasks.length === 0 ? (
               <tr>
-                <td
-                  colSpan={9}
-                  className="px-6 py-12 text-center text-muted-foreground"
-                >
+                <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
                   <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-20" />
                   <p>All caught up!</p>
                 </td>
@@ -246,14 +372,13 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                 const contact = contactById.get(task.contactId);
                 const phone = contact?.phone ?? "—";
                 const email = contact?.email ?? "—";
-                const listingName = contact?.listingName ?? "—";
-                const isOverdue =
-                  task.status === "overdue" ||
-                  new Date(task.dueDate) < new Date();
+                const overdueFlag = isOverdue(task);
+                const showPhone = openPopover?.taskId === task.id && openPopover.type === "phone";
+                const showEmail = openPopover?.taskId === task.id && openPopover.type === "email";
                 return (
                   <tr
                     key={task.id}
-                    className={`group hover:bg-muted/20 transition-colors ${isSelected ? "bg-muted/10" : ""} }`}
+                    className={`group hover:bg-muted/20 transition-colors ${isSelected ? "bg-muted/10" : ""}`}
                   >
                     <td className="px-4 py-4">
                       <input
@@ -264,38 +389,27 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                       />
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openModal(task, "complete")}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                          title="Complete"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal(task, "reschedule")}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="Reschedule"
-                        >
-                          <Calendar className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal(task, "delete")}
-                          className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {task.status !== "completed" && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openModal(task, "complete")} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openModal(task, "reschedule")} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
+                            <Calendar className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openModal(task, "delete")} className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      {task.status === "completed" && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] rounded-full uppercase tracking-tighter">Done</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-muted-foreground">
-                        {formatDate(task.dueDate)}
-                      </div>
-                      {isOverdue && (
-                        <span className="mt-1 inline-block text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tighter">
-                          Overdue
-                        </span>
+                      <div className="text-sm text-muted-foreground">{formatDate(task.dueDate)}</div>
+                      {overdueFlag && task.status !== "completed" && (
+                        <span className="mt-1 inline-block text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tighter">Overdue</span>
                       )}
                     </td>
                     <td className="px-4 py-4">
@@ -307,29 +421,55 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                       >
                         {task.contactName}
                       </Link>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span
-                          className="text-xs text-muted-foreground truncate"
-                          title={listingName}
-                        >
-                          {listingName}
-                        </span>
-                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-muted rounded uppercase tracking-tighter text-muted-foreground">
-                          {task.contactStatus}
-                        </span>
+                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-muted rounded uppercase tracking-tighter text-muted-foreground">
+                        {task.contactStatus}
+                      </span>
+                    </td>
+                    {/* Phone cell with dialer popover */}
+                    <td className="px-4 py-4">
+                      <div className="relative">
+                        {contact && phone !== "—" ? (
+                          <button
+                            onClick={() => togglePopover(task.id, "phone")}
+                            className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors group/phone"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-muted-foreground group-hover/phone:text-primary" />
+                            {phone}
+                          </button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                        {showPhone && contact && (
+                          <CallDialer
+                            phone={phone}
+                            name={task.contactName}
+                            onClose={() => setOpenPopover(null)}
+                          />
+                        )}
                       </div>
                     </td>
+                    {/* Email cell with composer popover */}
                     <td className="px-4 py-4">
-                      <div className="text-sm text-muted-foreground">
-                        {phone}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div
-                        className="text-sm text-muted-foreground truncate"
-                        title={email}
-                      >
-                        {email}
+                      <div className="relative">
+                        {contact && email !== "—" ? (
+                          <button
+                            onClick={() => togglePopover(task.id, "email")}
+                            className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors group/email truncate max-w-full"
+                            title={email}
+                          >
+                            <Mail className="w-3.5 h-3.5 text-muted-foreground group-hover/email:text-primary shrink-0" />
+                            <span className="truncate">{email}</span>
+                          </button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                        {showEmail && contact && (
+                          <EmailComposer
+                            email={email}
+                            name={task.contactName}
+                            onClose={() => setOpenPopover(null)}
+                          />
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -338,21 +478,33 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      {task.triggerContext && (
-                        <div
-                          className="text-sm text-foreground line-clamp-2"
-                          title={task.triggerContext}
-                        >
-                          {task.triggerContext}
+                      {task.source ? (
+                        <>
+                          <div className="text-sm text-foreground truncate" title={task.source}>{task.source}</div>
+                          {task.ruleName && <div className="text-xs text-muted-foreground truncate">{task.ruleName}</div>}
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {task.assignee ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-semibold text-primary">{task.assignee.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate" title={task.assignee}>{task.assignee}</span>
                         </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {task.triggerContext && (
+                        <div className="text-sm text-foreground line-clamp-2" title={task.triggerContext}>{task.triggerContext}</div>
                       )}
                       {task.notes && (
-                        <div
-                          className="mt-1 text-xs text-muted-foreground italic line-clamp-2"
-                          title={task.notes}
-                        >
-                          VM: {task.notes}
-                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground italic line-clamp-2">VM: {task.notes}</div>
                       )}
                     </td>
                   </tr>
@@ -376,18 +528,9 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
         isOpen={modalMode !== null}
         mode={modalMode}
         task={modalTask}
-        onComplete={(id, dis) => {
-          handleCompleteTask(id, dis);
-          closeModal();
-        }}
-        onReschedule={(id, date) => {
-          handleRescheduleTask(id, date);
-          closeModal();
-        }}
-        onDelete={(id) => {
-          handleDeleteTask(id);
-          closeModal();
-        }}
+        onComplete={(id, dis, note) => { handleCompleteTask(id, dis, note); closeModal(); }}
+        onReschedule={(id, date) => { handleRescheduleTask(id, date); closeModal(); }}
+        onDelete={(id) => { handleDeleteTask(id); closeModal(); }}
         onClose={closeModal}
       />
 
@@ -395,28 +538,13 @@ export function TaskQueue({ tasks: tasksProp, searchTerm, onSearchChange, viewMo
         isOpen={bulkMode !== null}
         mode={bulkMode}
         selectedCount={selectedTasks.length}
-        onComplete={(dis) => {
-          handleBulkCompleteTask(selectedTasks, dis);
-          setSelectedTasks([]);
-          closeBulkModal();
-        }}
-        onReschedule={(date) => {
-          handleBulkRescheduleTask(selectedTasks, date);
-          setSelectedTasks([]);
-          closeBulkModal();
-        }}
-        onDelete={() => {
-          handleBulkDeleteTask(selectedTasks);
-          setSelectedTasks([]);
-          closeBulkModal();
-        }}
+        onComplete={(dis, note) => { handleBulkCompleteTask(selectedTasks, dis, note); setSelectedTasks([]); closeBulkModal(); }}
+        onReschedule={(date) => { handleBulkRescheduleTask(selectedTasks, date); setSelectedTasks([]); closeBulkModal(); }}
+        onDelete={() => { handleBulkDeleteTask(selectedTasks); setSelectedTasks([]); closeBulkModal(); }}
         onClose={closeBulkModal}
       />
 
-      <CreateTaskModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      <CreateTaskModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
     </div>
   );
 }
