@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -81,7 +81,7 @@ function StepsTimeline({ steps }: { steps: WorkflowStep[] }) {
 
   return (
     <div className="border-b border-border bg-background px-6 py-4 overflow-x-auto">
-      <div className="flex items-center gap-1 min-w-max">
+      <div className="flex items-end gap-0 min-w-max">
         {sorted.map((step, idx) => {
           const cfg = STEP_TYPE_CONFIG[step.actionType] ?? {
             icon: null,
@@ -91,25 +91,27 @@ function StepsTimeline({ steps }: { steps: WorkflowStep[] }) {
             dayColor: "text-muted-foreground",
           };
           return (
-            <div key={step.id} className="flex items-center gap-1">
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
-                  {cfg.icon}
-                </div>
-                <div className="flex flex-col">
+            <Fragment key={step.id}>
+              <div className="w-48 flex flex-col items-center">
+                <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card w-full">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
+                    {cfg.icon}
+                  </div>
                   <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
-                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
-                    Day {step.dayOffset}
-                  </span>
                 </div>
               </div>
               {idx < sorted.length - 1 && (
-                <div className="w-6 flex items-center justify-center">
-                  <div className="h-px w-4 bg-border" />
-                  <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-border" />
+                <div className="flex flex-col items-center gap-0.5 self-end mb-[22px] w-12">
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    +{sorted[idx + 1].dayOffset - step.dayOffset}d
+                  </span>
+                  <div className="flex items-center w-full">
+                    <div className="h-px flex-1 bg-border" />
+                    <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-border" />
+                  </div>
                 </div>
               )}
-            </div>
+            </Fragment>
           );
         })}
       </div>
