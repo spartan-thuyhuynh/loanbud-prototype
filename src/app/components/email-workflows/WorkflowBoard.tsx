@@ -477,7 +477,7 @@ export function WorkflowBoard() {
               className="flex gap-4 p-6 min-h-full items-start"
               style={{ minWidth: `${(sortedSteps.length + 1) * 288}px` }}
             >
-              {[...sortedSteps.map((s) => ({ id: s.id, label: `Day ${s.dayOffset} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep })), { id: "completed", label: "Completed", step: null as WorkflowStep | null }].map(
+              {[...sortedSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep })), { id: "completed", label: "Completed", step: null as WorkflowStep | null }].map(
                 ({ id: colId, label, step }) => {
                   const colEnrollments = myEnrollments.filter(
                     (e) => getContactColumn(e) === colId,
