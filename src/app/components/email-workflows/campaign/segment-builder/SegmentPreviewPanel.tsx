@@ -6,13 +6,16 @@ interface SegmentPreviewPanelProps {
   matchingContacts: Contact[];
   totalContacts: number;
   hasNoFilters: boolean;
+  pinnedIncludeIds?: string[];
 }
 
 export function SegmentPreviewPanel({
   matchingContacts,
   totalContacts,
   hasNoFilters,
+  pinnedIncludeIds,
 }: SegmentPreviewPanelProps) {
+  const pinnedSet = new Set(pinnedIncludeIds ?? []);
   const previewContacts = matchingContacts.slice(0, 25);
   const dbPercent =
     totalContacts > 0
@@ -82,6 +85,11 @@ export function SegmentPreviewPanel({
                       {contact.optedOut && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-destructive/10 text-destructive rounded-full border border-destructive/20 flex-shrink-0">
                           Opted out
+                        </span>
+                      )}
+                      {pinnedSet.has(contact.id) && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-200 flex-shrink-0 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800">
+                          Pinned
                         </span>
                       )}
                     </div>

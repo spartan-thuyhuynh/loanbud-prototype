@@ -14,11 +14,29 @@ export function SegmentsView() {
 
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
 
+  const editingAsSaved: SavedSegment | undefined = editingSegment
+    ? {
+        id: editingSegment.id,
+        name: editingSegment.name,
+        description: '',
+        filters: editingSegment.filters,
+        createdAt: editingSegment.createdAt,
+        excludeFilters: editingSegment.excludeFilters,
+        includedContactIds: editingSegment.includedContactIds,
+        excludedContactIds: editingSegment.excludedContactIds,
+      }
+    : undefined;
+
   const handleSave = (segment: SavedSegment) => {
     if (editingSegment) {
-      handleUpdateSegment(editingSegment.id, { name: segment.name });
+      handleUpdateSegment(editingSegment.id, {
+        name: segment.name,
+        filters: segment.filters,
+        excludeFilters: segment.excludeFilters,
+        includedContactIds: segment.includedContactIds,
+        excludedContactIds: segment.excludedContactIds,
+      });
       toast.success('Segment updated.');
-      navigate('/email-workflows/user-segments');
     } else {
       handleCreateSegment({
         name: segment.name,
@@ -26,11 +44,14 @@ export function SegmentsView() {
         status: 'Active',
         createdBy: 'You',
         filters: segment.filters,
+        excludeFilters: segment.excludeFilters,
+        includedContactIds: segment.includedContactIds,
+        excludedContactIds: segment.excludedContactIds,
       });
       setSavedSegments((prev) => [...prev, segment]);
       toast.success('Segment created.');
-      navigate('/email-workflows/user-segments');
     }
+    navigate('/email-workflows/user-segments');
   };
 
   return (
@@ -41,9 +62,10 @@ export function SegmentsView() {
       onDeleteSegment={(id) =>
         setSavedSegments(savedSegments.filter((s) => s.id !== id))
       }
-      onBack={() => navigate('/email-workflows/user-segments')}
+      onBack={() => navigate(-1)}
       initialName={editingSegment?.name}
       initialDescription={editingSegment ? '' : undefined}
+      initialSegment={editingAsSaved}
     />
   );
 }

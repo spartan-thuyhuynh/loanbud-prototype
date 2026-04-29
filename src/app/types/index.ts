@@ -118,6 +118,9 @@ export interface Segment {
   createdBy: string;
   createdAt: Date;
   filters: FilterRule[];
+  excludeFilters?: FilterRule[];
+  includedContactIds?: string[];
+  excludedContactIds?: string[];
 }
 
 export interface TaskItem {

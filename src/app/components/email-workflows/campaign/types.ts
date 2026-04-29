@@ -89,6 +89,9 @@ export interface SavedSegment {
   description: string;
   filters: FilterRule[];
   createdAt: Date;
+  excludeFilters?: FilterRule[];
+  includedContactIds?: string[];
+  excludedContactIds?: string[];
 }
 
 export interface EmailTemplate {
