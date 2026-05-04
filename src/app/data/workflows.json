@@ -23,18 +23,34 @@
         "body": "Hi {{first_name}},\n\nI noticed your listing and wanted to reach out personally.\n\nWe specialize in fast approvals and competitive rates.\n\nBest regards,\nThe LoanBud Team"
       },
       {
+        "id": "delay-wf1-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 3
+      },
+      {
         "id": "step-wf1-2",
         "name": "Day 3 Call Reminder",
-        "order": 2,
+        "order": 3,
         "dayOffset": 3,
         "actionType": "call-reminder",
         "note": "Follow up on welcome email sent Day 0. Ask if they reviewed our offer and have questions.",
         "reminderDaysBefore": 1
       },
       {
+        "id": "delay-wf1-2",
+        "name": "Wait",
+        "order": 4,
+        "dayOffset": 3,
+        "actionType": "delay",
+        "delayDays": 4
+      },
+      {
         "id": "step-wf1-3",
         "name": "Day 7 SMS Check-in",
-        "order": 3,
+        "order": 5,
         "dayOffset": 7,
         "actionType": "sms",
         "smsTemplateId": "sms-1",
@@ -42,9 +58,17 @@
         "message": "Hi {{first_name}}, just checking in on your listing application. Reply anytime — we're here to help!"
       },
       {
+        "id": "delay-wf1-3",
+        "name": "Wait",
+        "order": 6,
+        "dayOffset": 7,
+        "actionType": "delay",
+        "delayDays": 7
+      },
+      {
         "id": "step-wf1-4",
         "name": "Day 14 Follow-up Email",
-        "order": 4,
+        "order": 7,
         "dayOffset": 14,
         "actionType": "email",
         "templateId": "tpl-3",
@@ -79,18 +103,34 @@
         "body": "Hi {{first_name}},\n\nWe haven't heard from you in a while and wanted to reconnect.\n\nWe have some exciting new programs that might be a great fit for you.\n\nBest,\nLoanBud Team"
       },
       {
+        "id": "delay-wf2-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 5
+      },
+      {
         "id": "step-wf2-2",
         "name": "Day 5 Call Reminder",
-        "order": 2,
+        "order": 3,
         "dayOffset": 5,
         "actionType": "call-reminder",
         "note": "Check if they opened the re-engagement email. Offer a quick intro call.",
         "reminderDaysBefore": 1
       },
       {
+        "id": "delay-wf2-2",
+        "name": "Wait",
+        "order": 4,
+        "dayOffset": 5,
+        "actionType": "delay",
+        "delayDays": 5
+      },
+      {
         "id": "step-wf2-3",
         "name": "Day 10 SMS",
-        "order": 3,
+        "order": 5,
         "dayOffset": 10,
         "actionType": "sms",
         "smsTemplateId": "sms-2",
@@ -123,18 +163,34 @@
         "body": "Hi {{first_name}},\n\nThank you for joining our partner network. We're excited to work with you.\n\nAs a partner you'll receive priority support and early access to new programs.\n\nLet's connect soon.\n\nMike"
       },
       {
+        "id": "delay-wf3-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 7
+      },
+      {
         "id": "step-wf3-2",
         "name": "Day 7 Call Reminder",
-        "order": 2,
+        "order": 3,
         "dayOffset": 7,
         "actionType": "call-reminder",
         "note": "Intro call to discuss partnership terms and first referral opportunity.",
         "reminderDaysBefore": 1
       },
       {
+        "id": "delay-wf3-2",
+        "name": "Wait",
+        "order": 4,
+        "dayOffset": 7,
+        "actionType": "delay",
+        "delayDays": 14
+      },
+      {
         "id": "step-wf3-3",
         "name": "Day 21 Update Email",
-        "order": 3,
+        "order": 5,
         "dayOffset": 21,
         "actionType": "email",
         "templateId": "tpl-5",

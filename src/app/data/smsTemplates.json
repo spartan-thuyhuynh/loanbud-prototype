@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sms-1",
+    "name": "Quick Follow-up",
+    "message": "Hi {{first_name}}, just checking in! Reply to schedule a quick call.",
+    "characterCount": 64,
+    "category": "Follow-up",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sms-2",
+    "name": "Appointment Reminder",
+    "message": "Hi {{first_name}}, reminder about your appointment tomorrow. Reply YES to confirm.",
+    "characterCount": 80,
+    "category": "Reminder",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sms-3",
+    "name": "New Offer Alert",
+    "message": "Hi {{first_name}}, we have a new offer that matches your profile. Reply to learn more.",
+    "characterCount": 88,
+    "category": "Alert",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sms-4",
+    "name": "Meeting Confirmation",
+    "message": "Hi {{first_name}}, confirming our call today. Looking forward to speaking with you!",
+    "characterCount": 82,
+    "category": "Appointment",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "etpl-1",
+    "name": "New Listing Claim",
+    "subject": "Claim Your Listing - Fast Approval Available",
+    "body": "Hi {{first_name}},\n\nI noticed your listing for {{listing_name}} and wanted to reach out personally.\n\nWe specialize in fast approvals and competitive rates. I'd love to discuss how we can help you move forward quickly.\n\nCan we schedule a quick call this week?\n\nBest regards,\nThe LoanBud Team",
+    "category": "Initial Outreach",
+    "senderType": "brand",
+    "variables": ["first_name", "listing_name"],
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "etpl-2",
+    "name": "Day 3 Follow-up",
+    "subject": "Quick follow-up on {{listing_name}}",
+    "body": "Hi {{first_name}},\n\nI wanted to follow up on my previous message about {{listing_name}}.\n\nHave you had a chance to consider our offer? We'd love to help you move forward.\n\nBest,\nLoanBud Team",
+    "category": "Follow-up",
+    "senderType": "brand",
+    "variables": ["first_name", "listing_name"],
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "etpl-3",
+    "name": "Agent Personal Touch",
+    "subject": "Personal assistance with your loan application",
+    "body": "Hi {{first_name}},\n\nThis is [Agent Name] from LoanBud. I've been personally assigned to assist with {{listing_name}}.\n\nI'd love to connect and discuss how we can help. When's a good time to talk?\n\nBest regards,\n[Agent Name]",
+    "category": "Initial Outreach",
+    "senderType": "loan-officer",
+    "variables": ["first_name", "listing_name"],
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "etpl-4",
+    "name": "Day 14 Re-engagement",
+    "subject": "Still interested in moving forward, {{first_name}}?",
+    "body": "Hi {{first_name}},\n\nI wanted to check back in one more time regarding {{listing_name}}.\n\nWe've helped many clients in similar situations secure funding quickly. If timing was the issue before, let's talk about options.\n\nI'm here whenever you're ready.\n\nBest,\nLoanBud Team",
+    "category": "Re-engagement",
+    "senderType": "brand",
+    "variables": ["first_name", "listing_name"],
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "etpl-5",
+    "name": "Lender Partner Welcome",
+    "subject": "Welcome to the LoanBud Partner Network",
+    "body": "Hi {{first_name}},\n\nWelcome to the LoanBud lender partner network! We're excited to have you on board.\n\nOver the next few weeks, I'll be sharing resources to help you get the most out of our partnership.\n\nFeel free to reach out anytime with questions.\n\nBest regards,\nLoanBud Team",
+    "category": "Nurture",
+    "senderType": "brand",
+    "variables": ["first_name"],
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  }
+]

@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
@@ -76,43 +76,40 @@ const STEP_TYPE_CONFIG: Record<string, { icon: React.ReactNode; iconBg: string; 
 };
 
 function StepsTimeline({ steps }: { steps: WorkflowStep[] }) {
-  const sorted = [...steps].sort((a, b) => a.dayOffset - b.dayOffset);
+  const sorted = [...steps].sort((a, b) => a.order - b.order);
   if (sorted.length === 0) return null;
-
 
   return (
     <div className="border-b border-border bg-background px-6 py-4 overflow-x-auto">
       <div className="flex items-end gap-0 min-w-max">
-        {sorted.map((step, idx) => {
+        {sorted.map((step) => {
+          if (step.actionType === "delay") {
+            return (
+              <div key={step.id} className="flex flex-col items-center gap-0.5 self-end mb-[22px]">
+                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 whitespace-nowrap">
+                  +{step.delayDays}d wait
+                </span>
+                <div className="flex items-center w-16">
+                  <div className="h-px flex-1 bg-amber-300" />
+                  <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-amber-300" />
+                </div>
+              </div>
+            );
+          }
           const cfg = STEP_TYPE_CONFIG[step.actionType] ?? {
             icon: null,
             iconBg: "bg-muted",
             iconColor: "text-muted-foreground",
-            dayBg: "bg-muted",
-            dayColor: "text-muted-foreground",
           };
           return (
-            <Fragment key={step.id}>
-              <div className="w-48 flex flex-col items-center">
-                <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card w-full">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
-                    {cfg.icon}
-                  </div>
-                  <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
+            <div key={step.id} className="w-48 flex flex-col items-center">
+              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card w-full">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
+                  {cfg.icon}
                 </div>
+                <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
               </div>
-              {idx < sorted.length - 1 && (
-                <div className="flex flex-col items-center gap-0.5 self-end mb-[22px] w-12">
-                  <span className="text-[10px] font-medium text-muted-foreground">
-                    +{sorted[idx + 1].dayOffset - step.dayOffset}d
-                  </span>
-                  <div className="flex items-center w-full">
-                    <div className="h-px flex-1 bg-border" />
-                    <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-border" />
-                  </div>
-                </div>
-              )}
-            </Fragment>
+            </div>
           );
         })}
       </div>
@@ -331,17 +328,21 @@ export function WorkflowBoard() {
   const workflow = workflows.find((wf) => wf.id === id);
   const myEnrollments = workflowEnrollments.filter((e) => e.workflowId === id);
   const sortedSteps = useMemo(
-    () => [...(workflow?.steps ?? [])].sort((a, b) => a.dayOffset - b.dayOffset),
+    () => [...(workflow?.steps ?? [])].sort((a, b) => a.order - b.order),
     [workflow],
+  );
+  const actionSteps = useMemo(
+    () => sortedSteps.filter((s) => s.actionType !== "delay"),
+    [sortedSteps],
   );
 
   const segment = segments.find((s) => s.id === workflow?.segmentId);
 
 
 
-  // Map enrollment → column (first pending step, or "completed")
+  // Map enrollment → column (first pending action step, or "completed")
   const getContactColumn = (enrollment: WorkflowEnrollment): string => {
-    const firstPending = sortedSteps.find(
+    const firstPending = actionSteps.find(
       (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
     );
     return firstPending?.id ?? "completed";
@@ -373,11 +374,11 @@ export function WorkflowBoard() {
     return myEnrollments
       .map((enrollment) => {
         const contact = contacts.find((c) => c.id === enrollment.contactId);
-        const firstPending = sortedSteps.find(
+        const firstPending = actionSteps.find(
           (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
         );
         const colStepId = firstPending?.id ?? "completed";
-        const currentStep = sortedSteps.find((s) => s.id === colStepId) ?? null;
+        const currentStep = actionSteps.find((s) => s.id === colStepId) ?? null;
         return { enrollment, contact, currentStep, colStepId };
       })
       .filter(({ contact, colStepId, enrollment }) => {
@@ -391,7 +392,7 @@ export function WorkflowBoard() {
         if (listStatusFilter !== "all" && enrollment.status !== listStatusFilter) return false;
         return true;
       });
-  }, [myEnrollments, contacts, sortedSteps, listSearch, listStepFilter, listStatusFilter]);
+  }, [myEnrollments, contacts, actionSteps, listSearch, listStepFilter, listStatusFilter]);
 
   if (!workflow) {
     return (
@@ -491,9 +492,9 @@ export function WorkflowBoard() {
           <div className="flex-1 overflow-x-auto">
             <div
               className="flex gap-4 p-6 min-h-full items-start"
-              style={{ minWidth: `${(sortedSteps.length + 1) * 288}px` }}
+              style={{ minWidth: `${(actionSteps.length + 1) * 288}px` }}
             >
-              {[...sortedSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep })), { id: "completed", label: "Completed", step: null as WorkflowStep | null }].map(
+              {[...actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep })), { id: "completed", label: "Completed", step: null as WorkflowStep | null }].map(
                 ({ id: colId, label, step }) => {
                   const colEnrollments = myEnrollments.filter(
                     (e) => getContactColumn(e) === colId,
@@ -537,7 +538,7 @@ export function WorkflowBoard() {
               className="rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Steps</option>
-              {sortedSteps.map((s) => (
+              {actionSteps.map((s) => (
                 <option key={s.id} value={s.id}>
                   Day {s.dayOffset} — {ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}
                 </option>

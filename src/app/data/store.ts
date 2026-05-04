@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
@@ -11,6 +11,11 @@ import businessAcquisitionsJson from "./businessAcquisitions.json";
 import workflowsJson from "./workflows.json";
 import workflowEnrollmentsJson from "./workflowEnrollments.json";
 import contactActivityJson from "./contactActivity.json";
+import adminEmailTemplatesJson from "./adminEmailTemplates.json";
+import smsTemplatesJson from "./smsTemplates.json";
+import voicemailScriptsJson from "./voicemailScripts.json";
+import voicemailSettingsJson from "./voicemailSettings.json";
+import senderIdentitiesJson from "./senderIdentities.json";
 
 const KEYS = {
   contacts: "loanbudcrm:contacts",
@@ -21,9 +26,14 @@ const KEYS = {
   campaigns: "loanbudcrm:campaigns",
   applications: "loanbudcrm:applications",
   businessAcquisitions: "loanbudcrm:businessAcquisitions",
-  workflows: "loanbudcrm:workflows",
-  workflowEnrollments: "loanbudcrm:workflowEnrollments",
+  workflows: "loanbudcrm:v2:workflows",
+  workflowEnrollments: "loanbudcrm:v2:workflowEnrollments",
   contactActivity: "loanbudcrm:contactActivity",
+  adminEmailTemplates: "loanbudcrm:v2:adminEmailTemplates",
+  smsTemplates: "loanbudcrm:v2:smsTemplates",
+  voicemailScripts: "loanbudcrm:v2:voicemailScripts",
+  voicemailSettings: "loanbudcrm:v2:voicemailSettings",
+  senderIdentities: "loanbudcrm:v2:senderIdentities",
 } as const;
 
 function reviveDates<T extends Record<string, unknown>>(
@@ -140,16 +150,66 @@ export const store = {
     write: (data: Workflow[]) => write(KEYS.workflows, data),
   },
   workflowEnrollments: {
-    read: () =>
-      read<WorkflowEnrollment>(
+    read: () => {
+      const enrollments = read<WorkflowEnrollment>(
         KEYS.workflowEnrollments,
         workflowEnrollmentsJson as unknown as WorkflowEnrollment[],
         ["startDate"],
-      ),
+      );
+      return enrollments.map((e) => ({
+        ...e,
+        customSteps: e.customSteps?.map((cs) => ({ ...cs, createdAt: new Date(cs.createdAt as unknown as string) })),
+      }));
+    },
     write: (data: WorkflowEnrollment[]) => write(KEYS.workflowEnrollments, data),
   },
   contactActivity: {
     read: () => read<ContactActivityRecord>(KEYS.contactActivity, contactActivityJson as ContactActivityRecord[], ["timestamp"]),
     write: (data: ContactActivityRecord[]) => write(KEYS.contactActivity, data),
+  },
+  adminEmailTemplates: {
+    read: () =>
+      read<AdminEmailTemplate>(
+        KEYS.adminEmailTemplates,
+        adminEmailTemplatesJson as AdminEmailTemplate[],
+        ["createdAt", "updatedAt"],
+      ),
+    write: (data: AdminEmailTemplate[]) => write(KEYS.adminEmailTemplates, data),
+  },
+  smsTemplates: {
+    read: () =>
+      read<SmsTemplate>(
+        KEYS.smsTemplates,
+        smsTemplatesJson as SmsTemplate[],
+        ["createdAt", "updatedAt"],
+      ),
+    write: (data: SmsTemplate[]) => write(KEYS.smsTemplates, data),
+  },
+  voicemailScripts: {
+    read: () =>
+      read<VoicemailScript>(
+        KEYS.voicemailScripts,
+        voicemailScriptsJson as VoicemailScript[],
+        ["createdAt", "updatedAt"],
+      ),
+    write: (data: VoicemailScript[]) => write(KEYS.voicemailScripts, data),
+  },
+  voicemailSettings: {
+    read: () =>
+      read<VoicemailSettings>(
+        KEYS.voicemailSettings,
+        voicemailSettingsJson as VoicemailSettings[],
+        [],
+      ),
+    write: (data: VoicemailSettings[]) => write(KEYS.voicemailSettings, data),
+  },
+  senderIdentities: {
+    read: () =>
+      read<SenderIdentity>(
+        KEYS.senderIdentities,
+        senderIdentitiesJson as SenderIdentity[],
+        ["createdAt"],
+      ),
+    write: (data: SenderIdentity[]) => write(KEYS.senderIdentities, data),
   },
 };

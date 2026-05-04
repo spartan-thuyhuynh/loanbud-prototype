@@ -1,0 +1,34 @@
+[
+  {
+    "id": "sid-1",
+    "displayName": "LoanBud Team",
+    "emailAddress": "team@loanbud.com",
+    "type": "brand",
+    "isDefault": true,
+    "createdAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sid-2",
+    "displayName": "John Smith",
+    "emailAddress": "john@loanbuds.com",
+    "type": "loan-officer",
+    "isDefault": false,
+    "createdAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sid-3",
+    "displayName": "Sarah Chen",
+    "emailAddress": "sarah@loanbuds.com",
+    "type": "loan-officer",
+    "isDefault": false,
+    "createdAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "sid-4",
+    "displayName": "LoanBud Newsletters",
+    "emailAddress": "newsletters@loanbud.com",
+    "type": "brand",
+    "isDefault": false,
+    "createdAt": "2026-04-01T09:00:00.000Z"
+  }
+]

@@ -6,17 +6,12 @@
     "startDate": "2026-04-20T00:00:00.000Z",
     "status": "active",
     "stepProgress": [
-      {
-        "stepId": "step-wf1-1",
-        "status": "done",
-        "completedAt": "2026-04-10T10:00:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-2",
-        "status": "done",
-        "completedAt": "2026-04-13T15:30:00.000Z"
-      },
+      { "stepId": "step-wf1-1", "status": "done", "completedAt": "2026-04-10T10:00:00.000Z" },
+      { "stepId": "delay-wf1-1", "status": "done", "completedAt": "2026-04-10T10:00:00.000Z" },
+      { "stepId": "step-wf1-2", "status": "done", "completedAt": "2026-04-13T15:30:00.000Z" },
+      { "stepId": "delay-wf1-2", "status": "done", "completedAt": "2026-04-13T15:30:00.000Z" },
       { "stepId": "step-wf1-3", "status": "pending" },
+      { "stepId": "delay-wf1-3", "status": "pending" },
       { "stepId": "step-wf1-4", "status": "pending" }
     ]
   },
@@ -27,21 +22,12 @@
     "startDate": "2026-04-20T00:00:00.000Z",
     "status": "active",
     "stepProgress": [
-      {
-        "stepId": "step-wf1-1",
-        "status": "done",
-        "completedAt": "2026-04-08T09:30:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-2",
-        "status": "done",
-        "completedAt": "2026-04-11T14:00:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-3",
-        "status": "done",
-        "completedAt": "2026-04-15T11:00:00.000Z"
-      },
+      { "stepId": "step-wf1-1", "status": "done", "completedAt": "2026-04-08T09:30:00.000Z" },
+      { "stepId": "delay-wf1-1", "status": "done", "completedAt": "2026-04-08T09:30:00.000Z" },
+      { "stepId": "step-wf1-2", "status": "done", "completedAt": "2026-04-11T14:00:00.000Z" },
+      { "stepId": "delay-wf1-2", "status": "done", "completedAt": "2026-04-11T14:00:00.000Z" },
+      { "stepId": "step-wf1-3", "status": "done", "completedAt": "2026-04-15T11:00:00.000Z" },
+      { "stepId": "delay-wf1-3", "status": "done", "completedAt": "2026-04-15T11:00:00.000Z" },
       { "stepId": "step-wf1-4", "status": "pending" }
     ]
   },
@@ -52,13 +38,12 @@
     "startDate": "2026-04-15T00:00:00.000Z",
     "status": "active",
     "stepProgress": [
-      {
-        "stepId": "step-wf1-1",
-        "status": "done",
-        "completedAt": "2026-04-15T08:45:00.000Z"
-      },
+      { "stepId": "step-wf1-1", "status": "done", "completedAt": "2026-04-15T08:45:00.000Z" },
+      { "stepId": "delay-wf1-1", "status": "done", "completedAt": "2026-04-15T08:45:00.000Z" },
       { "stepId": "step-wf1-2", "status": "pending" },
+      { "stepId": "delay-wf1-2", "status": "pending" },
       { "stepId": "step-wf1-3", "status": "pending" },
+      { "stepId": "delay-wf1-3", "status": "pending" },
       { "stepId": "step-wf1-4", "status": "pending" }
     ]
   },
@@ -69,26 +54,13 @@
     "startDate": "2026-03-25T00:00:00.000Z",
     "status": "completed",
     "stepProgress": [
-      {
-        "stepId": "step-wf1-1",
-        "status": "done",
-        "completedAt": "2026-03-25T10:00:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-2",
-        "status": "done",
-        "completedAt": "2026-03-28T16:00:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-3",
-        "status": "done",
-        "completedAt": "2026-04-01T09:15:00.000Z"
-      },
-      {
-        "stepId": "step-wf1-4",
-        "status": "done",
-        "completedAt": "2026-04-08T11:30:00.000Z"
-      }
+      { "stepId": "step-wf1-1", "status": "done", "completedAt": "2026-03-25T10:00:00.000Z" },
+      { "stepId": "delay-wf1-1", "status": "done", "completedAt": "2026-03-25T10:00:00.000Z" },
+      { "stepId": "step-wf1-2", "status": "done", "completedAt": "2026-03-28T16:00:00.000Z" },
+      { "stepId": "delay-wf1-2", "status": "done", "completedAt": "2026-03-28T16:00:00.000Z" },
+      { "stepId": "step-wf1-3", "status": "done", "completedAt": "2026-04-01T09:15:00.000Z" },
+      { "stepId": "delay-wf1-3", "status": "done", "completedAt": "2026-04-01T09:15:00.000Z" },
+      { "stepId": "step-wf1-4", "status": "done", "completedAt": "2026-04-08T11:30:00.000Z" }
     ]
   },
   {
@@ -98,12 +70,10 @@
     "startDate": "2026-04-20T00:00:00.000Z",
     "status": "paused",
     "stepProgress": [
-      {
-        "stepId": "step-wf3-1",
-        "status": "done",
-        "completedAt": "2026-03-20T10:00:00.000Z"
-      },
+      { "stepId": "step-wf3-1", "status": "done", "completedAt": "2026-03-20T10:00:00.000Z" },
+      { "stepId": "delay-wf3-1", "status": "done", "completedAt": "2026-03-20T10:00:00.000Z" },
       { "stepId": "step-wf3-2", "status": "pending" },
+      { "stepId": "delay-wf3-2", "status": "pending" },
       { "stepId": "step-wf3-3", "status": "pending" }
     ]
   }

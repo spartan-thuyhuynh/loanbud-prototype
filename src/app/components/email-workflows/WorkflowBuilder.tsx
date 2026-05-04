@@ -3,24 +3,25 @@ import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, ChevronRight, Check, AlertCircle,
   Mail, MessageSquare, Phone, ArrowUp, ArrowDown, X,
-  Sparkles, User, Search, Users,
+  Sparkles, User, Search, Users, Clock,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { WorkflowStep } from "../../types";
-import { sampleTemplates } from "./campaign/campaign-data";
+import { computeDayOffsets } from "../../lib/workflowUtils";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type ActionType = "email" | "sms" | "call-reminder";
+type ActionType = "email" | "sms" | "call-reminder" | "delay";
 type SenderIdentity = "brand" | "loan-officer";
 
 const STEP_DEFAULTS: Record<ActionType, string> = {
   email: "Send Email Step",
   sms: "Send SMS Step",
   "call-reminder": "Call Reminder Step",
+  delay: "Wait",
 };
 
 const TYPE_OPTIONS: { value: ActionType; label: string; description: string }[] = [
@@ -33,31 +34,30 @@ const TYPE_ICON_STYLE: Record<ActionType, string> = {
   email: "border-emerald-500 text-emerald-600",
   sms: "border-purple-400 text-purple-600",
   "call-reminder": "border-blue-400 text-blue-600",
+  delay: "border-amber-400 text-amber-600",
 };
 
 const TYPE_ICON_BG: Record<ActionType, string> = {
   email: "bg-emerald-50 text-emerald-600",
   sms: "bg-purple-50 text-purple-600",
   "call-reminder": "bg-blue-50 text-blue-600",
+  delay: "bg-amber-50 text-amber-600",
 };
 
 const TYPE_HOVER_STYLE: Record<ActionType, string> = {
   email: "hover:border-emerald-300 hover:bg-emerald-50/40",
   sms: "hover:border-purple-300 hover:bg-purple-50/40",
   "call-reminder": "hover:border-blue-300 hover:bg-blue-50/40",
+  delay: "hover:border-amber-300 hover:bg-amber-50/40",
 };
 
 const TYPE_BADGE_STYLE: Record<ActionType, string> = {
   email: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   sms: "bg-purple-50 text-purple-700 border border-purple-200",
   "call-reminder": "bg-blue-50 text-blue-700 border border-blue-200",
+  delay: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
-const SMS_TEMPLATES = [
-  { id: "sms-1", name: "Quick Follow-up", message: "Hi {{first_name}}, just checking in! Reply to schedule a quick call." },
-  { id: "sms-2", name: "Appointment Reminder", message: "Hi {{first_name}}, reminder about your appointment tomorrow. Reply YES to confirm." },
-  { id: "sms-3", name: "New Offer Alert", message: "Hi {{first_name}}, we have a new offer that matches your profile. Reply to learn more." },
-];
 
 const WIZARD_STEPS = ["Choose Segment", "Configure Steps"];
 
@@ -110,7 +110,7 @@ function makeStepId() {
 function defaultStep(dayOffset: number, type: ActionType = "email"): WorkflowStep {
   return {
     id: makeStepId(),
-    name: STEP_DEFAULTS[type],
+    name: STEP_DEFAULTS[type] ?? "Step",
     order: 1,
     dayOffset,
     actionType: type,
@@ -118,10 +118,22 @@ function defaultStep(dayOffset: number, type: ActionType = "email"): WorkflowSte
   };
 }
 
+function defaultDelayStep(): WorkflowStep {
+  return {
+    id: makeStepId(),
+    name: "Wait",
+    order: 1,
+    dayOffset: 0,
+    actionType: "delay",
+    delayDays: 1,
+  };
+}
+
 function StepTypeIcon({ type, size = "md" }: { type: ActionType; size?: "sm" | "md" }) {
   const cls = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
   if (type === "email") return <Mail className={cls} />;
   if (type === "sms") return <MessageSquare className={cls} />;
+  if (type === "delay") return <Clock className={cls} />;
   return <Phone className={cls} />;
 }
 
@@ -285,6 +297,7 @@ function StepRow({
   onEdit, onSave, onCancel, onRemove,
   onMoveUp, onMoveDown, showConnector,
 }: StepRowProps) {
+  const { adminEmailTemplates, smsTemplates } = useAppData();
   const [draft, setDraft] = useState<WorkflowStep>({ ...step });
 
   useEffect(() => {
@@ -299,8 +312,8 @@ function StepRow({
     }));
   };
 
-  const selectedEmailTpl = sampleTemplates.find((t) => t.name === draft.templateId);
-  const selectedSmsTpl = SMS_TEMPLATES.find((t) => t.id === draft.smsTemplateId);
+  const selectedEmailTpl = adminEmailTemplates.find((t) => t.id === draft.templateId || t.name === draft.templateId);
+  const selectedSmsTpl = smsTemplates.find((t) => t.id === draft.smsTemplateId);
 
   return (
     <div className="flex gap-4">
@@ -336,25 +349,14 @@ function StepRow({
             </div>
 
             <div className="p-5 space-y-5">
-              {/* Row: name + day */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <FieldLabel>Step Name</FieldLabel>
-                  <Input
-                    value={draft.name}
-                    onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                    placeholder={STEP_DEFAULTS[draft.actionType]}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Day from Start</FieldLabel>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={draft.dayOffset}
-                    onChange={(e) => setDraft((d) => ({ ...d, dayOffset: Math.max(0, Number(e.target.value)) }))}
-                  />
-                </div>
+              {/* Step name */}
+              <div>
+                <FieldLabel>Step Name</FieldLabel>
+                <Input
+                  value={draft.name}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  placeholder={STEP_DEFAULTS[draft.actionType] ?? "Step Name"}
+                />
               </div>
 
               {/* Type selector */}
@@ -387,7 +389,7 @@ function StepRow({
                     <select
                       value={draft.templateId ?? ""}
                       onChange={(e) => {
-                        const tpl = sampleTemplates.find((t) => t.name === e.target.value);
+                        const tpl = adminEmailTemplates.find((t) => t.id === e.target.value);
                         setDraft((d) => ({
                           ...d,
                           templateId: e.target.value,
@@ -399,8 +401,8 @@ function StepRow({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                     >
                       <option value="">— Select a template —</option>
-                      {sampleTemplates.map((t) => (
-                        <option key={t.name} value={t.name}>
+                      {adminEmailTemplates.map((t) => (
+                        <option key={t.id} value={t.id}>
                           {t.name} · {t.category}
                         </option>
                       ))}
@@ -428,7 +430,7 @@ function StepRow({
                   <select
                     value={draft.smsTemplateId ?? ""}
                     onChange={(e) => {
-                      const tpl = SMS_TEMPLATES.find((t) => t.id === e.target.value);
+                      const tpl = smsTemplates.find((t) => t.id === e.target.value);
                       setDraft((d) => ({
                         ...d,
                         smsTemplateId: e.target.value,
@@ -439,7 +441,7 @@ function StepRow({
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   >
                     <option value="">— Select a template —</option>
-                    {SMS_TEMPLATES.map((t) => (
+                    {smsTemplates.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
@@ -543,6 +545,53 @@ function StepRow({
   );
 }
 
+// ─── DelayRow ─────────────────────────────────────────────────────────────────
+
+function DelayRow({
+  step,
+  onChangeDays,
+  onRemove,
+}: {
+  step: WorkflowStep;
+  onChangeDays: (days: number) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1 pl-10 pr-0 my-1">
+      <div className="h-px flex-1 bg-amber-200" />
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-dashed border-amber-300 bg-amber-50 shrink-0">
+        <Clock className="h-3.5 w-3.5 text-amber-500" />
+        <span className="text-xs font-medium text-amber-700">Wait</span>
+        <button
+          type="button"
+          onClick={() => onChangeDays(Math.max(1, (step.delayDays ?? 1) - 1))}
+          className="w-5 h-5 flex items-center justify-center rounded text-amber-600 hover:bg-amber-200 transition-colors text-sm font-bold leading-none"
+        >
+          −
+        </button>
+        <span className="text-xs font-bold text-amber-700 w-5 text-center">{step.delayDays ?? 1}</span>
+        <button
+          type="button"
+          onClick={() => onChangeDays((step.delayDays ?? 1) + 1)}
+          className="w-5 h-5 flex items-center justify-center rounded text-amber-600 hover:bg-amber-200 transition-colors text-sm font-bold leading-none"
+        >
+          +
+        </button>
+        <span className="text-xs text-amber-600">{(step.delayDays ?? 1) === 1 ? "day" : "days"}</span>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-5 h-5 flex items-center justify-center rounded text-amber-500 hover:bg-amber-200 hover:text-amber-700 transition-colors ml-1"
+          title="Remove delay"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="h-px flex-1 bg-amber-200" />
+    </div>
+  );
+}
+
 // ─── WorkflowBuilder ──────────────────────────────────────────────────────────
 
 export function WorkflowBuilder() {
@@ -568,7 +617,10 @@ export function WorkflowBuilder() {
         setName(wf.name);
         setDescription(wf.description ?? "");
         setSelectedSegmentId(wf.segmentId);
-        setSteps(wf.steps.map((s) => ({ ...s })));
+        const seeded = computeDayOffsets(
+          [...wf.steps].sort((a, b) => a.order - b.order),
+        ).map((s, i) => ({ ...s, order: i + 1 }));
+        setSteps(seeded);
         setEditingIndex(null);
         hasSeeded.current = true;
       }
@@ -583,6 +635,7 @@ export function WorkflowBuilder() {
   const emailCount = steps.filter((s) => s.actionType === "email").length;
   const smsCount = steps.filter((s) => s.actionType === "sms").length;
   const callCount = steps.filter((s) => s.actionType === "call-reminder").length;
+  const actionStepCount = steps.filter((s) => s.actionType !== "delay").length;
   const maxDay = steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) : 0;
 
   const handleNextStep = () => {
@@ -592,21 +645,37 @@ export function WorkflowBuilder() {
     setWizardStep(1);
   };
 
+  const recompute = (arr: WorkflowStep[]) =>
+    computeDayOffsets(arr).map((s, i) => ({ ...s, order: i + 1 }));
+
   const handleAddStep = (type: ActionType) => {
-    const nextDay = steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) + 1 : 0;
-    const newStep = defaultStep(nextDay, type);
-    const newIndex = steps.length;
-    setSteps([...steps, newStep]);
-    setEditingIndex(newIndex);
+    const newStep = defaultStep(0, type);
+    const newSteps = recompute([...steps, newStep]);
+    setSteps(newSteps);
+    setEditingIndex(newSteps.length - 1);
+  };
+
+  const handleInsertDelay = (afterIndex: number) => {
+    const arr = [...steps];
+    arr.splice(afterIndex + 1, 0, defaultDelayStep());
+    setSteps(recompute(arr));
+  };
+
+  const handleDelayDaysChange = (index: number, days: number) => {
+    const updated = steps.map((s, i) =>
+      i === index ? { ...s, delayDays: Math.max(1, days) } : s,
+    );
+    setSteps(recompute(updated));
   };
 
   const handleStepSave = (index: number, updated: WorkflowStep) => {
-    setSteps(steps.map((s, i) => (i === index ? updated : s)));
+    setSteps(recompute(steps.map((s, i) => (i === index ? updated : s))));
     setEditingIndex(null);
   };
 
   const handleRemoveStep = (index: number) => {
-    setSteps(steps.filter((_, i) => i !== index));
+    const filtered = steps.filter((_, i) => i !== index);
+    setSteps(recompute(filtered));
     if (editingIndex === index) setEditingIndex(null);
   };
 
@@ -614,7 +683,7 @@ export function WorkflowBuilder() {
     if (index === 0) return;
     const ns = [...steps];
     [ns[index - 1], ns[index]] = [ns[index], ns[index - 1]];
-    setSteps(ns);
+    setSteps(recompute(ns));
     if (editingIndex === index) setEditingIndex(index - 1);
     else if (editingIndex === index - 1) setEditingIndex(index);
   };
@@ -623,28 +692,31 @@ export function WorkflowBuilder() {
     if (index === steps.length - 1) return;
     const ns = [...steps];
     [ns[index], ns[index + 1]] = [ns[index + 1], ns[index]];
-    setSteps(ns);
+    setSteps(recompute(ns));
     if (editingIndex === index) setEditingIndex(index + 1);
     else if (editingIndex === index + 1) setEditingIndex(index);
   };
 
   const handleLoadTemplate = (tpl: StepTemplate) => {
-    if (steps.length > 0) {
-      if (!window.confirm(`Replace current ${steps.length} step(s) with the "${tpl.name}" template?`)) return;
+    const actionStepsCount = steps.filter((s) => s.actionType !== "delay").length;
+    if (actionStepsCount > 0) {
+      if (!window.confirm(`Replace current steps with the "${tpl.name}" template?`)) return;
     }
-    const newSteps = tpl.steps.map((s, i) => ({
-      ...defaultStep(s.dayOffset, s.actionType),
-      name: s.name,
-      order: i + 1,
-    }));
-    setSteps(newSteps);
+    const sorted = [...tpl.steps].sort((a, b) => a.dayOffset - b.dayOffset);
+    const result: WorkflowStep[] = [];
+    sorted.forEach((s, i) => {
+      result.push({ ...defaultStep(0, s.actionType), name: s.name });
+      if (i < sorted.length - 1) {
+        const gap = sorted[i + 1].dayOffset - s.dayOffset;
+        if (gap > 0) result.push({ ...defaultDelayStep(), delayDays: gap });
+      }
+    });
+    setSteps(recompute(result));
     setEditingIndex(null);
   };
 
   const handleSave = () => {
-    const sortedSteps = [...steps]
-      .sort((a, b) => a.dayOffset - b.dayOffset)
-      .map((s, i) => ({ ...s, order: i + 1 }));
+    const sortedSteps = recompute([...steps]);
     const segmentName = selectedSegment?.name ?? "";
     if (id) {
       handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
@@ -802,7 +874,7 @@ export function WorkflowBuilder() {
               </div>
 
               {/* Steps timeline */}
-              {steps.length === 0 ? (
+              {steps.filter((s) => s.actionType !== "delay").length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-border p-12 text-center text-muted-foreground">
                   <Mail className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p className="text-sm font-medium text-foreground mb-1">No steps yet</p>
@@ -810,22 +882,49 @@ export function WorkflowBuilder() {
                 </div>
               ) : (
                 <div>
-                  {steps.map((step, i) => (
-                    <StepRow
-                      key={step.id}
-                      step={step}
-                      index={i}
-                      totalSteps={steps.length}
-                      isEditing={editingIndex === i}
-                      onEdit={() => setEditingIndex(i)}
-                      onSave={(updated) => handleStepSave(i, updated)}
-                      onCancel={() => setEditingIndex(null)}
-                      onRemove={() => handleRemoveStep(i)}
-                      onMoveUp={() => handleMoveUp(i)}
-                      onMoveDown={() => handleMoveDown(i)}
-                      showConnector={i < steps.length - 1}
-                    />
-                  ))}
+                  {steps.map((step, i) => {
+                    if (step.actionType === "delay") {
+                      return (
+                        <DelayRow
+                          key={step.id}
+                          step={step}
+                          onChangeDays={(days) => handleDelayDaysChange(i, days)}
+                          onRemove={() => handleRemoveStep(i)}
+                        />
+                      );
+                    }
+                    const isLastStep = i === steps.length - 1;
+                    const nextIsDelay = !isLastStep && steps[i + 1]?.actionType === "delay";
+                    return (
+                      <div key={step.id}>
+                        <StepRow
+                          step={step}
+                          index={i}
+                          totalSteps={steps.length}
+                          isEditing={editingIndex === i}
+                          onEdit={() => setEditingIndex(i)}
+                          onSave={(updated) => handleStepSave(i, updated)}
+                          onCancel={() => setEditingIndex(null)}
+                          onRemove={() => handleRemoveStep(i)}
+                          onMoveUp={() => handleMoveUp(i)}
+                          onMoveDown={() => handleMoveDown(i)}
+                          showConnector={!isLastStep && !nextIsDelay}
+                        />
+                        {!isLastStep && !nextIsDelay && (
+                          <button
+                            type="button"
+                            onClick={() => handleInsertDelay(i)}
+                            className="flex items-center gap-1.5 mx-auto pl-12 py-0.5 text-[11px] text-muted-foreground hover:text-amber-600 transition-colors group"
+                          >
+                            <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
+                            <Clock className="h-3 w-3 opacity-50 group-hover:opacity-100" />
+                            <span>add delay</span>
+                            <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -888,6 +987,19 @@ export function WorkflowBuilder() {
                       </span>
                     </button>
                   ))}
+                  <button
+                    onClick={() => handleInsertDelay(steps.length - 1)}
+                    disabled={steps.length === 0}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-background text-left transition-all duration-150 hover:border-amber-300 hover:bg-amber-50/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
+                      <Clock className="h-4 w-4" />
+                    </span>
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium text-foreground leading-snug">Add Delay</span>
+                      <span className="text-[11px] text-muted-foreground leading-snug">Wait period between steps</span>
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -896,7 +1008,7 @@ export function WorkflowBuilder() {
                 <SectionLabel>Summary</SectionLabel>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-foreground leading-tight">{steps.length}</p>
+                    <p className="text-lg font-bold text-foreground leading-tight">{actionStepCount}</p>
                     <p className="text-[11px] text-muted-foreground">Steps</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">

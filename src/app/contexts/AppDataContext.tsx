@@ -1,7 +1,8 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord } from "../types";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
+import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 
 interface AppDataContextValue {
   // Data
@@ -56,6 +57,34 @@ interface AppDataContextValue {
   handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused") => void;
   handleSkipStep: (enrollmentId: string, stepId: string) => void;
   handleUnskipStep: (enrollmentId: string, stepId: string) => void;
+  handleCustomizeDelay: (enrollmentId: string, stepId: string, delayDays: number) => void;
+  handleAddCustomStep: (enrollmentId: string, stepDef: Omit<WorkflowStep, "id" | "order" | "dayOffset">, insertAfterStepId: string | null) => void;
+  handleRemoveCustomStep: (enrollmentId: string, stepId: string) => void;
+  // Admin config data
+  adminEmailTemplates: AdminEmailTemplate[];
+  smsTemplates: SmsTemplate[];
+  voicemailScripts: VoicemailScript[];
+  voicemailSettings: VoicemailSettings;
+  senderIdentities: SenderIdentity[];
+  // Email template handlers
+  handleCreateAdminEmailTemplate: (t: Omit<AdminEmailTemplate, "id" | "createdAt" | "updatedAt">) => void;
+  handleUpdateAdminEmailTemplate: (id: string, updates: Partial<Omit<AdminEmailTemplate, "id" | "createdAt">>) => void;
+  handleDeleteAdminEmailTemplate: (id: string) => void;
+  // SMS template handlers
+  handleCreateSmsTemplate: (t: Omit<SmsTemplate, "id" | "createdAt" | "updatedAt">) => void;
+  handleUpdateSmsTemplate: (id: string, updates: Partial<Omit<SmsTemplate, "id" | "createdAt">>) => void;
+  handleDeleteSmsTemplate: (id: string) => void;
+  // Voicemail script handlers
+  handleCreateVoicemailScript: (s: Omit<VoicemailScript, "id" | "createdAt" | "updatedAt">) => void;
+  handleUpdateVoicemailScript: (id: string, updates: Partial<Omit<VoicemailScript, "id" | "createdAt">>) => void;
+  handleDeleteVoicemailScript: (id: string) => void;
+  // Voicemail settings handler
+  handleUpdateVoicemailSettings: (updates: Partial<VoicemailSettings>) => void;
+  // Sender identity handlers
+  handleCreateSenderIdentity: (s: Omit<SenderIdentity, "id" | "createdAt">) => void;
+  handleUpdateSenderIdentity: (id: string, updates: Partial<Omit<SenderIdentity, "id" | "createdAt">>) => void;
+  handleDeleteSenderIdentity: (id: string) => void;
+  handleSetDefaultSenderIdentity: (id: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -72,6 +101,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(store.businessAcquisitions.read());
   const [workflows, setWorkflows] = useState<Workflow[]>(store.workflows.read());
   const [workflowEnrollments, setWorkflowEnrollments] = useState<WorkflowEnrollment[]>(store.workflowEnrollments.read());
+  const [adminEmailTemplates, setAdminEmailTemplates] = useState<AdminEmailTemplate[]>(store.adminEmailTemplates.read());
+  const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>(store.smsTemplates.read());
+  const [voicemailScripts, setVoicemailScripts] = useState<VoicemailScript[]>(store.voicemailScripts.read());
+  const [voicemailSettings, setVoicemailSettings] = useState<VoicemailSettings>(
+    store.voicemailSettings.read()[0] ?? { providerName: "", fromPhoneNumber: "", ringlessEnabled: false, defaultGreeting: "", recordingEnabled: false },
+  );
+  const [senderIdentities, setSenderIdentities] = useState<SenderIdentity[]>(store.senderIdentities.read());
 
   const handleCompleteTask = (taskId: string, disposition: string, note?: string) => {
     const now = new Date();
@@ -432,8 +468,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleCreateWorkflow = (w: Omit<Workflow, "id" | "createdAt" | "enrolledCount">) => {
+    const normalizedSteps = computeDayOffsets([...w.steps].sort((a, b) => a.order - b.order));
     const newWorkflow: Workflow = {
       ...w,
+      steps: normalizedSteps,
       id: `workflow-${Date.now()}`,
       createdAt: new Date(),
       enrolledCount: 0,
@@ -482,9 +520,50 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleUpdateWorkflow = (id: string, updates: Partial<Workflow>) => {
-    const updated = workflows.map((wf) => (wf.id === id ? { ...wf, ...updates } : wf));
+    const updated = workflows.map((wf) => {
+      if (wf.id !== id) return wf;
+      const merged = { ...wf, ...updates };
+      if (updates.steps) {
+        merged.steps = computeDayOffsets([...updates.steps].sort((a, b) => a.order - b.order));
+      }
+      return merged;
+    });
     setWorkflows(updated);
     store.workflows.write(updated);
+
+    if (updates.steps) {
+      const newSteps = computeDayOffsets([...updates.steps].sort((a, b) => a.order - b.order));
+      const newStepIds = new Set(newSteps.map((s) => s.id));
+
+      const reconciledEnrollments = workflowEnrollments.map((enrollment) => {
+        if (enrollment.workflowId !== id) return enrollment;
+        if (enrollment.status === "completed") return enrollment;
+
+        const mergedAll = mergeSteps(newSteps, enrollment.customSteps);
+        const currentStep = mergedAll.find(
+          (s) => s.actionType !== "delay" && enrollment.stepProgress.find((p) => p.stepId === s.id)?.status === "pending",
+        );
+        const currentOrder = currentStep?.order ?? Infinity;
+
+        const cleanedProgress = enrollment.stepProgress.filter(
+          (p) => newStepIds.has(p.stepId) || enrollment.customSteps?.some((cs) => cs.id === p.stepId),
+        );
+
+        const existingIds = new Set(cleanedProgress.map((p) => p.stepId));
+        const addedProgress: WorkflowStepProgress[] = newSteps
+          .filter((s) => !existingIds.has(s.id))
+          .map((s) => ({
+            stepId: s.id,
+            status: s.order < currentOrder ? ("done" as const) : ("pending" as const),
+            ...(s.order < currentOrder ? { completedAt: new Date() } : {}),
+          }));
+
+        return { ...enrollment, stepProgress: [...cleanedProgress, ...addedProgress] };
+      });
+
+      setWorkflowEnrollments(reconciledEnrollments);
+      store.workflowEnrollments.write(reconciledEnrollments);
+    }
   };
 
   const handleDeleteWorkflow = (id: string) => {
@@ -529,17 +608,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   // Generates varied mock step progress so the board looks populated when a workflow starts
   function generateMockProgress(steps: WorkflowStep[], idx: number): WorkflowStepProgress[] {
-    const sorted = [...steps].sort((a, b) => a.dayOffset - b.dayOffset);
+    const sorted = [...steps].sort((a, b) => a.order - b.order);
     const now = new Date();
-    const progress: WorkflowStepProgress[] = sorted.map((s) => ({ stepId: s.id, status: "pending" as const }));
+    // Delay steps are always pre-completed since they are not actionable
+    const progress: WorkflowStepProgress[] = sorted.map((s) => ({
+      stepId: s.id,
+      status: s.actionType === "delay" ? ("done" as const) : ("pending" as const),
+      completedAt: s.actionType === "delay" ? now : undefined,
+    }));
 
     const markDone = (stepId: string) => {
       const p = progress.find((p) => p.stepId === stepId);
       if (p) { p.status = "done"; p.completedAt = now; }
     };
 
-    const emailSteps = sorted.filter((s) => s.actionType === "email");
-    const smsSteps = sorted.filter((s) => s.actionType === "sms");
+    const actionSorted = sorted.filter((s) => s.actionType !== "delay");
+    const emailSteps = actionSorted.filter((s) => s.actionType === "email");
+    const smsSteps = actionSorted.filter((s) => s.actionType === "sms");
 
     switch (idx % 5) {
       case 0: // fresh — all pending
@@ -551,12 +636,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         if (emailSteps[0]) markDone(emailSteps[0].id);
         if (smsSteps[0]) markDone(smsSteps[0].id);
         break;
-      case 3: // first two steps done
-        if (sorted[0]) markDone(sorted[0].id);
-        if (sorted[1]) markDone(sorted[1].id);
+      case 3: // first two action steps done
+        if (actionSorted[0]) markDone(actionSorted[0].id);
+        if (actionSorted[1]) markDone(actionSorted[1].id);
         break;
       case 4: // all email and SMS done, calls pending
-        sorted.forEach((s) => {
+        actionSorted.forEach((s) => {
           if (s.actionType === "email" || s.actionType === "sms") markDone(s.id);
         });
         break;
@@ -610,18 +695,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
     if (!workflow) return;
-    const step = workflow.steps.find((s: WorkflowStep) => s.id === stepId);
+    const allSteps = mergeSteps(workflow.steps, enrollment.customSteps);
+    const step = allSteps.find((s) => s.id === stepId);
     if (!step) return;
     const contact = contacts.find((c) => c.id === enrollment.contactId);
 
     const now = new Date();
-    const updatedProgress = enrollment.stepProgress.map((p) =>
+    let finalProgress = enrollment.stepProgress.map((p) =>
       p.stepId === stepId ? { ...p, status: "done" as const, completedAt: now } : p,
     );
-    const allDone = updatedProgress.every((p) => p.status === "done" || p.status === "skipped");
+    // Auto-advance any delay steps that immediately follow the completed step
+    const sortedByOrder = allSteps;
+    let advIdx = sortedByOrder.findIndex((s) => s.id === stepId);
+    while (++advIdx < sortedByOrder.length && sortedByOrder[advIdx].actionType === "delay") {
+      const delayId = sortedByOrder[advIdx].id;
+      finalProgress = finalProgress.map((p) =>
+        p.stepId === delayId ? { ...p, status: "done" as const, completedAt: now } : p,
+      );
+    }
+    const allDone = finalProgress.every((p) => p.status === "done" || p.status === "skipped");
     const updatedEnrollment: WorkflowEnrollment = {
       ...enrollment,
-      stepProgress: updatedProgress,
+      stepProgress: finalProgress,
       status: allDone ? "completed" : "active",
     };
 
@@ -722,7 +817,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
-    const step = workflow?.steps.find((s: WorkflowStep) => s.id === stepId);
+    const allSteps = mergeSteps(workflow?.steps ?? [], enrollment.customSteps);
+    const step = allSteps.find((s) => s.id === stepId);
+    if (!step || step.actionType === "delay") return;
     const updatedProgress = enrollment.stepProgress.map((p) =>
       p.stepId === stepId && p.status === "pending"
         ? { ...p, status: "skipped" as const }
@@ -759,7 +856,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
-    const step = workflow?.steps.find((s: WorkflowStep) => s.id === stepId);
+    const allSteps = mergeSteps(workflow?.steps ?? [], enrollment.customSteps);
+    const step = allSteps.find((s) => s.id === stepId);
+    if (!step || step.actionType === "delay") return;
     const updatedProgress = enrollment.stepProgress.map((p) =>
       p.stepId === stepId && p.status === "skipped"
         ? { ...p, status: "pending" as const }
@@ -797,16 +896,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
     if (!workflow) return;
 
-    const sortedSteps = [...workflow.steps].sort((a: WorkflowStep, b: WorkflowStep) => a.dayOffset - b.dayOffset);
+    const sortedSteps = mergeSteps(workflow.steps, enrollment.customSteps);
     const targetIndex =
       targetStepId === "completed"
         ? sortedSteps.length
-        : sortedSteps.findIndex((s: WorkflowStep) => s.id === targetStepId);
+        : sortedSteps.findIndex((s) => s.id === targetStepId);
     if (targetIndex === -1) return;
 
     const now = new Date();
     const finalProgress = enrollment.stepProgress.map((p) => {
-      const stepIndex = sortedSteps.findIndex((s: WorkflowStep) => s.id === p.stepId);
+      const stepIndex = sortedSteps.findIndex((s) => s.id === p.stepId);
       if (stepIndex === -1) return p;
       if (stepIndex < targetIndex) {
         return { ...p, status: "done" as const, completedAt: p.completedAt ?? now };
@@ -837,10 +936,253 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
+    const targetStep = targetStepId !== "completed" ? sortedSteps[targetIndex] : null;
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-movetostep-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: "contact_moved_to_step",
+      source: workflow.name,
+      sourceType: "flow",
+      stepName: targetStep?.name ?? "Completed",
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+
     setWorkflowEnrollments(updatedEnrollments);
     setWorkflows(updatedWorkflows);
+    setContactActivity(updatedActivity);
     store.workflowEnrollments.write(updatedEnrollments);
     store.workflows.write(updatedWorkflows);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleAddCustomStep = (
+    enrollmentId: string,
+    stepDef: Omit<WorkflowStep, "id" | "order" | "dayOffset">,
+    insertAfterStepId: string | null,
+  ) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    if (!workflow) return;
+
+    const allSteps = mergeSteps(workflow.steps, enrollment.customSteps);
+    const existingOrders = allSteps.map((s) => s.order);
+    const afterOrder = insertAfterStepId
+      ? (allSteps.find((s) => s.id === insertAfterStepId)?.order ?? existingOrders[existingOrders.length - 1] ?? 0)
+      : (existingOrders[existingOrders.length - 1] ?? 0);
+    const newOrder = nextFractionalOrder(afterOrder, existingOrders);
+
+    const newStep: CustomWorkflowStep = {
+      ...stepDef,
+      id: `custom-${enrollmentId}-${Date.now()}`,
+      order: newOrder,
+      dayOffset: 0,
+      isCustom: true,
+      insertAfterStepId,
+      createdAt: new Date(),
+    };
+
+    const updatedCustomSteps = [...(enrollment.customSteps ?? []), newStep];
+    const updatedProgress = [...enrollment.stepProgress, { stepId: newStep.id, status: "pending" as const }];
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? { ...e, customSteps: updatedCustomSteps, stepProgress: updatedProgress } : e,
+    );
+
+    const now = new Date();
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-addcustom-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: "custom_step_added",
+      source: workflow.name,
+      sourceType: "flow",
+      stepName: newStep.name,
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+
+    setWorkflowEnrollments(updated);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleRemoveCustomStep = (enrollmentId: string, stepId: string) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    const step = enrollment.customSteps?.find((cs) => cs.id === stepId);
+    if (!step) return;
+
+    const updatedCustomSteps = (enrollment.customSteps ?? []).filter((cs) => cs.id !== stepId);
+    const updatedProgress = enrollment.stepProgress.filter((p) => p.stepId !== stepId);
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? { ...e, customSteps: updatedCustomSteps, stepProgress: updatedProgress } : e,
+    );
+
+    const now = new Date();
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-removecustom-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: "custom_step_removed",
+      source: workflow?.name,
+      sourceType: "flow",
+      stepName: step.name,
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+
+    setWorkflowEnrollments(updated);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleCustomizeDelay = (enrollmentId: string, stepId: string, delayDays: number) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const updatedProgress = enrollment.stepProgress.map((p) =>
+      p.stepId === stepId ? { ...p, customDelayDays: Math.max(1, delayDays) } : p,
+    );
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? { ...e, stepProgress: updatedProgress } : e,
+    );
+    setWorkflowEnrollments(updated);
+    store.workflowEnrollments.write(updated);
+  };
+
+  function extractVariables(text: string): string[] {
+    return [...new Set([...text.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))];
+  }
+
+  const handleCreateAdminEmailTemplate = (t: Omit<AdminEmailTemplate, "id" | "createdAt" | "updatedAt">) => {
+    const now = new Date();
+    const created: AdminEmailTemplate = {
+      ...t,
+      id: `etpl-${Date.now()}`,
+      variables: extractVariables(`${t.subject} ${t.body}`),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updated = [...adminEmailTemplates, created];
+    setAdminEmailTemplates(updated);
+    store.adminEmailTemplates.write(updated);
+  };
+
+  const handleUpdateAdminEmailTemplate = (id: string, updates: Partial<Omit<AdminEmailTemplate, "id" | "createdAt">>) => {
+    const now = new Date();
+    const updated = adminEmailTemplates.map((t) =>
+      t.id === id
+        ? {
+            ...t,
+            ...updates,
+            variables: extractVariables(`${updates.subject ?? t.subject} ${updates.body ?? t.body}`),
+            updatedAt: now,
+          }
+        : t,
+    );
+    setAdminEmailTemplates(updated);
+    store.adminEmailTemplates.write(updated);
+  };
+
+  const handleDeleteAdminEmailTemplate = (id: string) => {
+    const updated = adminEmailTemplates.filter((t) => t.id !== id);
+    setAdminEmailTemplates(updated);
+    store.adminEmailTemplates.write(updated);
+  };
+
+  const handleCreateSmsTemplate = (t: Omit<SmsTemplate, "id" | "createdAt" | "updatedAt">) => {
+    const now = new Date();
+    const created: SmsTemplate = {
+      ...t,
+      id: `sms-${Date.now()}`,
+      characterCount: t.message.length,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updated = [...smsTemplates, created];
+    setSmsTemplates(updated);
+    store.smsTemplates.write(updated);
+  };
+
+  const handleUpdateSmsTemplate = (id: string, updates: Partial<Omit<SmsTemplate, "id" | "createdAt">>) => {
+    const now = new Date();
+    const updated = smsTemplates.map((t) =>
+      t.id === id
+        ? { ...t, ...updates, characterCount: (updates.message ?? t.message).length, updatedAt: now }
+        : t,
+    );
+    setSmsTemplates(updated);
+    store.smsTemplates.write(updated);
+  };
+
+  const handleDeleteSmsTemplate = (id: string) => {
+    const updated = smsTemplates.filter((t) => t.id !== id);
+    setSmsTemplates(updated);
+    store.smsTemplates.write(updated);
+  };
+
+  const handleCreateVoicemailScript = (s: Omit<VoicemailScript, "id" | "createdAt" | "updatedAt">) => {
+    const now = new Date();
+    const created: VoicemailScript = { ...s, id: `vm-${Date.now()}`, createdAt: now, updatedAt: now };
+    const updated = [...voicemailScripts, created];
+    setVoicemailScripts(updated);
+    store.voicemailScripts.write(updated);
+  };
+
+  const handleUpdateVoicemailScript = (id: string, updates: Partial<Omit<VoicemailScript, "id" | "createdAt">>) => {
+    const now = new Date();
+    const updated = voicemailScripts.map((s) =>
+      s.id === id ? { ...s, ...updates, updatedAt: now } : s,
+    );
+    setVoicemailScripts(updated);
+    store.voicemailScripts.write(updated);
+  };
+
+  const handleDeleteVoicemailScript = (id: string) => {
+    const updated = voicemailScripts.filter((s) => s.id !== id);
+    setVoicemailScripts(updated);
+    store.voicemailScripts.write(updated);
+  };
+
+  const handleUpdateVoicemailSettings = (updates: Partial<VoicemailSettings>) => {
+    const merged = { ...voicemailSettings, ...updates };
+    setVoicemailSettings(merged);
+    store.voicemailSettings.write([merged]);
+  };
+
+  const handleCreateSenderIdentity = (s: Omit<SenderIdentity, "id" | "createdAt">) => {
+    const created: SenderIdentity = { ...s, id: `sid-${Date.now()}`, createdAt: new Date() };
+    const updated = s.isDefault
+      ? [...senderIdentities.map((i) => ({ ...i, isDefault: false })), created]
+      : [...senderIdentities, created];
+    setSenderIdentities(updated);
+    store.senderIdentities.write(updated);
+  };
+
+  const handleUpdateSenderIdentity = (id: string, updates: Partial<Omit<SenderIdentity, "id" | "createdAt">>) => {
+    const updated = senderIdentities.map((i) => {
+      if (i.id === id) return { ...i, ...updates };
+      if (updates.isDefault) return { ...i, isDefault: false };
+      return i;
+    });
+    setSenderIdentities(updated);
+    store.senderIdentities.write(updated);
+  };
+
+  const handleDeleteSenderIdentity = (id: string) => {
+    const updated = senderIdentities.filter((i) => i.id !== id);
+    setSenderIdentities(updated);
+    store.senderIdentities.write(updated);
+  };
+
+  const handleSetDefaultSenderIdentity = (id: string) => {
+    const updated = senderIdentities.map((i) => ({ ...i, isDefault: i.id === id }));
+    setSenderIdentities(updated);
+    store.senderIdentities.write(updated);
   };
 
   return (
@@ -881,6 +1223,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleSetEnrollmentStatus,
         handleSkipStep,
         handleUnskipStep,
+        handleCustomizeDelay,
+        handleAddCustomStep,
+        handleRemoveCustomStep,
+        adminEmailTemplates,
+        smsTemplates,
+        voicemailScripts,
+        voicemailSettings,
+        senderIdentities,
+        handleCreateAdminEmailTemplate,
+        handleUpdateAdminEmailTemplate,
+        handleDeleteAdminEmailTemplate,
+        handleCreateSmsTemplate,
+        handleUpdateSmsTemplate,
+        handleDeleteSmsTemplate,
+        handleCreateVoicemailScript,
+        handleUpdateVoicemailScript,
+        handleDeleteVoicemailScript,
+        handleUpdateVoicemailSettings,
+        handleCreateSenderIdentity,
+        handleUpdateSenderIdentity,
+        handleDeleteSenderIdentity,
+        handleSetDefaultSenderIdentity,
       }}
     >
       {children}

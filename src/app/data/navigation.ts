@@ -104,6 +104,6 @@ export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
   { id: "flows", label: "Workflows", dividerAfter: true },
   //{ id: "flow-builder", label: "Email Flows", dividerAfter: true },
 
-  { id: "templates", label: "Templates" },
   { id: "tasks", label: "Tasks", dividerAfter: true },
+  { id: "templates", label: "Configuration" },
 ];

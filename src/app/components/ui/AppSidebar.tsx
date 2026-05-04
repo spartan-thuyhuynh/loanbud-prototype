@@ -102,7 +102,7 @@ export function AppSidebar({
 
   return (
     <aside
-      className="flex flex-col bg-[#2c3e50] text-white shadow-xl transition-all duration-200 shrink-0"
+      className="flex flex-col bg-[#053f4f] text-white shadow-xl transition-all duration-200 shrink-0"
       style={{ width: collapsed ? 64 : 220 }}
     >
       {/* Header — logo only */}

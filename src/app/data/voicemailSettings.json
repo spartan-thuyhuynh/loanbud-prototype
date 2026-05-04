@@ -1,0 +1,9 @@
+[
+  {
+    "providerName": "Slybroadcast",
+    "fromPhoneNumber": "+15105551234",
+    "ringlessEnabled": true,
+    "defaultGreeting": "Hi, you have a message from LoanBud.",
+    "recordingEnabled": false
+  }
+]

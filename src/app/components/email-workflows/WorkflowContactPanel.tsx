@@ -1,9 +1,11 @@
 import type React from "react";
 import { useMemo, useState } from "react";
-import { Mail, MessageCircle, Phone, CheckCircle2, Clock, X, Pause, Play, SkipForward, ChevronDown, ChevronRight, User, MapPin, Ban } from "lucide-react";
+import { Mail, MessageCircle, Phone, CheckCircle2, Clock, X, Pause, Play, SkipForward, ChevronDown, ChevronRight, User, MapPin, Ban, Check, Plus, Trash2, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
-import type { ContactActivityRecord } from "../../types";
+import type { ContactActivityRecord, CustomWorkflowStep } from "../../types";
+import { mergeSteps } from "../../lib/workflowUtils";
 import { toast } from "sonner";
 
 const USER_TYPE_AVATAR: Record<string, string> = {
@@ -54,6 +56,9 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   step_unskipped: "Step Unskipped",
   enrollment_paused: "Flow Paused",
   enrollment_resumed: "Flow Resumed",
+  custom_step_added: "Custom Step Added",
+  custom_step_removed: "Custom Step Removed",
+  contact_moved_to_step: "Moved to Step",
 };
 
 function getDetail(entry: ContactActivityRecord): React.ReactNode {
@@ -82,6 +87,16 @@ function getDetail(entry: ContactActivityRecord): React.ReactNode {
   if (entry.type === "enrollment_paused" || entry.type === "enrollment_resumed") {
     return entry.type === "enrollment_paused" ? "Contact paused in this flow" : "Contact resumed in this flow";
   }
+  if (entry.type === "custom_step_added" || entry.type === "custom_step_removed") {
+    return entry.stepName
+      ? <><span className="font-semibold">Step</span> — {entry.stepName}</>
+      : "—";
+  }
+  if (entry.type === "contact_moved_to_step") {
+    return entry.stepName
+      ? <><span className="font-semibold">Target</span> — {entry.stepName}</>
+      : "—";
+  }
   return "—";
 }
 
@@ -96,18 +111,56 @@ interface WorkflowContactPanelProps {
 type TabId = "steps" | "history";
 
 export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId, onClose }: WorkflowContactPanelProps) {
-  const { contacts, workflowEnrollments, workflows, contactActivity, handleSetEnrollmentStatus, handleSkipStep, handleUnskipStep } = useAppData();
+  const { contacts, workflowEnrollments, workflows, contactActivity, handleSetEnrollmentStatus, handleSkipStep, handleUnskipStep, handleCustomizeDelay, handleMoveToStep, handleAddCustomStep, handleRemoveCustomStep } = useAppData();
   const [activeTab, setActiveTab] = useState<TabId>("steps");
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [selectedStepIds, setSelectedStepIds] = useState<Set<string>>(new Set());
+
+  // Edit mode: unlocks per-contact journey editing controls
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Shared confirmation dialog
+  const [confirm, setConfirm] = useState<{ title: string; description: string; onConfirm: () => void } | null>(null);
+  const askConfirm = (title: string, description: string, onConfirm: () => void) =>
+    setConfirm({ title, description, onConfirm });
+
+  // Per-delay draft state: stepId → pending days value
+  const [delayDrafts, setDelayDrafts] = useState<Record<string, number>>({});
+
+  // Inline insert form: tracks which stepId the "+" was clicked after (undefined = form closed)
+  const [activeInsertPoint, setActiveInsertPoint] = useState<string | null | undefined>(undefined);
+  const [addStepDraft, setAddStepDraft] = useState<{
+    name: string;
+    actionType: "email" | "sms" | "call-reminder";
+    subject: string;
+    body: string;
+    message: string;
+    note: string;
+  }>({ name: "", actionType: "email", subject: "", body: "", message: "", note: "" });
+
+  const resetInsertForm = () => {
+    setActiveInsertPoint(undefined);
+    setAddStepDraft({ name: "", actionType: "email", subject: "", body: "", message: "", note: "" });
+  };
+
+  const exitEditMode = () => {
+    setIsEditing(false);
+    resetInsertForm();
+    setDelayDrafts({});
+  };
 
   const contact = contactId ? contacts.find((c) => c.id === contactId) : null;
   const enrollment = enrollmentId ? workflowEnrollments.find((e) => e.id === enrollmentId) : null;
   const workflow = workflows.find((w) => w.id === workflowId);
 
   const sortedSteps = useMemo(
-    () => [...(workflow?.steps ?? [])].sort((a, b) => a.dayOffset - b.dayOffset),
-    [workflow],
+    () => mergeSteps(workflow?.steps ?? [], enrollment?.customSteps),
+    [workflow, enrollment?.customSteps],
+  );
+
+  const actionSteps = useMemo(
+    () => sortedSteps.filter((s) => s.actionType !== "delay"),
+    [sortedSteps],
   );
 
   const flowActivity = useMemo(() => {
@@ -136,7 +189,9 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
       : "bg-yellow-100 text-yellow-700 border border-yellow-200";
 
   const firstPendingIdx = sortedSteps.findIndex(
-    (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
+    (step) =>
+      step.actionType !== "delay" &&
+      enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
   );
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
@@ -153,24 +208,59 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
   };
 
   const handleBulkSkip = () => {
-    selectedStepIds.forEach((stepId) => handleSkipStep(enrollment.id, stepId));
-    toast.success(`${selectedStepIds.size} step${selectedStepIds.size > 1 ? "s" : ""} skipped`);
-    setSelectedStepIds(new Set());
+    askConfirm(
+      `Skip ${selectedStepIds.size} step${selectedStepIds.size > 1 ? "s" : ""}?`,
+      "These steps will be marked as skipped and cannot be automatically undone in bulk.",
+      () => {
+        selectedStepIds.forEach((stepId) => handleSkipStep(enrollment.id, stepId));
+        toast.success(`${selectedStepIds.size} step${selectedStepIds.size > 1 ? "s" : ""} skipped`);
+        setSelectedStepIds(new Set());
+      },
+    );
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="w-[1200px] p-0 gap-0 flex flex-col" style={{ height: "85vh" }}>
         {/* Header — full width */}
         <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-base font-semibold">Contact in Flow</DialogTitle>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-base font-semibold">Contact in Flow</DialogTitle>
+              {isEditing && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                  Editing Journey
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {!isCompleted && (
+                isEditing ? (
+                  <button
+                    onClick={exitEditMode}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                  >
+                    <Check className="h-3 w-3" />
+                    Done Editing
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit Journey
+                  </button>
+                )
+              )}
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -236,7 +326,103 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                   <div className="relative">
                     <div className="absolute left-[35px] top-5 bottom-5 w-px bg-border" />
 
-                    {sortedSteps.map((step, idx) => {
+                    {sortedSteps.flatMap((step, idx) => {
+                      const isLastStep = idx === sortedSteps.length - 1;
+                      const showInsertZone = !isCompleted && !isLastStep && isEditing;
+                      if (step.actionType === "delay") {
+                        const delayProgress = enrollment.stepProgress.find((p) => p.stepId === step.id);
+                        const savedDays = delayProgress?.customDelayDays ?? step.delayDays ?? 1;
+                        const draftDays = delayDrafts[step.id] ?? savedDays;
+                        const hasDraft = draftDays !== savedDays;
+                        const stepElement = (
+                          <div key={step.id} className="relative flex items-center gap-3 my-1 pl-[44px]">
+                            <div className="flex-1 flex items-center gap-2">
+                              <div className="h-px flex-1 bg-border" />
+                              <div className="flex flex-col items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-full px-2.5 py-1">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-[11px] font-medium text-muted-foreground">Wait</span>
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setDelayDrafts((d) => ({ ...d, [step.id]: Math.max(1, draftDays - 1) }))}
+                                        className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-bold leading-none"
+                                      >
+                                        −
+                                      </button>
+                                      <span className={`text-[11px] font-bold min-w-[14px] text-center ${hasDraft ? "text-primary" : "text-foreground"}`}>{draftDays}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setDelayDrafts((d) => ({ ...d, [step.id]: draftDays + 1 }))}
+                                        className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-bold leading-none"
+                                      >
+                                        +
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-[11px] font-bold min-w-[14px] text-center text-foreground">{savedDays}</span>
+                                  )}
+                                  <span className="text-[11px] text-muted-foreground">{draftDays === 1 ? "day" : "days"}</span>
+                                </div>
+                                {hasDraft && (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => askConfirm(
+                                        "Apply delay change?",
+                                        `Set wait to ${draftDays} day${draftDays !== 1 ? "s" : ""} for this contact only.`,
+                                        () => {
+                                          handleCustomizeDelay(enrollment.id, step.id, draftDays);
+                                          setDelayDrafts((d) => { const n = { ...d }; delete n[step.id]; return n; });
+                                          toast.success(`Delay updated to ${draftDays} day${draftDays !== 1 ? "s" : ""}`);
+                                        },
+                                      )}
+                                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    >
+                                      <Check className="h-2.5 w-2.5" /> Apply
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDelayDrafts((d) => { const n = { ...d }; delete n[step.id]; return n; })}
+                                      className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      Discard
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="h-px flex-1 bg-border" />
+                            </div>
+                          </div>
+                        );
+                        return [stepElement, showInsertZone && activeInsertPoint === step.id ? (
+                          <div key={`ins-${step.id}`} className="ml-[52px] my-1 rounded-lg border border-violet-200 bg-violet-50/40 p-4 space-y-3 z-10 relative">
+                            <p className="text-xs font-semibold text-violet-700">New custom step</p>
+                            <div className="flex items-center gap-2">
+                              {(["email", "sms", "call-reminder"] as const).map((t) => (
+                                <button key={t} type="button" onClick={() => setAddStepDraft((d) => ({ ...d, actionType: t }))} className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${addStepDraft.actionType === t ? "border-violet-400 bg-violet-100 text-violet-700" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}>
+                                  {STEP_ICON[t]} {t === "call-reminder" ? "Call" : t.charAt(0).toUpperCase() + t.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                            <input autoFocus type="text" placeholder="Step name" value={addStepDraft.name} onChange={(e) => setAddStepDraft((d) => ({ ...d, name: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                            {addStepDraft.actionType === "email" && (<><input type="text" placeholder="Subject" value={addStepDraft.subject} onChange={(e) => setAddStepDraft((d) => ({ ...d, subject: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" /><textarea placeholder="Body" value={addStepDraft.body} onChange={(e) => setAddStepDraft((d) => ({ ...d, body: e.target.value }))} rows={3} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" /></>)}
+                            {addStepDraft.actionType === "sms" && <textarea placeholder="Message" value={addStepDraft.message} onChange={(e) => setAddStepDraft((d) => ({ ...d, message: e.target.value }))} rows={3} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" />}
+                            {addStepDraft.actionType === "call-reminder" && <input type="text" placeholder="Note" value={addStepDraft.note} onChange={(e) => setAddStepDraft((d) => ({ ...d, note: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button type="button" disabled={!addStepDraft.name.trim()} onClick={() => { if (!addStepDraft.name.trim()) return; handleAddCustomStep(enrollment.id, { name: addStepDraft.name.trim(), actionType: addStepDraft.actionType, ...(addStepDraft.actionType === "email" && { subject: addStepDraft.subject, body: addStepDraft.body }), ...(addStepDraft.actionType === "sms" && { message: addStepDraft.message }), ...(addStepDraft.actionType === "call-reminder" && { note: addStepDraft.note }) }, step.id); toast.success(`Custom step "${addStepDraft.name.trim()}" added`); resetInsertForm(); }} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"><Plus className="h-3 w-3" /> Add Step</button>
+                              <button type="button" onClick={resetInsertForm} className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Cancel</button>
+                            </div>
+                          </div>
+                        ) : showInsertZone ? (
+                          <div key={`ins-${step.id}`} className="group relative h-5 flex items-center -my-0.5 z-10">
+                            <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => setActiveInsertPoint(step.id)} className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer"><Plus className="h-2.5 w-2.5" /> Add step</button>
+                            </div>
+                          </div>
+                        ) : null];
+                      }
                       const progress = enrollment.stepProgress.find((p) => p.stepId === step.id);
                       const status = progress?.status ?? "pending";
                       const isCurrentStep = idx === firstPendingIdx;
@@ -244,7 +430,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       const isDone = status === "done";
                       const isPending = status === "pending";
                       const isFuture = isPending && idx > firstPendingIdx;
-                      const canSkip = isPending && !isCompleted;
+                      const canSkip = isPending && !isCompleted && step.actionType !== "delay";
                       const isExpanded = expandedSteps.has(step.id);
                       const isSelected = selectedStepIds.has(step.id);
 
@@ -272,7 +458,9 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         </div>
                       );
 
-                      return (
+                      const isCustom = !!(step as CustomWorkflowStep).isCustom;
+
+                      const stepElement = (
                         <div key={step.id} className={`relative flex gap-3 mb-2 ${isSkipped ? "opacity-60" : ""}`}>
                           <div className="flex flex-col items-center shrink-0 pt-2">
                             {timelineNode}
@@ -283,10 +471,12 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                               ? "border-primary/50 bg-primary/5 shadow-sm"
                               : isSkipped
                               ? "border-dashed border-gray-200 bg-muted/20"
+                              : isCustom
+                              ? "border-dashed border-violet-300 bg-violet-50/40"
                               : isSelected
                               ? "border-primary/30 bg-primary/5"
                               : isDone
-                              ? "border-green-100 bg-green-50/30"
+                              ? "border-border bg-muted/20"
                               : "border-border bg-card"
                           }`}>
                             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -302,7 +492,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                               )}
 
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                isSkipped ? "bg-gray-100 text-gray-300" : STEP_ICON_BG[step.actionType] ?? "bg-muted text-muted-foreground"
+                                isSkipped ? "bg-gray-100 text-gray-300" : isCustom ? "bg-violet-100 text-violet-600" : STEP_ICON_BG[step.actionType] ?? "bg-muted text-muted-foreground"
                               }`}>
                                 {STEP_ICON[step.actionType]}
                               </div>
@@ -324,8 +514,15 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                 }`}>
                                   {step.name}
                                 </span>
+                                {isCustom && (
+                                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-violet-300 text-violet-600 bg-violet-50">
+                                    Custom
+                                  </span>
+                                )}
                                 <span className={`text-[11px] shrink-0 ${isSkipped ? "text-muted-foreground/50" : "text-muted-foreground"}`}>
-                                  Day {step.dayOffset}
+                                  {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+                                    new Date(new Date(enrollment.startDate).getTime() + step.dayOffset * 86_400_000)
+                                  )}
                                 </span>
                                 {hasDetail && !isSkipped && (
                                   isExpanded
@@ -342,7 +539,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                   </span>
                                 )}
                                 {isDone && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground whitespace-nowrap">
                                     <CheckCircle2 className="h-2.5 w-2.5" />
                                     Done{progress?.completedAt ? ` · ${formatDate(progress.completedAt)}` : ""}
                                   </span>
@@ -366,7 +563,11 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
 
                                 {canSkip && !isSelected && (
                                   <button
-                                    onClick={() => { handleSkipStep(enrollment.id, step.id); toast.success(`"${step.name}" skipped`); }}
+                                    onClick={() => askConfirm(
+                                      `Skip "${step.name}"?`,
+                                      "This step will be marked as skipped. You can unskip it later.",
+                                      () => { handleSkipStep(enrollment.id, step.id); toast.success(`"${step.name}" skipped`); },
+                                    )}
                                     className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border transition-colors cursor-pointer ${
                                       isFuture
                                         ? "border-gray-200 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -380,11 +581,29 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
 
                                 {isSkipped && (
                                   <button
-                                    onClick={() => { handleUnskipStep(enrollment.id, step.id); toast.success(`"${step.name}" restored`); }}
+                                    onClick={() => askConfirm(
+                                      `Restore "${step.name}"?`,
+                                      "This step will be marked as pending again.",
+                                      () => { handleUnskipStep(enrollment.id, step.id); toast.success(`"${step.name}" restored`); },
+                                    )}
                                     className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                                   >
                                     <SkipForward className="h-3 w-3 rotate-180" />
                                     Unskip
+                                  </button>
+                                )}
+
+                                {isCustom && (
+                                  <button
+                                    onClick={() => askConfirm(
+                                      `Remove "${step.name}"?`,
+                                      "This custom step will be permanently removed from this contact's journey.",
+                                      () => { handleRemoveCustomStep(enrollment.id, step.id); toast.success(`"${step.name}" removed`); },
+                                    )}
+                                    className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Remove
                                   </button>
                                 )}
                               </div>
@@ -438,6 +657,119 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                           </div>
                         </div>
                       );
+
+                      // Insert zone between steps (hover "+" connector)
+                      const insertZoneKey = `ins-${step.id}`;
+                      const insertZone = showInsertZone && (
+                        activeInsertPoint === step.id ? (
+                          // Expanded inline form at this position
+                          <div key={insertZoneKey} className="ml-[52px] my-1 rounded-lg border border-violet-200 bg-violet-50/40 p-4 space-y-3 z-10 relative">
+                            <p className="text-xs font-semibold text-violet-700">New custom step</p>
+                            <div className="flex items-center gap-2">
+                              {(["email", "sms", "call-reminder"] as const).map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setAddStepDraft((d) => ({ ...d, actionType: t }))}
+                                  className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
+                                    addStepDraft.actionType === t
+                                      ? "border-violet-400 bg-violet-100 text-violet-700"
+                                      : "border-border bg-background text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {STEP_ICON[t]} {t === "call-reminder" ? "Call" : t.charAt(0).toUpperCase() + t.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              autoFocus
+                              type="text"
+                              placeholder="Step name"
+                              value={addStepDraft.name}
+                              onChange={(e) => setAddStepDraft((d) => ({ ...d, name: e.target.value }))}
+                              className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            {addStepDraft.actionType === "email" && (
+                              <>
+                                <input
+                                  type="text"
+                                  placeholder="Subject"
+                                  value={addStepDraft.subject}
+                                  onChange={(e) => setAddStepDraft((d) => ({ ...d, subject: e.target.value }))}
+                                  className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <textarea
+                                  placeholder="Body"
+                                  value={addStepDraft.body}
+                                  onChange={(e) => setAddStepDraft((d) => ({ ...d, body: e.target.value }))}
+                                  rows={3}
+                                  className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                />
+                              </>
+                            )}
+                            {addStepDraft.actionType === "sms" && (
+                              <textarea
+                                placeholder="Message"
+                                value={addStepDraft.message}
+                                onChange={(e) => setAddStepDraft((d) => ({ ...d, message: e.target.value }))}
+                                rows={3}
+                                className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                              />
+                            )}
+                            {addStepDraft.actionType === "call-reminder" && (
+                              <input
+                                type="text"
+                                placeholder="Note"
+                                value={addStepDraft.note}
+                                onChange={(e) => setAddStepDraft((d) => ({ ...d, note: e.target.value }))}
+                                className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            )}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                disabled={!addStepDraft.name.trim()}
+                                onClick={() => {
+                                  if (!addStepDraft.name.trim()) return;
+                                  handleAddCustomStep(
+                                    enrollment.id,
+                                    {
+                                      name: addStepDraft.name.trim(),
+                                      actionType: addStepDraft.actionType,
+                                      ...(addStepDraft.actionType === "email" && { subject: addStepDraft.subject, body: addStepDraft.body }),
+                                      ...(addStepDraft.actionType === "sms" && { message: addStepDraft.message }),
+                                      ...(addStepDraft.actionType === "call-reminder" && { note: addStepDraft.note }),
+                                    },
+                                    step.id,
+                                  );
+                                  toast.success(`Custom step "${addStepDraft.name.trim()}" added`);
+                                  resetInsertForm();
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="h-3 w-3" /> Add Step
+                              </button>
+                              <button type="button" onClick={resetInsertForm} className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // Thin hover strip with "+" button
+                          <div key={insertZoneKey} className="group relative h-5 flex items-center -my-0.5 z-10">
+                            <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setActiveInsertPoint(step.id)}
+                                className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer"
+                              >
+                                <Plus className="h-2.5 w-2.5" /> Add step
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      );
+
+                      return [stepElement, insertZone];
                     })}
                   </div>
                 </div>
@@ -542,8 +874,16 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
               <button
                 onClick={() => {
                   const next = isPaused ? "active" : "paused";
-                  handleSetEnrollmentStatus(enrollment.id, next);
-                  toast.success(next === "paused" ? "Contact paused in flow" : "Contact resumed in flow");
+                  askConfirm(
+                    isPaused ? "Resume contact?" : "Pause contact?",
+                    isPaused
+                      ? "The contact will be re-enrolled and continue from their current step."
+                      : "The contact will be paused. No steps will advance until resumed.",
+                    () => {
+                      handleSetEnrollmentStatus(enrollment.id, next);
+                      toast.success(next === "paused" ? "Contact paused in flow" : "Contact resumed in flow");
+                    },
+                  );
                 }}
                 className={`w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-md border transition-colors cursor-pointer ${
                   isPaused
@@ -555,9 +895,62 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                 {isPaused ? "Resume" : "Pause"}
               </button>
             )}
+
+            {/* Move to step */}
+            {!isCompleted && isEditing && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Move to step</p>
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    const targetStep = val === "completed" ? null : actionSteps.find((s) => s.id === val);
+                    const label = targetStep ? targetStep.name : "Completed";
+                    askConfirm(
+                      `Move contact to "${label}"?`,
+                      "Steps before this will be marked done; steps after will be reset to pending.",
+                      () => {
+                        handleMoveToStep(enrollment.id, val as string);
+                        toast.success(`Contact moved to "${label}"`);
+                      },
+                    );
+                    e.target.value = "";
+                  }}
+                  className="w-full text-xs border border-border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="">Select a step…</option>
+                  {actionSteps.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                  <option value="completed">— Mark completed —</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirm !== null} onOpenChange={(v) => { if (!v) setConfirm(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+          <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setConfirm(null)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              confirm?.onConfirm();
+              setConfirm(null);
+            }}
+          >
+            Confirm
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "vm-1",
+    "name": "Initial Outreach Script",
+    "scriptText": "Hi {{first_name}}, this is [Agent Name] from LoanBud. I noticed your listing and wanted to personally reach out about our fast approval process. Please call me back at [Phone Number] when you get a chance. Talk soon!",
+    "audioUrl": "",
+    "estimatedDurationSeconds": 22,
+    "category": "Initial Outreach",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "vm-2",
+    "name": "Follow-up Script",
+    "scriptText": "Hi {{first_name}}, this is [Agent Name] from LoanBud following up on my earlier message about {{listing_name}}. I'd love to connect — please call [Phone Number] at your convenience. Have a great day!",
+    "audioUrl": "",
+    "estimatedDurationSeconds": 20,
+    "category": "Follow-up",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  },
+  {
+    "id": "vm-3",
+    "name": "Re-engagement Script",
+    "scriptText": "Hi {{first_name}}, this is [Agent Name] from LoanBud. It's been a while since we last connected and I wanted to reach out one more time. We may have options that fit your current situation — give me a call at [Phone Number]. Thanks!",
+    "audioUrl": "",
+    "estimatedDurationSeconds": 26,
+    "category": "Re-engagement",
+    "createdAt": "2026-04-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T09:00:00.000Z"
+  }
+]

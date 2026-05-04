@@ -162,7 +162,8 @@ export interface WorkflowStep {
   name: string;
   order: number;
   dayOffset: number;
-  actionType: "email" | "sms" | "call-reminder";
+  actionType: "email" | "sms" | "call-reminder" | "delay";
+  delayDays?: number;
   templateId?: string;
   templateName?: string;
   senderIdentity?: string;
@@ -192,6 +193,13 @@ export interface WorkflowStepProgress {
   stepId: string;
   status: "pending" | "done" | "skipped";
   completedAt?: Date;
+  customDelayDays?: number;
+}
+
+export interface CustomWorkflowStep extends WorkflowStep {
+  isCustom: true;
+  insertAfterStepId: string | null;
+  createdAt: Date;
 }
 
 export interface WorkflowEnrollment {
@@ -201,6 +209,7 @@ export interface WorkflowEnrollment {
   startDate: Date;
   status: "active" | "completed" | "paused";
   stepProgress: WorkflowStepProgress[];
+  customSteps?: CustomWorkflowStep[];
 }
 
 export type ApplicationStage =
@@ -265,7 +274,7 @@ export interface BusinessAcquisitionRecord {
 export interface ContactActivityRecord {
   id: string;
   contactId: string;
-  type: "task_completed" | "email_sent" | "sms_sent" | "step_skipped" | "step_unskipped" | "enrollment_paused" | "enrollment_resumed";
+  type: "task_completed" | "email_sent" | "sms_sent" | "step_skipped" | "step_unskipped" | "enrollment_paused" | "enrollment_resumed" | "custom_step_added" | "custom_step_removed" | "contact_moved_to_step";
   taskType?: string;
   disposition?: string;
   note?: string;
@@ -276,4 +285,78 @@ export interface ContactActivityRecord {
   message?: string;
   assignee?: string;
   timestamp: Date;
+}
+
+// ── Admin Configuration Types ─────────────────────────────────────────────────
+
+export type EmailTemplateCategory =
+  | "Initial Outreach"
+  | "Follow-up"
+  | "Nurture"
+  | "Re-engagement"
+  | "Custom";
+
+export interface AdminEmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  category: EmailTemplateCategory;
+  senderType: "brand" | "loan-officer";
+  variables: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type SmsTemplateCategory =
+  | "Follow-up"
+  | "Reminder"
+  | "Appointment"
+  | "Alert"
+  | "Custom";
+
+export interface SmsTemplate {
+  id: string;
+  name: string;
+  message: string;
+  characterCount: number;
+  category: SmsTemplateCategory;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type VoicemailCategory =
+  | "Initial Outreach"
+  | "Follow-up"
+  | "Re-engagement"
+  | "Custom";
+
+export interface VoicemailScript {
+  id: string;
+  name: string;
+  scriptText: string;
+  audioUrl: string;
+  estimatedDurationSeconds: number;
+  category: VoicemailCategory;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface VoicemailSettings {
+  providerName: string;
+  fromPhoneNumber: string;
+  ringlessEnabled: boolean;
+  defaultGreeting: string;
+  recordingEnabled: boolean;
+}
+
+export type SenderIdentityType = "brand" | "loan-officer";
+
+export interface SenderIdentity {
+  id: string;
+  displayName: string;
+  emailAddress: string;
+  type: SenderIdentityType;
+  isDefault: boolean;
+  createdAt: Date;
 }
