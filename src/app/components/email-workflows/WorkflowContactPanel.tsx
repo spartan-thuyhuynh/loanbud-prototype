@@ -1,11 +1,13 @@
 import type React from "react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { Mail, MessageCircle, Phone, CheckCircle2, Clock, X, Pause, Play, SkipForward, ChevronDown, ChevronRight, User, MapPin, Ban, Check, Plus, Trash2, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { ContactActivityRecord, CustomWorkflowStep } from "../../types";
 import { mergeSteps } from "../../lib/workflowUtils";
+import { StepConfigFields, STEP_DEFAULTS, TYPE_ICON_BG, StepTypeIcon, type StepDraft } from "./StepConfigForm";
 import { toast } from "sonner";
 
 const USER_TYPE_AVATAR: Record<string, string> = {
@@ -124,29 +126,75 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
   const askConfirm = (title: string, description: string, onConfirm: () => void) =>
     setConfirm({ title, description, onConfirm });
 
-  // Per-delay draft state: stepId → pending days value
-  const [delayDrafts, setDelayDrafts] = useState<Record<string, number>>({});
+  const [delayDrafts, setDelayDrafts] = useState<Record<string, { days: number; hours: number; minutes: number }>>({});
 
-  // Inline insert form: tracks which stepId the "+" was clicked after (undefined = form closed)
+  // Inline insert form
   const [activeInsertPoint, setActiveInsertPoint] = useState<string | null | undefined>(undefined);
-  const [addStepDraft, setAddStepDraft] = useState<{
-    name: string;
-    actionType: "email" | "sms" | "call-reminder";
-    subject: string;
-    body: string;
-    message: string;
-    note: string;
-  }>({ name: "", actionType: "email", subject: "", body: "", message: "", note: "" });
+  const [insertDraft, setInsertDraft] = useState<StepDraft>({ name: "", actionType: "email" });
+
+  // Staged (pending) custom steps — applied on Done Editing confirmation
+  const [pendingCustomSteps, setPendingCustomSteps] = useState<Array<{
+    tempId: string;
+    stepDef: StepDraft;
+    insertAfterStepId: string | null;
+  }>>([]);
+
+  const defaultInsertDraft = (): StepDraft => ({ name: "", actionType: "email" });
 
   const resetInsertForm = () => {
     setActiveInsertPoint(undefined);
-    setAddStepDraft({ name: "", actionType: "email", subject: "", body: "", message: "", note: "" });
+    setInsertDraft(defaultInsertDraft());
+  };
+
+  const fmtDelay = (d: number, h: number, m: number) => {
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    return parts.length ? parts.join(" ") : "0m";
   };
 
   const exitEditMode = () => {
-    setIsEditing(false);
-    resetInsertForm();
-    setDelayDrafts({});
+    const pendingDelays = Object.entries(delayDrafts);
+    const hasChanges = pendingDelays.length > 0 || pendingCustomSteps.length > 0;
+
+    if (!hasChanges || !enrollment) {
+      setIsEditing(false);
+      resetInsertForm();
+      setDelayDrafts({});
+      setPendingCustomSteps([]);
+      return;
+    }
+
+    const parts: string[] = [];
+    if (pendingCustomSteps.length > 0) {
+      parts.push(pendingCustomSteps.map((p) => `Add "${p.stepDef.name || STEP_DEFAULTS[p.stepDef.actionType]}"`).join(", "));
+    }
+    if (pendingDelays.length > 0) {
+      parts.push(
+        pendingDelays.map(([stepId, { days, hours, minutes }]) => {
+          const step = sortedSteps.find((s) => s.id === stepId);
+          return `"${step?.name ?? stepId}" → ${fmtDelay(days, hours, minutes)}`;
+        }).join(", "),
+      );
+    }
+
+    askConfirm(
+      "Apply changes?",
+      `Save for this contact only: ${parts.join(" · ")}`,
+      () => {
+        pendingCustomSteps.forEach(({ stepDef, insertAfterStepId }) => {
+          handleAddCustomStep(enrollment.id, stepDef, insertAfterStepId);
+        });
+        pendingDelays.forEach(([stepId, { days, hours, minutes }]) => {
+          handleCustomizeDelay(enrollment.id, stepId, days, hours, minutes);
+        });
+        setIsEditing(false);
+        resetInsertForm();
+        setDelayDrafts({});
+        setPendingCustomSteps([]);
+      },
+    );
   };
 
   const contact = contactId ? contacts.find((c) => c.id === contactId) : null;
@@ -331,97 +379,161 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       const showInsertZone = !isCompleted && !isLastStep && isEditing;
                       if (step.actionType === "delay") {
                         const delayProgress = enrollment.stepProgress.find((p) => p.stepId === step.id);
-                        const savedDays = delayProgress?.customDelayDays ?? step.delayDays ?? 1;
-                        const draftDays = delayDrafts[step.id] ?? savedDays;
-                        const hasDraft = draftDays !== savedDays;
+                        const savedDays = delayProgress?.customDelayDays ?? step.delayDays ?? 0;
+                        const savedHours = delayProgress?.customDelayHours ?? step.delayHours ?? 0;
+                        const savedMinutes = delayProgress?.customDelayMinutes ?? step.delayMinutes ?? 0;
+                        const draft = delayDrafts[step.id];
+                        const draftDays = draft?.days ?? savedDays;
+                        const draftHours = draft?.hours ?? savedHours;
+                        const draftMinutes = draft?.minutes ?? savedMinutes;
+                        const hasDraft = draft !== undefined && (draftDays !== savedDays || draftHours !== savedHours || draftMinutes !== savedMinutes);
+
+                        const setDraft = (patch: Partial<{ days: number; hours: number; minutes: number }>) =>
+                          setDelayDrafts((d) => ({ ...d, [step.id]: { days: draftDays, hours: draftHours, minutes: draftMinutes, ...patch } }));
+
+                        const fmtDelay = (d: number, h: number, m: number) => {
+                          const parts: string[] = [];
+                          if (d > 0) parts.push(`${d}d`);
+                          if (h > 0) parts.push(`${h}h`);
+                          if (m > 0) parts.push(`${m}m`);
+                          return parts.length ? parts.join(" ") : "0m";
+                        };
+
+                        const delayStatus = enrollment.stepProgress.find((p) => p.stepId === step.id)?.status ?? "pending";
+                        const delayIsDone = delayStatus === "done";
+                        const delayIsCurrent = idx === firstPendingIdx;
+
+                        const delayTimelineNode = delayIsDone ? (
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 z-10 ring-2 ring-background">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        ) : delayIsCurrent ? (
+                          <div className="w-8 h-8 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center shrink-0 z-10 ring-2 ring-background">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-background border-2 border-border flex items-center justify-center shrink-0 z-10">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground/40" />
+                          </div>
+                        );
+
                         const stepElement = (
-                          <div key={step.id} className="relative flex items-center gap-3 my-1 pl-[44px]">
-                            <div className="flex-1 flex items-center gap-2">
-                              <div className="h-px flex-1 bg-border" />
-                              <div className="flex flex-col items-center gap-1 shrink-0">
-                                <div className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-full px-2.5 py-1">
-                                  <Clock className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-[11px] font-medium text-muted-foreground">Wait</span>
-                                  {isEditing ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => setDelayDrafts((d) => ({ ...d, [step.id]: Math.max(1, draftDays - 1) }))}
-                                        className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-bold leading-none"
-                                      >
-                                        −
-                                      </button>
-                                      <span className={`text-[11px] font-bold min-w-[14px] text-center ${hasDraft ? "text-primary" : "text-foreground"}`}>{draftDays}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setDelayDrafts((d) => ({ ...d, [step.id]: draftDays + 1 }))}
-                                        className="w-4 h-4 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs font-bold leading-none"
-                                      >
-                                        +
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <span className="text-[11px] font-bold min-w-[14px] text-center text-foreground">{savedDays}</span>
-                                  )}
-                                  <span className="text-[11px] text-muted-foreground">{draftDays === 1 ? "day" : "days"}</span>
+                          <div key={step.id} className="relative flex gap-3 mb-2">
+                            <div className="flex flex-col items-center shrink-0 pt-2">
+                              {delayTimelineNode}
+                            </div>
+                            <div className={`flex-1 min-w-0 rounded-lg border mb-1 ${delayIsDone ? "border-border bg-muted/20" : "border-border bg-card"}`}>
+                              <div className="flex items-center gap-2 px-3 py-2.5">
+                                <div className="w-3.5 shrink-0" />
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-muted text-muted-foreground">
+                                  <Clock className="h-3.5 w-3.5" />
                                 </div>
-                                {hasDraft && (
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => askConfirm(
-                                        "Apply delay change?",
-                                        `Set wait to ${draftDays} day${draftDays !== 1 ? "s" : ""} for this contact only.`,
-                                        () => {
-                                          handleCustomizeDelay(enrollment.id, step.id, draftDays);
-                                          setDelayDrafts((d) => { const n = { ...d }; delete n[step.id]; return n; });
-                                          toast.success(`Delay updated to ${draftDays} day${draftDays !== 1 ? "s" : ""}`);
-                                        },
-                                      )}
-                                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                    >
-                                      <Check className="h-2.5 w-2.5" /> Apply
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setDelayDrafts((d) => { const n = { ...d }; delete n[step.id]; return n; })}
-                                      className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                      Discard
-                                    </button>
+                                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">{step.name}</span>
+                                {isEditing ? (
+                                  <div className="flex items-center gap-1 ml-1 flex-wrap">
+                                    <button type="button" onClick={() => setDraft({ days: Math.max(0, draftDays - 1) })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">−</button>
+                                    <span className={`text-sm font-semibold min-w-[16px] text-center ${hasDraft ? "text-primary" : "text-foreground"}`}>{draftDays}</span>
+                                    <button type="button" onClick={() => setDraft({ days: draftDays + 1 })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">+</button>
+                                    <span className="text-xs text-muted-foreground mr-2">d</span>
+                                    <button type="button" onClick={() => setDraft({ hours: Math.max(0, draftHours - 1) })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">−</button>
+                                    <span className={`text-sm font-semibold min-w-[16px] text-center ${hasDraft ? "text-primary" : "text-foreground"}`}>{draftHours}</span>
+                                    <button type="button" onClick={() => setDraft({ hours: Math.min(23, draftHours + 1) })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">+</button>
+                                    <span className="text-xs text-muted-foreground mr-2">h</span>
+                                    <button type="button" onClick={() => setDraft({ minutes: Math.max(0, draftMinutes - 5) })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">−</button>
+                                    <span className={`text-sm font-semibold min-w-[16px] text-center ${hasDraft ? "text-primary" : "text-foreground"}`}>{draftMinutes}</span>
+                                    <button type="button" onClick={() => setDraft({ minutes: Math.min(55, draftMinutes + 5) })} className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm font-bold text-muted-foreground hover:text-foreground leading-none">+</button>
+                                    <span className="text-xs text-muted-foreground">m</span>
                                   </div>
+                                ) : (
+                                  <span className="text-sm font-semibold text-foreground ml-1">{fmtDelay(savedDays, savedHours, savedMinutes)}</span>
+                                )}
+                                <div className="flex-1" />
+                                {delayIsDone && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground whitespace-nowrap">
+                                    <CheckCircle2 className="h-2.5 w-2.5" /> Passed
+                                  </span>
+                                )}
+                                {!delayIsDone && delayIsCurrent && (
+                                  <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700 whitespace-nowrap">
+                                    Waiting
+                                  </span>
+                                )}
+                                {!delayIsDone && !delayIsCurrent && (
+                                  <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground whitespace-nowrap">
+                                    Upcoming
+                                  </span>
                                 )}
                               </div>
-                              <div className="h-px flex-1 bg-border" />
                             </div>
                           </div>
                         );
-                        return [stepElement, showInsertZone && activeInsertPoint === step.id ? (
-                          <div key={`ins-${step.id}`} className="ml-[52px] my-1 rounded-lg border border-violet-200 bg-violet-50/40 p-4 space-y-3 z-10 relative">
-                            <p className="text-xs font-semibold text-violet-700">New custom step</p>
-                            <div className="flex items-center gap-2">
-                              {(["email", "sms", "call-reminder"] as const).map((t) => (
-                                <button key={t} type="button" onClick={() => setAddStepDraft((d) => ({ ...d, actionType: t }))} className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${addStepDraft.actionType === t ? "border-violet-400 bg-violet-100 text-violet-700" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}>
-                                  {STEP_ICON[t]} {t === "call-reminder" ? "Call" : t.charAt(0).toUpperCase() + t.slice(1)}
-                                </button>
-                              ))}
+                        // Staged steps to show after this step
+                        const stagedAfterThis = pendingCustomSteps.filter((p) => p.insertAfterStepId === step.id);
+                        const insertZone = showInsertZone && activeInsertPoint === step.id ? (
+                          <div key={`ins-${step.id}`} className="ml-[52px] my-2 rounded-xl border-2 border-primary/30 bg-card shadow-sm z-10 relative">
+                            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${insertDraft.actionType === "email" ? "border-emerald-500 text-emerald-600" : insertDraft.actionType === "sms" ? "border-purple-400 text-purple-600" : "border-blue-400 text-blue-600"}`}>
+                                  <StepTypeIcon type={insertDraft.actionType} size="sm" />
+                                </div>
+                                <span className="text-sm font-semibold text-foreground">{insertDraft.name || STEP_DEFAULTS[insertDraft.actionType]}</span>
+                              </div>
+                              <button onClick={resetInsertForm} className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"><X className="h-4 w-4" /></button>
                             </div>
-                            <input autoFocus type="text" placeholder="Step name" value={addStepDraft.name} onChange={(e) => setAddStepDraft((d) => ({ ...d, name: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                            {addStepDraft.actionType === "email" && (<><input type="text" placeholder="Subject" value={addStepDraft.subject} onChange={(e) => setAddStepDraft((d) => ({ ...d, subject: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" /><textarea placeholder="Body" value={addStepDraft.body} onChange={(e) => setAddStepDraft((d) => ({ ...d, body: e.target.value }))} rows={3} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" /></>)}
-                            {addStepDraft.actionType === "sms" && <textarea placeholder="Message" value={addStepDraft.message} onChange={(e) => setAddStepDraft((d) => ({ ...d, message: e.target.value }))} rows={3} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none" />}
-                            {addStepDraft.actionType === "call-reminder" && <input type="text" placeholder="Note" value={addStepDraft.note} onChange={(e) => setAddStepDraft((d) => ({ ...d, note: e.target.value }))} className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />}
-                            <div className="flex items-center gap-2 pt-1">
-                              <button type="button" disabled={!addStepDraft.name.trim()} onClick={() => { if (!addStepDraft.name.trim()) return; handleAddCustomStep(enrollment.id, { name: addStepDraft.name.trim(), actionType: addStepDraft.actionType, ...(addStepDraft.actionType === "email" && { subject: addStepDraft.subject, body: addStepDraft.body }), ...(addStepDraft.actionType === "sms" && { message: addStepDraft.message }), ...(addStepDraft.actionType === "call-reminder" && { note: addStepDraft.note }) }, step.id); toast.success(`Custom step "${addStepDraft.name.trim()}" added`); resetInsertForm(); }} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"><Plus className="h-3 w-3" /> Add Step</button>
-                              <button type="button" onClick={resetInsertForm} className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Cancel</button>
+                            <div className="p-5">
+                              <StepConfigFields draft={insertDraft} onChange={(p) => setInsertDraft((d) => ({ ...d, ...p }))} />
+                              <div className="flex items-center gap-2 pt-5 mt-5 border-t border-border">
+                                <button
+                                  type="button"
+                                  disabled={!insertDraft.name.trim()}
+                                  onClick={() => {
+                                    if (!insertDraft.name.trim()) return;
+                                    setPendingCustomSteps((prev) => [...prev, { tempId: `tmp-${Date.now()}`, stepDef: { ...insertDraft }, insertAfterStepId: step.id }]);
+                                    resetInsertForm();
+                                  }}
+                                  className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <Plus className="h-3.5 w-3.5" /> Stage Step
+                                </button>
+                                <button type="button" onClick={resetInsertForm} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                              </div>
                             </div>
                           </div>
                         ) : showInsertZone ? (
                           <div key={`ins-${step.id}`} className="group relative h-5 flex items-center -my-0.5 z-10">
                             <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => setActiveInsertPoint(step.id)} className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer"><Plus className="h-2.5 w-2.5" /> Add step</button>
+                              <button onClick={() => { setActiveInsertPoint(step.id); setInsertDraft(defaultInsertDraft()); }} className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer"><Plus className="h-2.5 w-2.5" /> Add step</button>
                             </div>
                           </div>
-                        ) : null];
+                        ) : null;
+
+                        const stagedCards = stagedAfterThis.map((pending) => (
+                          <div key={pending.tempId} className="relative flex gap-3 mb-2 ml-[44px]">
+                            <div className="flex flex-col items-center shrink-0 pt-2">
+                              <div className="w-8 h-8 rounded-full bg-background border-2 border-dashed border-violet-400 flex items-center justify-center shrink-0 z-10">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${TYPE_ICON_BG[pending.stepDef.actionType]}`}>
+                                  <StepTypeIcon type={pending.stepDef.actionType} size="sm" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 rounded-lg border border-dashed border-violet-300 bg-violet-50/40 mb-1">
+                              <div className="flex items-center gap-2 px-3 py-2.5">
+                                <div className="w-3.5 shrink-0" />
+                                <span className="text-sm font-medium text-foreground flex-1 truncate">{pending.stepDef.name || STEP_DEFAULTS[pending.stepDef.actionType]}</span>
+                                <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-violet-300 text-violet-600 bg-violet-50 whitespace-nowrap">Staged</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingCustomSteps((prev) => prev.filter((p) => p.tempId !== pending.tempId))}
+                                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ));
+
+                        return [stepElement, insertZone, ...stagedCards];
                       }
                       const progress = enrollment.stepProgress.find((p) => p.stepId === step.id);
                       const status = progress?.status ?? "pending";
@@ -659,109 +771,41 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       );
 
                       // Insert zone between steps (hover "+" connector)
-                      const insertZoneKey = `ins-${step.id}`;
-                      const insertZone = showInsertZone && (
+                      const actionInsertZone = showInsertZone && (
                         activeInsertPoint === step.id ? (
-                          // Expanded inline form at this position
-                          <div key={insertZoneKey} className="ml-[52px] my-1 rounded-lg border border-violet-200 bg-violet-50/40 p-4 space-y-3 z-10 relative">
-                            <p className="text-xs font-semibold text-violet-700">New custom step</p>
-                            <div className="flex items-center gap-2">
-                              {(["email", "sms", "call-reminder"] as const).map((t) => (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => setAddStepDraft((d) => ({ ...d, actionType: t }))}
-                                  className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
-                                    addStepDraft.actionType === t
-                                      ? "border-violet-400 bg-violet-100 text-violet-700"
-                                      : "border-border bg-background text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  {STEP_ICON[t]} {t === "call-reminder" ? "Call" : t.charAt(0).toUpperCase() + t.slice(1)}
-                                </button>
-                              ))}
+                          <div key={`ins-${step.id}`} className="ml-[52px] my-2 rounded-xl border-2 border-primary/30 bg-card shadow-sm z-10 relative">
+                            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${insertDraft.actionType === "email" ? "border-emerald-500 text-emerald-600" : insertDraft.actionType === "sms" ? "border-purple-400 text-purple-600" : "border-blue-400 text-blue-600"}`}>
+                                  <StepTypeIcon type={insertDraft.actionType} size="sm" />
+                                </div>
+                                <span className="text-sm font-semibold text-foreground">{insertDraft.name || STEP_DEFAULTS[insertDraft.actionType]}</span>
+                              </div>
+                              <button onClick={resetInsertForm} className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"><X className="h-4 w-4" /></button>
                             </div>
-                            <input
-                              autoFocus
-                              type="text"
-                              placeholder="Step name"
-                              value={addStepDraft.name}
-                              onChange={(e) => setAddStepDraft((d) => ({ ...d, name: e.target.value }))}
-                              className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                            {addStepDraft.actionType === "email" && (
-                              <>
-                                <input
-                                  type="text"
-                                  placeholder="Subject"
-                                  value={addStepDraft.subject}
-                                  onChange={(e) => setAddStepDraft((d) => ({ ...d, subject: e.target.value }))}
-                                  className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                                <textarea
-                                  placeholder="Body"
-                                  value={addStepDraft.body}
-                                  onChange={(e) => setAddStepDraft((d) => ({ ...d, body: e.target.value }))}
-                                  rows={3}
-                                  className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                                />
-                              </>
-                            )}
-                            {addStepDraft.actionType === "sms" && (
-                              <textarea
-                                placeholder="Message"
-                                value={addStepDraft.message}
-                                onChange={(e) => setAddStepDraft((d) => ({ ...d, message: e.target.value }))}
-                                rows={3}
-                                className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                              />
-                            )}
-                            {addStepDraft.actionType === "call-reminder" && (
-                              <input
-                                type="text"
-                                placeholder="Note"
-                                value={addStepDraft.note}
-                                onChange={(e) => setAddStepDraft((d) => ({ ...d, note: e.target.value }))}
-                                className="w-full text-xs border border-border rounded-md px-2.5 py-1.5 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                              />
-                            )}
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                disabled={!addStepDraft.name.trim()}
-                                onClick={() => {
-                                  if (!addStepDraft.name.trim()) return;
-                                  handleAddCustomStep(
-                                    enrollment.id,
-                                    {
-                                      name: addStepDraft.name.trim(),
-                                      actionType: addStepDraft.actionType,
-                                      ...(addStepDraft.actionType === "email" && { subject: addStepDraft.subject, body: addStepDraft.body }),
-                                      ...(addStepDraft.actionType === "sms" && { message: addStepDraft.message }),
-                                      ...(addStepDraft.actionType === "call-reminder" && { note: addStepDraft.note }),
-                                    },
-                                    step.id,
-                                  );
-                                  toast.success(`Custom step "${addStepDraft.name.trim()}" added`);
-                                  resetInsertForm();
-                                }}
-                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                <Plus className="h-3 w-3" /> Add Step
-                              </button>
-                              <button type="button" onClick={resetInsertForm} className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                                Cancel
-                              </button>
+                            <div className="p-5">
+                              <StepConfigFields draft={insertDraft} onChange={(p) => setInsertDraft((d) => ({ ...d, ...p }))} />
+                              <div className="flex items-center gap-2 pt-5 mt-5 border-t border-border">
+                                <button
+                                  type="button"
+                                  disabled={!insertDraft.name.trim()}
+                                  onClick={() => {
+                                    if (!insertDraft.name.trim()) return;
+                                    setPendingCustomSteps((prev) => [...prev, { tempId: `tmp-${Date.now()}`, stepDef: { ...insertDraft }, insertAfterStepId: step.id }]);
+                                    resetInsertForm();
+                                  }}
+                                  className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <Plus className="h-3.5 w-3.5" /> Stage Step
+                                </button>
+                                <button type="button" onClick={resetInsertForm} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          // Thin hover strip with "+" button
-                          <div key={insertZoneKey} className="group relative h-5 flex items-center -my-0.5 z-10">
+                          <div key={`ins-${step.id}`} className="group relative h-5 flex items-center -my-0.5 z-10">
                             <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => setActiveInsertPoint(step.id)}
-                                className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer"
-                              >
+                              <button onClick={() => { setActiveInsertPoint(step.id); setInsertDraft(defaultInsertDraft()); }} className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 shadow-sm whitespace-nowrap cursor-pointer">
                                 <Plus className="h-2.5 w-2.5" /> Add step
                               </button>
                             </div>
@@ -769,7 +813,29 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         )
                       );
 
-                      return [stepElement, insertZone];
+                      const actionStagedCards = pendingCustomSteps.filter((p) => p.insertAfterStepId === step.id).map((pending) => (
+                        <div key={pending.tempId} className="relative flex gap-3 mb-2 ml-[44px]">
+                          <div className="flex flex-col items-center shrink-0 pt-2">
+                            <div className="w-8 h-8 rounded-full bg-background border-2 border-dashed border-violet-400 flex items-center justify-center shrink-0 z-10">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${TYPE_ICON_BG[pending.stepDef.actionType]}`}>
+                                <StepTypeIcon type={pending.stepDef.actionType} size="sm" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 rounded-lg border border-dashed border-violet-300 bg-violet-50/40 mb-1">
+                            <div className="flex items-center gap-2 px-3 py-2.5">
+                              <div className="w-3.5 shrink-0" />
+                              <span className="text-sm font-medium text-foreground flex-1 truncate">{pending.stepDef.name || STEP_DEFAULTS[pending.stepDef.actionType]}</span>
+                              <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-violet-300 text-violet-600 bg-violet-50 whitespace-nowrap">Staged</span>
+                              <button type="button" onClick={() => setPendingCustomSteps((prev) => prev.filter((p) => p.tempId !== pending.tempId))} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ));
+
+                      return [stepElement, actionInsertZone, ...actionStagedCards];
                     })}
                   </div>
                 </div>
@@ -828,9 +894,12 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-foreground">
+                  <Link
+                    to={`/crm/contacts/${contact.id}`}
+                    className="text-sm font-semibold text-foreground hover:text-primary hover:underline"
+                  >
                     {contact.firstName} {contact.lastName}
-                  </span>
+                  </Link>
                 </div>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${avatarClass}`}>
                   {contact.userType}

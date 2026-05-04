@@ -164,6 +164,8 @@ export interface WorkflowStep {
   dayOffset: number;
   actionType: "email" | "sms" | "call-reminder" | "delay";
   delayDays?: number;
+  delayHours?: number;
+  delayMinutes?: number;
   templateId?: string;
   templateName?: string;
   senderIdentity?: string;
@@ -194,6 +196,8 @@ export interface WorkflowStepProgress {
   status: "pending" | "done" | "skipped";
   completedAt?: Date;
   customDelayDays?: number;
+  customDelayHours?: number;
+  customDelayMinutes?: number;
 }
 
 export interface CustomWorkflowStep extends WorkflowStep {

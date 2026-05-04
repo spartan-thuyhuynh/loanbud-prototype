@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, useParams, Link } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
@@ -177,13 +177,13 @@ function ContactCard({
           {getInitials(contact.firstName, contact.lastName)}
         </div>
         <div className="flex-1 min-w-0">
-          <Link
-            to={`/crm/contacts/${contact.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate block mb-0.5"
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+            className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate block mb-0.5 text-left w-full"
           >
             {contact.firstName} {contact.lastName}
-          </Link>
+          </button>
           <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
           {contact.phone && (
             <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
@@ -603,12 +603,13 @@ export function WorkflowBoard() {
                                 {getInitials(contact.firstName, contact.lastName)}
                               </div>
                               <div>
-                                <Link
-                                  to={`/crm/contacts/${contact.id}`}
-                                  className="font-medium text-foreground hover:text-primary hover:underline"
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedContactId(contact.id); setSelectedEnrollmentId(enrollment.id); }}
+                                  className="font-medium text-foreground hover:text-primary hover:underline text-left"
                                 >
                                   {contact.firstName} {contact.lastName}
-                                </Link>
+                                </button>
                                 <p className="text-xs text-muted-foreground">{contact.email}</p>
                               </div>
                             </div>

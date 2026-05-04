@@ -57,7 +57,7 @@ interface AppDataContextValue {
   handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused") => void;
   handleSkipStep: (enrollmentId: string, stepId: string) => void;
   handleUnskipStep: (enrollmentId: string, stepId: string) => void;
-  handleCustomizeDelay: (enrollmentId: string, stepId: string, delayDays: number) => void;
+  handleCustomizeDelay: (enrollmentId: string, stepId: string, delayDays: number, delayHours: number, delayMinutes: number) => void;
   handleAddCustomStep: (enrollmentId: string, stepDef: Omit<WorkflowStep, "id" | "order" | "dayOffset">, insertAfterStepId: string | null) => void;
   handleRemoveCustomStep: (enrollmentId: string, stepId: string) => void;
   // Admin config data
@@ -1041,11 +1041,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.contactActivity.write(updatedActivity);
   };
 
-  const handleCustomizeDelay = (enrollmentId: string, stepId: string, delayDays: number) => {
+  const handleCustomizeDelay = (enrollmentId: string, stepId: string, delayDays: number, delayHours: number, delayMinutes: number) => {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const updatedProgress = enrollment.stepProgress.map((p) =>
-      p.stepId === stepId ? { ...p, customDelayDays: Math.max(1, delayDays) } : p,
+      p.stepId === stepId
+        ? { ...p, customDelayDays: Math.max(0, delayDays), customDelayHours: Math.min(23, Math.max(0, delayHours)), customDelayMinutes: Math.min(59, Math.max(0, delayMinutes)) }
+        : p,
     );
     const updated = workflowEnrollments.map((e) =>
       e.id === enrollmentId ? { ...e, stepProgress: updatedProgress } : e,

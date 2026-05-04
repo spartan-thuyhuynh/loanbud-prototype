@@ -4,7 +4,9 @@ export function computeDayOffsets(steps: WorkflowStep[]): WorkflowStep[] {
   let acc = 0;
   return steps.map((step) => {
     const offset = acc;
-    if (step.actionType === "delay") acc += step.delayDays ?? 0;
+    if (step.actionType === "delay") {
+      acc += (step.delayDays ?? 0) + (step.delayHours ?? 0) / 24 + (step.delayMinutes ?? 0) / 1440;
+    }
     return { ...step, dayOffset: offset };
   });
 }
