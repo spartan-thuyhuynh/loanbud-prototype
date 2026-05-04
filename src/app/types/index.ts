@@ -62,6 +62,20 @@ export interface EmailWorkflowSubItem {
   dividerAfter?: boolean;
 }
 
+export interface AppSidebarItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  route?: string;
+  action?: "openComposer" | "openDialer";
+  externalIcon?: boolean;
+}
+
+export interface AppSidebarSection {
+  label?: string;
+  items: AppSidebarItem[];
+}
+
 export interface Contact {
   id: string;
   firstName: string;

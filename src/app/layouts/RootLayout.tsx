@@ -1,44 +1,65 @@
-import { Outlet, useLocation, useNavigate } from "react-router";
-import { IconSidebar } from "../components/ui/IconSidebar";
-import { iconNavItems } from "../data/navigation";
-
-const SECTION_ROOTS: Record<string, string> = {
-  applications: "/applications",
-  "business-acquisition": "/business-acquisition",
-  crm: "/crm/contacts",
-  "email-workflows": "/email-workflows/overview",
-  users: "/users",
-  automations: "/automations",
-  questionnaires: "/questionnaires",
-  configurations: "/configurations",
-};
+import { useState } from "react";
+import { Outlet, useLocation } from "react-router";
+import { AppSidebar } from "../components/ui/AppSidebar";
+import { AppHeader } from "../components/ui/AppHeader";
+import { DialerPanel } from "../components/dialer/DialerPanel";
+import { ComposerPanel } from "../components/composer/ComposerPanel";
+import { appSidebarSections } from "../data/navigation";
+import { SHOW_APP_HEADER } from "../config/featureFlags";
 
 export function RootLayout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem("sidebar-collapsed") !== "false"
+  );
+  const [dialerOpen, setDialerOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+
   const location = useLocation();
-  const navigate = useNavigate();
+  // These routes render their own sub-sidebar and handle AppHeader internally
+  const routeHasSubSidebar = ["/crm", "/email-workflows"].some((r) =>
+    location.pathname.startsWith(r)
+  );
 
-  const activeSection = (() => {
-    const p = location.pathname;
-    if (p.startsWith("/crm")) return "crm";
-    if (p.startsWith("/email-workflows")) return "email-workflows";
-    // Match any top-level segment
-    const segment = p.split("/")[1];
-    return segment || null;
-  })();
-
-  const handleSectionClick = (id: string) => {
-    const target = SECTION_ROOTS[id] ?? `/${id}`;
-    navigate(target);
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((v) => {
+      localStorage.setItem("sidebar-collapsed", String(!v));
+      return !v;
+    });
   };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
-      <IconSidebar
-        items={iconNavItems}
-        activeSection={activeSection}
-        onSectionClick={handleSectionClick}
+      <AppSidebar
+        sections={appSidebarSections}
+        collapsed={sidebarCollapsed}
+        onToggle={handleToggleSidebar}
+        onOpenComposer={() => setComposerOpen(true)}
+        onOpenDialer={() => setDialerOpen(true)}
       />
-      <Outlet />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {SHOW_APP_HEADER && !routeHasSubSidebar && (
+          <AppHeader
+            onOpenComposer={() => setComposerOpen(true)}
+            onOpenDialer={() => setDialerOpen(true)}
+          />
+        )}
+        <div className="flex flex-1 overflow-hidden">
+          <Outlet
+            context={{
+              onOpenComposer: () => setComposerOpen(true),
+              onOpenDialer: () => setDialerOpen(true),
+            }}
+          />
+        </div>
+      </div>
+
+      {dialerOpen && <DialerPanel onClose={() => setDialerOpen(false)} />}
+      {composerOpen && (
+        <ComposerPanel
+          onClose={() => setComposerOpen(false)}
+          offsetRight={dialerOpen ? 70 : 6}
+        />
+      )}
     </div>
   );
 }

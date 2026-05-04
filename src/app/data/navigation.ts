@@ -10,8 +10,9 @@ import {
   Mail,
   Building,
   Calendar,
+  Settings,
 } from "lucide-react";
-import type { IconNavItem, EmailWorkflowSubItem } from "../types";
+import type { IconNavItem, EmailWorkflowSubItem, AppSidebarSection } from "../types";
 import type { CRMSubItem as BaseCRMSubItem } from "../types";
 
 // Extend CRMSubItem to include 'icon' property
@@ -70,6 +71,31 @@ export const crmSubItems: CRMSubItem[] = [
   { id: "inbox", label: "Inbox", icon: Mail },
   { id: "calls", label: "Calls", icon: Phone },
   { id: "meetings", label: "Meetings", icon: Calendar },
+];
+
+export const appSidebarSections: AppSidebarSection[] = [
+  {
+    items: [
+      { id: "applications",         label: "Applications",         icon: FileText,  route: "/applications" },
+      { id: "business-acquisition", label: "Business Acquisition", icon: Briefcase, route: "/business-acquisition" },
+    ],
+  },
+  {
+    items: [
+      { id: "crm",             label: "CRM",             icon: UsersIcon,     route: "/crm/contacts" },
+      { id: "email-workflows", label: "Email Workflows", icon: Workflow,      route: "/email-workflows/overview" },
+      { id: "users",           label: "Users",           icon: User,          route: "/users" },
+      { id: "automations",     label: "Automations",     icon: Zap,           route: "/automations" },
+      { id: "questionnaires",  label: "Questionnaires",  icon: ClipboardList, route: "/questionnaires" },
+      { id: "configurations",  label: "Configurations",  icon: Settings,      route: "/configurations" },
+    ],
+  },
+  {
+    items: [
+      { id: "composer", label: "Composer", icon: Mail, action: "openComposer", externalIcon: true },
+      { id: "dialer",   label: "Dialer",   icon: Phone,         action: "openDialer",   externalIcon: true },
+    ],
+  },
 ];
 
 export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
