@@ -53,6 +53,9 @@ interface AppDataContextValue {
   handleActivateWorkflow: (workflowId: string) => void;
   handleAdvanceStep: (enrollmentId: string, stepId: string) => void;
   handleMoveToStep: (enrollmentId: string, targetStepId: string | "completed") => void;
+  handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused") => void;
+  handleSkipStep: (enrollmentId: string, stepId: string) => void;
+  handleUnskipStep: (enrollmentId: string, stepId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -691,6 +694,103 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
+  const handleSetEnrollmentStatus = (enrollmentId: string, status: "active" | "paused") => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? { ...e, status } : e,
+    );
+    const now = new Date();
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-${status}-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: status === "paused" ? "enrollment_paused" : "enrollment_resumed",
+      source: workflow?.name,
+      sourceType: "flow",
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+    setWorkflowEnrollments(updated);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleSkipStep = (enrollmentId: string, stepId: string) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    const step = workflow?.steps.find((s: WorkflowStep) => s.id === stepId);
+    const updatedProgress = enrollment.stepProgress.map((p) =>
+      p.stepId === stepId && p.status === "pending"
+        ? { ...p, status: "skipped" as const }
+        : p,
+    );
+    const allDone = updatedProgress.every((p) => p.status === "done" || p.status === "skipped");
+    const updatedEnrollment: WorkflowEnrollment = {
+      ...enrollment,
+      stepProgress: updatedProgress,
+      status: allDone ? "completed" : enrollment.status,
+    };
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? updatedEnrollment : e,
+    );
+    const now = new Date();
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-skip-${stepId}-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: "step_skipped",
+      source: workflow?.name,
+      sourceType: "flow",
+      stepName: step?.name,
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+    setWorkflowEnrollments(updated);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleUnskipStep = (enrollmentId: string, stepId: string) => {
+    const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+    if (!enrollment) return;
+    const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+    const step = workflow?.steps.find((s: WorkflowStep) => s.id === stepId);
+    const updatedProgress = enrollment.stepProgress.map((p) =>
+      p.stepId === stepId && p.status === "skipped"
+        ? { ...p, status: "pending" as const }
+        : p,
+    );
+    const updatedEnrollment: WorkflowEnrollment = {
+      ...enrollment,
+      stepProgress: updatedProgress,
+      status: enrollment.status === "completed" ? "active" : enrollment.status,
+    };
+    const updated = workflowEnrollments.map((e) =>
+      e.id === enrollmentId ? updatedEnrollment : e,
+    );
+    const now = new Date();
+    const newActivity: ContactActivityRecord = {
+      id: `activity-flow-${enrollmentId}-unskip-${stepId}-${Date.now()}`,
+      contactId: enrollment.contactId,
+      type: "step_unskipped",
+      source: workflow?.name,
+      sourceType: "flow",
+      stepName: step?.name,
+      assignee: "You",
+      timestamp: now,
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+    setWorkflowEnrollments(updated);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
   const handleMoveToStep = (enrollmentId: string, targetStepId: string | "completed") => {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
@@ -778,6 +878,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleActivateWorkflow,
         handleAdvanceStep,
         handleMoveToStep,
+        handleSetEnrollmentStatus,
+        handleSkipStep,
+        handleUnskipStep,
       }}
     >
       {children}

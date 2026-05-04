@@ -265,7 +265,7 @@ export interface BusinessAcquisitionRecord {
 export interface ContactActivityRecord {
   id: string;
   contactId: string;
-  type: "task_completed" | "email_sent" | "sms_sent";
+  type: "task_completed" | "email_sent" | "sms_sent" | "step_skipped" | "step_unskipped" | "enrollment_paused" | "enrollment_resumed";
   taskType?: string;
   disposition?: string;
   note?: string;

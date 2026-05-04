@@ -1,6 +1,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
+import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -148,6 +149,7 @@ function ContactCard({
   currentStep,
   onAdvance,
   onCreateTask,
+  onCardClick,
 }: {
   contact: Contact;
   enrollmentId: string;
@@ -155,6 +157,7 @@ function ContactCard({
   currentStep: WorkflowStep | null;
   onAdvance: (() => void) | null;
   onCreateTask: () => void;
+  onCardClick: () => void;
 }) {
   const avatarClass = USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700";
 
@@ -169,7 +172,8 @@ function ContactCard({
   return (
     <div
       ref={dragRef}
-      className={`rounded-lg border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
+      onClick={onCardClick}
+      className={`rounded-lg border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
     >
       <div className="flex items-start gap-2.5 mb-2.5">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${avatarClass}`}>
@@ -236,6 +240,7 @@ function KanbanColumn({
   handleDrop,
   handleAdvance,
   handleCreateTask,
+  handleCardClick,
 }: {
   colId: string;
   label: string;
@@ -245,6 +250,7 @@ function KanbanColumn({
   handleDrop: (enrollmentId: string, targetStepId: string) => void;
   handleAdvance: (enrollmentId: string, stepId: string) => void;
   handleCreateTask: (contactId: string, contactName: string) => void;
+  handleCardClick: (contactId: string, enrollmentId: string) => void;
 }) {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragItem, unknown, { isOver: boolean; canDrop: boolean }>({
     accept: CARD_DRAG_TYPE,
@@ -290,6 +296,7 @@ function KanbanColumn({
               currentStep={currentStep}
               onAdvance={currentStep ? () => handleAdvance(enrollment.id, currentStep.id) : null}
               onCreateTask={() => handleCreateTask(contact.id, `${contact.firstName} ${contact.lastName}`)}
+              onCardClick={() => handleCardClick(contact.id, enrollment.id)}
             />
           );
         })}
@@ -313,6 +320,8 @@ export function WorkflowBoard() {
   const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleCreateTask, handleUpdateWorkflow } = useAppData();
 
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
 
   // List view filters
   const [listSearch, setListSearch] = useState("");
@@ -396,6 +405,13 @@ export function WorkflowBoard() {
 
   return (
     <div className="flex flex-col h-full bg-background">
+      <WorkflowContactPanel
+        open={selectedContactId !== null}
+        contactId={selectedContactId}
+        enrollmentId={selectedEnrollmentId}
+        workflowId={workflow.id}
+        onClose={() => { setSelectedContactId(null); setSelectedEnrollmentId(null); }}
+      />
       {/* Sticky header */}
       <div className="border-b border-border bg-card px-8 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -493,6 +509,7 @@ export function WorkflowBoard() {
                       handleDrop={handleDrop}
                       handleAdvance={handleAdvance}
                       handleCreateTask={handleTask}
+                      handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
                     />
                   );
                 },
@@ -561,11 +578,15 @@ export function WorkflowBoard() {
                     </tr>
                   ) : (
                     listRows.map(({ enrollment, contact, currentStep, colStepId }) => (
-                      <tr key={enrollment.id} className="hover:bg-muted/10 transition-colors">
+                      <tr
+                        key={enrollment.id}
+                        onClick={() => contact && (setSelectedContactId(contact.id), setSelectedEnrollmentId(enrollment.id))}
+                        className="hover:bg-muted/10 transition-colors cursor-pointer"
+                      >
                         <td className="px-5 py-3">
                           {currentStep && colStepId !== "completed" ? (
                             <button
-                              onClick={() => handleAdvance(enrollment.id, currentStep.id)}
+                              onClick={(e) => { e.stopPropagation(); handleAdvance(enrollment.id, currentStep.id); }}
                               className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
                             >
                               {ACTION_LABELS[currentStep.actionType] ?? currentStep.actionType}
