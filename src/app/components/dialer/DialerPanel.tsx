@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { X, Minus, Phone, PhoneOff, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Mic, Minus, Phone, PhoneOff, X } from "lucide-react";
+import { toast } from "sonner";
 import { useDialer } from "@/app/contexts/DialerContext";
+import { useAppData } from "@/app/contexts/AppDataContext";
+import { AudioPlayer } from "@/app/components/AudioPlayer";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
@@ -21,6 +24,7 @@ interface DialerPanelProps {
  */
 export function DialerPanel({ onClose, initialNumber, offsetRight = 24 }: DialerPanelProps) {
   const { session, handleCallStarted, handleCallEnded, closeDialer } = useDialer();
+  const { voicemailScripts } = useAppData();
 
   const [input, setInput] = useState(
     session?.phone ?? initialNumber ?? "",
@@ -28,12 +32,23 @@ export function DialerPanel({ onClose, initialNumber, offsetRight = 24 }: Dialer
   const [minimized, setMinimized] = useState(false);
   const [showObjective, setShowObjective] = useState(false);
 
+  // VM drop state
+  const [showVmDrop, setShowVmDrop] = useState(false);
+  const [dropped, setDropped] = useState(false);
+  const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
+
   const handleKey = (k: string) => setInput((v) => v + k);
   const handleBackspace = () => setInput((v) => v.slice(0, -1));
 
   const handleClose = () => {
     closeDialer();
     onClose();
+  };
+
+  const handleVmDrop = (vmId: string, vmName: string) => {
+    setDropped(true);
+    setShowVmDrop(false);
+    toast.success(`Voicemail dropped: ${vmName}`);
   };
 
   const isTaskBound = !!session?.taskId;
@@ -45,7 +60,7 @@ export function DialerPanel({ onClose, initialNumber, offsetRight = 24 }: Dialer
     return (
       <div
         className="fixed bottom-6 z-[60] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
-        style={{ width: 260, right: offsetRight }}
+        style={{ width: 280, right: offsetRight }}
       >
         <div className="flex items-center justify-between px-4 py-2.5 bg-[#2c3e50] text-white">
           <span className="text-sm font-semibold">Dialer</span>
@@ -57,23 +72,104 @@ export function DialerPanel({ onClose, initialNumber, offsetRight = 24 }: Dialer
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="p-4 text-center space-y-2">
+        <div className="p-4 space-y-3">
           {isCompleted ? (
-            <p className="text-sm text-green-600 font-medium">✓ Outcome saved</p>
+            <p className="text-sm text-green-600 font-medium text-center">✓ Outcome saved</p>
           ) : (
             <>
-              <div className="w-8 h-8 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
-                <PhoneOff className="w-4 h-4 text-amber-600" />
+              <div className="text-center space-y-1.5">
+                <div className="w-8 h-8 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
+                  <PhoneOff className="w-4 h-4 text-amber-600" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Call ended</p>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Log the outcome in the task panel on the right.
+                </p>
               </div>
-              <p className="text-sm font-medium text-foreground">Call ended</p>
-              <p className="text-xs text-muted-foreground leading-snug">
-                Log the outcome in the task panel on the right.
-              </p>
+
+              {/* Voicemail drop section */}
+              {dropped ? (
+                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-green-50 border border-green-100">
+                  <span className="text-xs text-green-700 font-medium">✓ Voicemail dropped</span>
+                </div>
+              ) : (
+                <div>
+                  <button
+                    onClick={() => setShowVmDrop((v) => !v)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    Drop a Voicemail
+                    {showVmDrop ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+                  </button>
+
+                  {showVmDrop && (
+                    <div className="mt-1.5 border border-border rounded-lg overflow-hidden">
+                      {voicemailScripts.length === 0 ? (
+                        <p className="px-3 py-2.5 text-xs text-muted-foreground text-center">
+                          No records — add one in Settings.
+                        </p>
+                      ) : (
+                        voicemailScripts.map((vm) => (
+                          <div key={vm.id} className="border-b border-border/50 last:border-b-0">
+                            {/* Row header */}
+                            <div className="flex items-center gap-2 px-2.5 py-2 hover:bg-muted/30">
+                              <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                                <Mic className="w-3 h-3 text-muted-foreground/60" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-foreground truncate">{vm.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{vm.estimatedDurationSeconds}s · {vm.category}</p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {(vm.audioUrl || vm.scriptText) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedTranscriptId((id) => id === vm.id ? null : vm.id)}
+                                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                    aria-label="Toggle details"
+                                  >
+                                    {expandedTranscriptId === vm.id
+                                      ? <ChevronUp className="w-3 h-3" />
+                                      : <ChevronDown className="w-3 h-3" />}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleVmDrop(vm.id, vm.name)}
+                                  className="text-[10px] font-semibold px-2 py-1 rounded bg-[#2c3e50] text-white hover:bg-[#3d5166] transition-colors"
+                                >
+                                  Drop
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Expanded: player + transcript */}
+                            {expandedTranscriptId === vm.id && (
+                              <div className="px-2.5 pb-2.5 space-y-2 bg-muted/20 border-t border-border/30">
+                                {vm.audioUrl && (
+                                  <AudioPlayer src={vm.audioUrl} compact className="pt-2" />
+                                )}
+                                {vm.scriptText && (
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Transcript</p>
+                                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{vm.scriptText}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
+
           <button
             onClick={handleClose}
-            className="w-full mt-2 py-2 text-xs text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
+            className="w-full py-2 text-xs text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
           >
             Close Dialer
           </button>

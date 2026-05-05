@@ -72,6 +72,13 @@ export function TaskQueue({
   const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Assignee filter — only active when tasks prop is NOT passed (full Tasks page)
+  const showAssigneeFilter = !tasksProp;
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const uniqueAssignees = Array.from(
+    new Set(allTasks.map((t) => t.assignee).filter((a): a is string => !!a))
+  ).sort();
+
   const now = new Date();
 
   const filtered = allTasks.filter((t) => {
@@ -80,6 +87,7 @@ export function TaskQueue({
     if (dueDateFilter === "today" && !isSameDay(due, now)) return false;
     if (dueDateFilter === "this-week" && !isWithinDays(due, 7)) return false;
     if (dueDateFilter === "overdue" && !(due < now && t.status !== "completed")) return false;
+    if (showAssigneeFilter && assigneeFilter !== "all" && t.assignee !== assigneeFilter) return false;
     return true;
   });
 
@@ -167,11 +175,11 @@ export function TaskQueue({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Page header */}
-      <div className="border-b border-border bg-card px-8 py-5 shrink-0">
+      {/* Page header — hidden when embedded inside another component */}
+      {!tasksProp && <div className="border-b border-border bg-card px-8 py-5 shrink-0">
         <h1 className="text-3xl font-semibold text-foreground">Tasks</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{allTasks.length} tasks</p>
-      </div>
+      </div>}
 
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Filter row */}
@@ -211,6 +219,21 @@ export function TaskQueue({
             })}
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            {showAssigneeFilter && (
+              <select
+                value={assigneeFilter}
+                onChange={(e) => {
+                  setAssigneeFilter(e.target.value);
+                  setSelectedTasks([]);
+                }}
+                className="h-7 px-2.5 text-xs border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="all">All assignees</option>
+                {uniqueAssignees.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            )}
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"

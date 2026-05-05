@@ -11,6 +11,7 @@ import { cn } from "@/app/components/ui/utils";
 
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
+import { CURRENT_USER } from "@/app/config/featureFlags";
 import { TaskQueue } from "./TaskQueue";
 
 export function Overview() {
@@ -38,7 +39,9 @@ export function Overview() {
     const matchesSearch =
       task.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (task.source?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    // Overview shows only the current user's tasks
+    const matchesUser = task.assignee === CURRENT_USER;
+    return matchesSearch && matchesUser;
   });
 
   const tasksByAssignee = assignees.reduce(
@@ -163,8 +166,16 @@ export function Overview() {
             </div>
           </div>
 
-          {/* Task Management Table Wrapper */}
+          {/* My Tasks */}
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold">My Tasks</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Assigned to {CURRENT_USER} · {filteredTasks.filter(t => t.status !== "completed").length} pending
+                </p>
+              </div>
+            </div>
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
               {/* Data Display */}
               {viewMode === "list" ? (
