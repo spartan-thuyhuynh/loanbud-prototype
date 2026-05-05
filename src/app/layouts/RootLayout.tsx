@@ -13,7 +13,7 @@ function RootLayoutInner() {
     () => localStorage.getItem("sidebar-collapsed") !== "false"
   );
   const [composerOpen, setComposerOpen] = useState(false);
-  const { dialerOpen, dialerNumber, openDialer, closeDialer } = useDialer();
+  const { dialerOpen, dialerNumber, session, openDialer, closeDialer } = useDialer();
 
   const location = useLocation();
   // These routes render their own sub-sidebar and handle AppHeader internally
@@ -54,7 +54,15 @@ function RootLayoutInner() {
         </div>
       </div>
 
-      {dialerOpen && <DialerPanel onClose={closeDialer} initialNumber={dialerNumber} />}
+      {dialerOpen && (
+        <DialerPanel
+          onClose={closeDialer}
+          initialNumber={dialerNumber}
+          // When task-bound the TaskDetailPanel (420px) is open on the right —
+          // shift the dialer left so it's never hidden behind the drawer.
+          offsetRight={session?.taskId ? 444 : 24}
+        />
+      )}
       {composerOpen && (
         <ComposerPanel
           onClose={() => setComposerOpen(false)}

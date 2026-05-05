@@ -13,3 +13,5 @@ export { EmailWorkflowsSidebar } from './EmailWorkflowsSidebar';
 export { WorkflowList } from './WorkflowList';
 export { WorkflowBuilder } from './WorkflowBuilder';
 export { WorkflowBoard } from './WorkflowBoard';
+export { TaskDetailPanel } from './TaskDetailPanel';
+export { OutcomeCapturePanel } from './OutcomeCapturePanel';

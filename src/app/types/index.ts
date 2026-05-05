@@ -147,7 +147,7 @@ export interface TaskItem {
   sourceType: "campaign" | "flow" | "manual";
   dueDate: Date;
   assignee?: string;
-  status: "pending" | "completed" | "overdue";
+  status: "pending" | "completed" | "overdue" | "suspended";
   disposition?: string;
   ruleId?: string;
   ruleName?: string;
@@ -155,6 +155,35 @@ export interface TaskItem {
   notes?: string;
   completedAt?: Date;
   outcome?: string;
+  // Explicit workflow links — replaces brittle string-pattern ID lookup
+  enrollmentId?: string;
+  stepId?: string;
+  // Retry tracking
+  retryCount?: number;
+  parentTaskId?: string;
+  priority?: "low" | "normal" | "high" | "urgent";
+}
+
+export type OutcomeAction =
+  | "advance"
+  | "advance-and-insert-followup"
+  | "retry"
+  | "skip-remaining"
+  | "pause-enrollment";
+
+export interface OutcomeFollowup {
+  taskType: string;
+  delayDays: number;
+  objective: string;
+  notes?: string;
+}
+
+export interface OutcomeRule {
+  disposition: string;
+  action: OutcomeAction;
+  followup?: OutcomeFollowup;
+  retryAfterDays?: number;
+  maxRetries?: number;
 }
 
 export interface WorkflowStep {
@@ -162,7 +191,7 @@ export interface WorkflowStep {
   name: string;
   order: number;
   dayOffset: number;
-  actionType: "email" | "sms" | "call-reminder" | "delay";
+  actionType: "email" | "sms" | "call-reminder" | "voicemail-reminder" | "delay";
   delayDays?: number;
   delayHours?: number;
   delayMinutes?: number;
@@ -176,6 +205,7 @@ export interface WorkflowStep {
   message?: string;
   note?: string;
   reminderDaysBefore?: number;
+  outcomeRules?: OutcomeRule[];
 }
 
 export interface Workflow {
@@ -278,7 +308,23 @@ export interface BusinessAcquisitionRecord {
 export interface ContactActivityRecord {
   id: string;
   contactId: string;
-  type: "task_completed" | "email_sent" | "sms_sent" | "step_skipped" | "step_unskipped" | "enrollment_paused" | "enrollment_resumed" | "custom_step_added" | "custom_step_removed" | "contact_moved_to_step";
+  type:
+    | "task_completed"
+    | "email_sent"
+    | "sms_sent"
+    | "step_skipped"
+    | "step_unskipped"
+    | "enrollment_paused"
+    | "enrollment_resumed"
+    | "custom_step_added"
+    | "custom_step_removed"
+    | "contact_moved_to_step"
+    // Task lifecycle
+    | "task_suspended"
+    | "task_reactivated"
+    | "call_started"
+    | "call_outcome_captured"
+    | "task_retry_created";
   taskType?: string;
   disposition?: string;
   note?: string;
@@ -289,6 +335,8 @@ export interface ContactActivityRecord {
   message?: string;
   assignee?: string;
   timestamp: Date;
+  dialerSessionId?: string;
+  retryOf?: string;
 }
 
 // ── Admin Configuration Types ─────────────────────────────────────────────────

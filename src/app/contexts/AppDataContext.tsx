@@ -3,6 +3,24 @@ import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisi
 import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
+import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
+
+// ── Legacy ID migration helpers ───────────────────────────────────────────────
+// Old tasks used the pattern: taskitem-call-${enrollmentId}-${stepId}
+// New tasks carry enrollmentId and stepId directly as fields.
+// These helpers allow the handlers to work with both.
+
+function extractEnrollmentIdFromTaskId(taskId: string): string | undefined {
+  // Pattern: taskitem-call-<enrollmentId>-<stepId>
+  // enrollmentId itself contains hyphens so we match from the known prefix
+  const match = taskId.match(/^taskitem-call-(.+)-([^-]+)$/);
+  return match ? match[1] : undefined;
+}
+
+function extractStepIdFromTaskId(taskId: string): string | undefined {
+  const match = taskId.match(/^taskitem-call-(.+)-([^-]+)$/);
+  return match ? match[2] : undefined;
+}
 
 interface AppDataContextValue {
   // Data
@@ -17,6 +35,11 @@ interface AppDataContextValue {
   businessAcquisitions: BusinessAcquisitionRecord[];
   // Task handlers
   handleCompleteTask: (taskId: string, disposition: string, note?: string) => void;
+  /**
+   * Complete a task AND apply outcome rules to advance/retry/skip the linked workflow step.
+   * Use this for all completion paths that should drive workflow progression.
+   */
+  handleCompleteTaskWithOutcome: (taskId: string, disposition: string, note?: string) => void;
   handleRescheduleTask: (taskId: string, newDate: Date, assignee?: string, objective?: string) => void;
   handleDeleteTask: (taskId: string) => void;
   handleBulkCompleteTask: (taskIds: string[], disposition: string, note?: string) => void;
@@ -144,6 +167,231 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
     store.tasks.write(updatedTasks);
     store.taskItems.write(updatedItems);
+  };
+
+  /**
+   * Complete a task and apply outcome rules to drive the linked workflow step.
+   * This is the single entry point for outcome-based task completion.
+   */
+  const handleCompleteTaskWithOutcome = (taskId: string, disposition: string, note?: string) => {
+    const now = new Date();
+
+    // 1. Find the task item
+    const task = taskItems.find((ti) => ti.id === taskId || ti.id.includes(taskId));
+    if (!task) {
+      // Fallback: just complete without workflow logic
+      handleCompleteTask(taskId, disposition, note);
+      return;
+    }
+
+    // 2. Mark the task completed
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: "completed" as const, disposition } : t,
+    );
+    const updatedItems = taskItems.map((ti) =>
+      ti.id === taskId || ti.id.includes(taskId)
+        ? { ...ti, status: "completed" as const, disposition, completedAt: now, ...(note ? { outcome: note } : {}) }
+        : ti,
+    );
+
+    // 3. Log activity
+    const newActivity: ContactActivityRecord = {
+      id: `activity-${Date.now()}`,
+      contactId: task.contactId,
+      type: "task_completed",
+      taskType: task.taskType,
+      disposition,
+      note: note || undefined,
+      source: task.source,
+      sourceType: task.sourceType,
+      stepName: task.ruleName,
+      assignee: task.assignee,
+      timestamp: now,
+    };
+    let updatedActivity = [...contactActivity, newActivity];
+
+    // 4. Apply outcome rules if this task is linked to a workflow step
+    const enrollmentId = task.enrollmentId ?? extractEnrollmentIdFromTaskId(task.id);
+    const stepId = task.stepId ?? extractStepIdFromTaskId(task.id);
+
+    let finalItems = updatedItems;
+    let finalEnrollments = workflowEnrollments;
+    let finalWorkflows = workflows;
+
+    if (enrollmentId && stepId) {
+      const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
+      const workflow = workflows.find((wf) => wf.id === enrollment?.workflowId);
+      if (enrollment && workflow) {
+        const allSteps = mergeSteps(workflow.steps, enrollment.customSteps);
+        const step = allSteps.find((s) => s.id === stepId);
+        const outcomeRules = step?.outcomeRules ?? getDefaultOutcomeRules(task.taskType);
+        const matchingRule = outcomeRules.find((r) => r.disposition === disposition);
+        const action = matchingRule?.action ?? "advance";
+        const contact = contacts.find((c) => c.id === enrollment.contactId);
+
+        if (action === "advance" || action === "advance-and-insert-followup") {
+          // Mark the step done and auto-advance delays
+          let finalProgress = enrollment.stepProgress.map((p) =>
+            p.stepId === stepId ? { ...p, status: "done" as const, completedAt: now } : p,
+          );
+          const sortedSteps = allSteps;
+          let advIdx = sortedSteps.findIndex((s) => s.id === stepId);
+          while (++advIdx < sortedSteps.length && sortedSteps[advIdx].actionType === "delay") {
+            const delayId = sortedSteps[advIdx].id;
+            finalProgress = finalProgress.map((p) =>
+              p.stepId === delayId ? { ...p, status: "done" as const, completedAt: now } : p,
+            );
+          }
+          const allDone = finalProgress.every((p) => p.status === "done" || p.status === "skipped");
+          const updatedEnrollment: WorkflowEnrollment = {
+            ...enrollment,
+            stepProgress: finalProgress,
+            status: allDone ? "completed" : "active",
+          };
+          finalEnrollments = workflowEnrollments.map((e) =>
+            e.id === enrollmentId ? updatedEnrollment : e,
+          );
+          finalWorkflows = allDone
+            ? workflows.map((wf) =>
+                wf.id === workflow.id ? { ...wf, enrolledCount: Math.max(0, wf.enrolledCount - 1) } : wf,
+              )
+            : workflows;
+
+          // Insert follow-up task if needed
+          if (action === "advance-and-insert-followup" && matchingRule?.followup) {
+            const fu = matchingRule.followup;
+            const fuDueDate = new Date(now.getTime() + fu.delayDays * 24 * 60 * 60 * 1000);
+            const fuItem: TaskItem = {
+              id: `taskitem-followup-${Date.now()}`,
+              contactId: task.contactId,
+              contactName: task.contactName,
+              contactStatus: task.contactStatus,
+              taskType: fu.taskType,
+              source: task.source,
+              sourceType: task.sourceType,
+              dueDate: fuDueDate,
+              assignee: task.assignee,
+              status: "pending",
+              triggerContext: fu.objective,
+              notes: fu.notes,
+              enrollmentId,
+              parentTaskId: task.id,
+            };
+            finalItems = [...updatedItems, fuItem];
+
+            const fuActivity: ContactActivityRecord = {
+              id: `activity-followup-${Date.now()}`,
+              contactId: task.contactId,
+              type: "task_retry_created",
+              taskType: fu.taskType,
+              source: task.source,
+              sourceType: task.sourceType,
+              assignee: task.assignee,
+              timestamp: now,
+            };
+            updatedActivity = [...updatedActivity, fuActivity];
+          }
+        } else if (action === "retry") {
+          const currentRetry = task.retryCount ?? 0;
+          const maxRetries = matchingRule?.maxRetries ?? 3;
+          if (currentRetry < maxRetries) {
+            const retryDays = matchingRule?.retryAfterDays ?? 2;
+            const retryDue = new Date(now.getTime() + retryDays * 24 * 60 * 60 * 1000);
+            const retryItem: TaskItem = {
+              id: `taskitem-retry-${Date.now()}`,
+              contactId: task.contactId,
+              contactName: task.contactName,
+              contactStatus: task.contactStatus,
+              taskType: task.taskType,
+              source: task.source,
+              sourceType: task.sourceType,
+              dueDate: retryDue,
+              assignee: task.assignee,
+              status: "pending",
+              triggerContext: task.triggerContext,
+              notes: task.notes,
+              enrollmentId,
+              stepId,
+              retryCount: currentRetry + 1,
+              parentTaskId: task.id,
+              ruleId: task.ruleId,
+              ruleName: task.ruleName,
+            };
+            finalItems = [...updatedItems, retryItem];
+
+            const retryActivity: ContactActivityRecord = {
+              id: `activity-retry-${Date.now()}`,
+              contactId: task.contactId,
+              type: "task_retry_created",
+              taskType: task.taskType,
+              source: task.source,
+              sourceType: task.sourceType,
+              assignee: task.assignee,
+              timestamp: now,
+              retryOf: task.id,
+            };
+            updatedActivity = [...updatedActivity, retryActivity];
+          } else {
+            // Max retries reached — advance the step anyway
+            const finalProgress = enrollment.stepProgress.map((p) =>
+              p.stepId === stepId ? { ...p, status: "done" as const, completedAt: now } : p,
+            );
+            const allDone = finalProgress.every((p) => p.status === "done" || p.status === "skipped");
+            finalEnrollments = workflowEnrollments.map((e) =>
+              e.id === enrollmentId
+                ? { ...e, stepProgress: finalProgress, status: allDone ? "completed" : "active" }
+                : e,
+            );
+          }
+        } else if (action === "skip-remaining") {
+          // Mark all remaining steps skipped and complete the enrollment
+          const finalProgress = enrollment.stepProgress.map((p) => {
+            const existing = p.status;
+            if (existing === "done" || existing === "skipped") return p;
+            return { ...p, status: "skipped" as const };
+          });
+          finalEnrollments = workflowEnrollments.map((e) =>
+            e.id === enrollmentId ? { ...e, stepProgress: finalProgress, status: "completed" as const } : e,
+          );
+          finalWorkflows = workflows.map((wf) =>
+            wf.id === workflow.id ? { ...wf, enrolledCount: Math.max(0, wf.enrolledCount - 1) } : wf,
+          );
+        } else if (action === "pause-enrollment") {
+          // Pause the enrollment and suspend all pending tasks for this contact
+          finalEnrollments = workflowEnrollments.map((e) =>
+            e.id === enrollmentId ? { ...e, status: "paused" as const } : e,
+          );
+          finalItems = updatedItems.map((ti) =>
+            ti.enrollmentId === enrollmentId && ti.status === "pending" && ti.id !== taskId
+              ? { ...ti, status: "suspended" as const }
+              : ti,
+          );
+
+          const pauseActivity: ContactActivityRecord = {
+            id: `activity-pause-${Date.now()}`,
+            contactId: task.contactId,
+            type: "enrollment_paused",
+            source: workflow.name,
+            sourceType: "flow",
+            assignee: contact ? `${contact.firstName} ${contact.lastName}` : "System",
+            timestamp: now,
+          };
+          updatedActivity = [...updatedActivity, pauseActivity];
+        }
+      }
+    }
+
+    // 5. Write all state
+    setTasks(updatedTasks);
+    setTaskItems(finalItems);
+    setContactActivity(updatedActivity);
+    setWorkflowEnrollments(finalEnrollments);
+    setWorkflows(finalWorkflows);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(finalItems);
+    store.contactActivity.write(updatedActivity);
+    store.workflowEnrollments.write(finalEnrollments);
+    store.workflows.write(finalWorkflows);
   };
 
   const handleRescheduleTask = (taskId: string, newDate: Date, assignee?: string, objective?: string) => {
@@ -460,6 +708,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           status: "pending",
           ruleId: step.id,
           ruleName: step.name,
+          // Explicit fields for clean lookup (replaces string-pattern parsing)
+          enrollmentId: enrollment.id,
+          stepId: step.id,
           ...(step.note ? { triggerContext: step.note } : {}),
         });
       }
@@ -793,23 +1044,68 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
-    const updated = workflowEnrollments.map((e) =>
+    const updatedEnrollments = workflowEnrollments.map((e) =>
       e.id === enrollmentId ? { ...e, status } : e,
     );
     const now = new Date();
-    const newActivity: ContactActivityRecord = {
-      id: `activity-flow-${enrollmentId}-${status}-${Date.now()}`,
-      contactId: enrollment.contactId,
-      type: status === "paused" ? "enrollment_paused" : "enrollment_resumed",
-      source: workflow?.name,
-      sourceType: "flow",
-      assignee: "You",
-      timestamp: now,
-    };
-    const updatedActivity = [...contactActivity, newActivity];
-    setWorkflowEnrollments(updated);
+
+    // Suspend all pending tasks for this enrollment when pausing,
+    // reactivate all suspended tasks when resuming.
+    const updatedItems = taskItems.map((ti) => {
+      if (ti.enrollmentId !== enrollmentId) {
+        // Also check legacy ID pattern for older tasks
+        const legacyMatch =
+          ti.id.startsWith(`taskitem-call-${enrollmentId}-`) ||
+          ti.id.startsWith(`taskitem-flow-${enrollmentId}-`);
+        if (!legacyMatch) return ti;
+      }
+      if (status === "paused" && ti.status === "pending") {
+        return { ...ti, status: "suspended" as const };
+      }
+      if (status === "active" && ti.status === "suspended") {
+        return { ...ti, status: "pending" as const };
+      }
+      return ti;
+    });
+
+    const activityType = status === "paused" ? "enrollment_paused" : "enrollment_resumed";
+    const taskActivityType = status === "paused" ? "task_suspended" : "task_reactivated";
+    const suspendedTasks = updatedItems.filter(
+      (ti) =>
+        (ti.enrollmentId === enrollmentId ||
+          ti.id.startsWith(`taskitem-call-${enrollmentId}-`) ||
+          ti.id.startsWith(`taskitem-flow-${enrollmentId}-`)) &&
+        (status === "paused" ? ti.status === "suspended" : ti.status === "pending"),
+    );
+
+    const newActivities: ContactActivityRecord[] = [
+      {
+        id: `activity-flow-${enrollmentId}-${status}-${Date.now()}`,
+        contactId: enrollment.contactId,
+        type: activityType,
+        source: workflow?.name,
+        sourceType: "flow",
+        assignee: "You",
+        timestamp: now,
+      },
+      ...suspendedTasks.map((ti, i) => ({
+        id: `activity-task-${status}-${Date.now()}-${i}`,
+        contactId: enrollment.contactId,
+        type: taskActivityType as ContactActivityRecord["type"],
+        taskType: ti.taskType,
+        source: ti.source,
+        sourceType: ti.sourceType,
+        assignee: ti.assignee,
+        timestamp: now,
+      })),
+    ];
+
+    const updatedActivity = [...contactActivity, ...newActivities];
+    setWorkflowEnrollments(updatedEnrollments);
+    setTaskItems(updatedItems);
     setContactActivity(updatedActivity);
-    store.workflowEnrollments.write(updated);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.taskItems.write(updatedItems);
     store.contactActivity.write(updatedActivity);
   };
 
@@ -835,6 +1131,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       e.id === enrollmentId ? updatedEnrollment : e,
     );
     const now = new Date();
+
+    // Also mark the linked TaskItem as skipped so the task queue stays in sync
+    const updatedItems = taskItems.map((ti) => {
+      const linkedByFields = ti.enrollmentId === enrollmentId && ti.stepId === stepId;
+      const linkedByLegacyId = ti.id === `taskitem-call-${enrollmentId}-${stepId}`;
+      if ((linkedByFields || linkedByLegacyId) && ti.status === "pending") {
+        return { ...ti, status: "completed" as const, disposition: "Skipped", completedAt: now };
+      }
+      return ti;
+    });
+
     const newActivity: ContactActivityRecord = {
       id: `activity-flow-${enrollmentId}-skip-${stepId}-${Date.now()}`,
       contactId: enrollment.contactId,
@@ -847,8 +1154,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
     const updatedActivity = [...contactActivity, newActivity];
     setWorkflowEnrollments(updated);
+    setTaskItems(updatedItems);
     setContactActivity(updatedActivity);
     store.workflowEnrollments.write(updated);
+    store.taskItems.write(updatedItems);
     store.contactActivity.write(updatedActivity);
   };
 
@@ -1200,6 +1509,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         applications,
         businessAcquisitions,
         handleCompleteTask,
+        handleCompleteTaskWithOutcome,
         handleRescheduleTask,
         handleDeleteTask,
         handleBulkCompleteTask,
