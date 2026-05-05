@@ -5,11 +5,14 @@ import {
   List, ListOrdered, Indent, Outdent, Link2, Smile,
   Undo2, Redo2, ChevronDown,
 } from "lucide-react";
+import { useAppData } from "@/app/contexts/AppDataContext";
 
 interface QuickEmailModalProps {
   toEmail: string;
   toName: string;
   onClose: () => void;
+  initialSubject?: string;
+  onSend?: (subject: string, body: string, sender: string) => void;
 }
 
 const SENDER_OPTIONS = [
@@ -21,9 +24,10 @@ const SENDER_OPTIONS = [
 const FONT_FAMILIES = ["Arial", "Georgia", "Times New Roman", "Courier New", "Verdana"];
 const FONT_SIZES = ["10px", "12px", "14px", "16px", "18px", "20px", "24px"];
 
-export function QuickEmailModal({ toEmail, toName, onClose }: QuickEmailModalProps) {
+export function QuickEmailModal({ toEmail, toName, onClose, initialSubject, onSend }: QuickEmailModalProps) {
+  const { adminEmailTemplates } = useAppData();
   const [sender, setSender] = useState(SENDER_OPTIONS[0].value);
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(initialSubject ?? "");
   const [cc, setCc] = useState(false);
   const [bcc, setBcc] = useState(false);
   const [ccValue, setCcValue] = useState("");
@@ -66,8 +70,20 @@ export function QuickEmailModal({ toEmail, toName, onClose }: QuickEmailModalPro
     range.surroundContents(span);
   };
 
+  const handleTemplateSelect = (templateId: string) => {
+    const tpl = adminEmailTemplates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setSubject(tpl.subject);
+    if (bodyRef.current) {
+      bodyRef.current.innerHTML = tpl.body;
+      updateWordCount();
+    }
+  };
+
   const handleSend = () => {
+    const body = bodyRef.current?.innerHTML ?? "";
     if (!subject.trim() && !bodyRef.current?.innerText?.trim()) return;
+    onSend?.(subject, body, sender);
     setSent(true);
     setTimeout(onClose, 1400);
   };
@@ -109,8 +125,17 @@ export function QuickEmailModal({ toEmail, toName, onClose }: QuickEmailModalPro
                   <ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none shrink-0" />
                 </FieldRow>
                 <FieldRow label="Template">
-                  <span className="flex-1 text-sm text-gray-400">Select template</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <select
+                    defaultValue=""
+                    onChange={(e) => handleTemplateSelect(e.target.value)}
+                    className="flex-1 text-sm bg-transparent focus:outline-none appearance-none pr-6 text-gray-700"
+                  >
+                    <option value="" disabled className="text-gray-400">Select template</option>
+                    {adminEmailTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none shrink-0" />
                 </FieldRow>
               </div>
 

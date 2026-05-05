@@ -108,6 +108,7 @@ interface AppDataContextValue {
   handleUpdateSenderIdentity: (id: string, updates: Partial<Omit<SenderIdentity, "id" | "createdAt">>) => void;
   handleDeleteSenderIdentity: (id: string) => void;
   handleSetDefaultSenderIdentity: (id: string) => void;
+  handleSendTaskEmail: (taskId: string, subject: string, sender: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -392,6 +393,27 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.contactActivity.write(updatedActivity);
     store.workflowEnrollments.write(finalEnrollments);
     store.workflows.write(finalWorkflows);
+  };
+
+  const handleSendTaskEmail = (taskId: string, subject: string, sender: string) => {
+    const task = taskItems.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const newEmail: EmailRecord = {
+      id: crypto.randomUUID(),
+      contactId: task.contactId,
+      contactName: task.contactName,
+      subject,
+      senderIdentity: sender,
+      status: "Sent",
+      sequenceDay: 0,
+      sentAt: new Date(),
+      channel: "email",
+    };
+
+    const updatedHistory = [...emailHistory, newEmail];
+    setEmailHistory(updatedHistory);
+    store.emailHistory.write(updatedHistory);
   };
 
   const handleRescheduleTask = (taskId: string, newDate: Date, assignee?: string, objective?: string) => {
@@ -1553,6 +1575,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleUpdateVoicemailScript,
         handleDeleteVoicemailScript,
         handleUpdateVoicemailSettings,
+        handleSendTaskEmail,
         handleCreateSenderIdentity,
         handleUpdateSenderIdentity,
         handleDeleteSenderIdentity,

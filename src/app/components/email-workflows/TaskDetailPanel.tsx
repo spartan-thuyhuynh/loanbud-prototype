@@ -23,6 +23,7 @@ import { getTaskTypeConfig } from "@/app/lib/taskTypeRegistry";
 import { useDialer } from "@/app/contexts/DialerContext";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { OutcomeCapturePanel } from "./OutcomeCapturePanel";
+import { QuickEmailModal } from "./QuickEmailModal";
 
 const TEAM_MEMBERS = ["John Doe", "Mike Johnson", "Sarah Chen"];
 
@@ -181,11 +182,12 @@ export function TaskDetailPanel({
   contactEmail,
   contactListingName,
 }: TaskDetailPanelProps) {
-  const { handleCompleteTaskWithOutcome, handleRescheduleTask } = useAppData();
+  const { handleCompleteTaskWithOutcome, handleRescheduleTask, handleSendTaskEmail } = useAppData();
   const { openDialerForTask, session } = useDialer();
 
   const [showVmScript, setShowVmScript] = useState(false);
   const [showOutcomeCapture, setShowOutcomeCapture] = useState(false);
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<EditingField>(null);
@@ -230,6 +232,8 @@ export function TaskDetailPanel({
       if (!phone) return;
       openDialerForTask(task, phone);
       setShowOutcomeCapture(false);
+    } else if (config.primaryAction.handler === "email-composer") {
+      setShowEmailComposer(true);
     } else {
       setShowOutcomeCapture(true);
     }
@@ -244,7 +248,9 @@ export function TaskDetailPanel({
   const actionLabel = config.primaryAction.label.replace("{contactName}", task.contactName);
   const ActionIcon = config.primaryAction.icon;
   const actionDisabled =
-    !isActionable || (config.primaryAction.handler === "dialer" && !contactPhone);
+    !isActionable ||
+    (config.primaryAction.handler === "dialer" && !contactPhone) ||
+    (config.primaryAction.handler === "email-composer" && !contactEmail);
 
   return (
     <>
@@ -542,6 +548,14 @@ export function TaskDetailPanel({
                     Log outcome without calling →
                   </button>
                 )}
+                {config.primaryAction.handler === "email-composer" && (
+                  <button
+                    onClick={() => setShowOutcomeCapture(true)}
+                    className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+                  >
+                    Log outcome without sending →
+                  </button>
+                )}
               </div>
             )}
 
@@ -566,6 +580,20 @@ export function TaskDetailPanel({
           </div>
         </div>
       </div>
+
+      {showEmailComposer && contactEmail && (
+        <QuickEmailModal
+          toEmail={contactEmail}
+          toName={task.contactName}
+          initialSubject={task.triggerContext ?? ""}
+          onSend={(subject, _body, sender) => {
+            handleSendTaskEmail(task.id, subject, sender);
+            setShowEmailComposer(false);
+            setShowOutcomeCapture(true);
+          }}
+          onClose={() => setShowEmailComposer(false)}
+        />
+      )}
     </>
   );
 }
