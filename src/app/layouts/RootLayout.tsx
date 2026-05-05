@@ -6,13 +6,14 @@ import { DialerPanel } from "../components/dialer/DialerPanel";
 import { ComposerPanel } from "../components/composer/ComposerPanel";
 import { appSidebarSections } from "../data/navigation";
 import { SHOW_APP_HEADER } from "../config/featureFlags";
+import { DialerProvider, useDialer } from "../contexts/DialerContext";
 
-export function RootLayout() {
+function RootLayoutInner() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem("sidebar-collapsed") !== "false"
   );
-  const [dialerOpen, setDialerOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const { dialerOpen, dialerNumber, openDialer, closeDialer } = useDialer();
 
   const location = useLocation();
   // These routes render their own sub-sidebar and handle AppHeader internally
@@ -34,26 +35,26 @@ export function RootLayout() {
         collapsed={sidebarCollapsed}
         onToggle={handleToggleSidebar}
         onOpenComposer={() => setComposerOpen(true)}
-        onOpenDialer={() => setDialerOpen(true)}
+        onOpenDialer={() => openDialer()}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         {SHOW_APP_HEADER && !routeHasSubSidebar && (
           <AppHeader
             onOpenComposer={() => setComposerOpen(true)}
-            onOpenDialer={() => setDialerOpen(true)}
+            onOpenDialer={() => openDialer()}
           />
         )}
         <div className="flex flex-1 overflow-hidden">
           <Outlet
             context={{
               onOpenComposer: () => setComposerOpen(true),
-              onOpenDialer: () => setDialerOpen(true),
+              onOpenDialer: openDialer,
             }}
           />
         </div>
       </div>
 
-      {dialerOpen && <DialerPanel onClose={() => setDialerOpen(false)} />}
+      {dialerOpen && <DialerPanel onClose={closeDialer} initialNumber={dialerNumber} />}
       {composerOpen && (
         <ComposerPanel
           onClose={() => setComposerOpen(false)}
@@ -61,5 +62,13 @@ export function RootLayout() {
         />
       )}
     </div>
+  );
+}
+
+export function RootLayout() {
+  return (
+    <DialerProvider>
+      <RootLayoutInner />
+    </DialerProvider>
   );
 }

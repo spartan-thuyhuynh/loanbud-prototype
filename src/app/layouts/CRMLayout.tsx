@@ -6,7 +6,7 @@ import { SHOW_APP_HEADER } from "../config/featureFlags";
 
 interface RootOutletContext {
   onOpenComposer: () => void;
-  onOpenDialer: () => void;
+  onOpenDialer: (number?: string) => void;
 }
 
 export function CRMLayout() {

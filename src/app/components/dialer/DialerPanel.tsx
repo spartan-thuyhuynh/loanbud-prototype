@@ -3,12 +3,13 @@ import { X, Minus, Phone } from "lucide-react";
 
 interface DialerPanelProps {
   onClose: () => void;
+  initialNumber?: string;
 }
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
-export function DialerPanel({ onClose }: DialerPanelProps) {
-  const [input, setInput] = useState("");
+export function DialerPanel({ onClose, initialNumber }: DialerPanelProps) {
+  const [input, setInput] = useState(initialNumber ?? "");
   const [minimized, setMinimized] = useState(false);
 
   const handleKey = (k: string) => setInput((v) => v + k);

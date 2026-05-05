@@ -13,6 +13,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
+import { useDialer } from "@/app/contexts/DialerContext";
 import { CreateTaskModal } from "@/app/components/email-workflows/CreateTaskModal";
 import { TaskActionModal } from "@/app/components/email-workflows/TaskActionModal";
 import type { TaskItem, ContactActivityRecord } from "@/app/types";
@@ -57,6 +58,8 @@ export function ContactDetail() {
     handleRescheduleTask,
     handleDeleteTask,
   } = useAppData();
+
+  const { openDialer } = useDialer();
 
   const [activeTab, setActiveTab] = useState<"activity" | "tasks">("activity");
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -152,8 +155,8 @@ export function ContactDetail() {
 
             {/* Action icons */}
             <div className="flex gap-3 mt-4">
-              <a
-                href={`tel:${contact.phone}`}
+              <button
+                onClick={() => openDialer(contact.phone)}
                 className="flex flex-col items-center gap-1 group"
                 title="Call"
               >
@@ -161,7 +164,7 @@ export function ContactDetail() {
                   <Phone className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <span className="text-[10px] text-muted-foreground">Call</span>
-              </a>
+              </button>
               <a
                 href={`mailto:${contact.email}`}
                 className="flex flex-col items-center gap-1 group"
