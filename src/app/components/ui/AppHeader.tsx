@@ -37,14 +37,14 @@ export function AppHeader({ onOpenComposer, onOpenDialer }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
               <CircleUser className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium">Alex Johnson</span>
+              <span className="text-sm font-medium">John Doe</span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel className="font-normal">
-              <p className="text-sm font-medium">Alex Johnson</p>
-              <p className="text-xs text-muted-foreground">alex@loanbud.com</p>
+              <p className="text-sm font-medium">John Doe</p>
+              <p className="text-xs text-muted-foreground">john@loanbud.com</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>

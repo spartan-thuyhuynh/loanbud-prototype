@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  CircleUser,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { AppSidebarSection } from "../../types";
@@ -12,16 +11,12 @@ interface AppSidebarProps {
   sections: AppSidebarSection[];
   collapsed: boolean;
   onToggle: () => void;
-  onOpenComposer: () => void;
-  onOpenDialer: () => void;
 }
 
 export function AppSidebar({
   sections,
   collapsed,
   onToggle,
-  onOpenComposer,
-  onOpenDialer,
 }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -33,18 +28,7 @@ export function AppSidebar({
     );
   };
 
-  const handleItemClick = (
-    route?: string,
-    action?: "openComposer" | "openDialer",
-  ) => {
-    if (action === "openComposer") {
-      onOpenComposer();
-      return;
-    }
-    if (action === "openDialer") {
-      onOpenDialer();
-      return;
-    }
+  const handleItemClick = (route?: string) => {
     if (route) navigate(route);
   };
 
@@ -54,7 +38,7 @@ export function AppSidebar({
     const btn = (
       <button
         key={item.id}
-        onClick={() => handleItemClick(item.route, item.action)}
+        onClick={() => handleItemClick(item.route)}
         className={`
           w-full flex items-center gap-3 rounded-lg transition-all duration-150
           ${collapsed ? "justify-center p-3" : "px-3 py-2"}
@@ -142,18 +126,9 @@ export function AppSidebar({
         ))}
       </nav>
 
-      {/* Footer — account + toggle */}
+      {/* Footer — toggle */}
       <div className="border-t border-white/10 shrink-0">
-        <div
-          className={`flex items-center px-2 py-2 gap-1 ${collapsed ? "flex-col" : "flex-row"}`}
-        >
-          <button
-            className={`flex items-center gap-3 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors
-              ${collapsed ? "justify-center p-3 w-full" : "px-3 py-2 flex-1"}`}
-          >
-            <CircleUser className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="text-sm">Account</span>}
-          </button>
+        <div className={`flex items-center px-2 py-2 ${collapsed ? "justify-center" : "justify-end"}`}>
           <button
             onClick={onToggle}
             className={`p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors shrink-0

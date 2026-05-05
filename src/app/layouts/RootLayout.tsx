@@ -34,8 +34,6 @@ function RootLayoutInner() {
         sections={appSidebarSections}
         collapsed={sidebarCollapsed}
         onToggle={handleToggleSidebar}
-        onOpenComposer={() => setComposerOpen(true)}
-        onOpenDialer={() => openDialer()}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         {SHOW_APP_HEADER && !routeHasSubSidebar && (

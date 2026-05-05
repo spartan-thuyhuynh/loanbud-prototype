@@ -90,12 +90,6 @@ export const appSidebarSections: AppSidebarSection[] = [
       { id: "configurations",  label: "Configurations",  icon: Settings,      route: "/configurations" },
     ],
   },
-  {
-    items: [
-      { id: "composer", label: "Composer", icon: Mail, action: "openComposer", externalIcon: true },
-      { id: "dialer",   label: "Dialer",   icon: Phone,         action: "openDialer",   externalIcon: true },
-    ],
-  },
 ];
 
 export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
