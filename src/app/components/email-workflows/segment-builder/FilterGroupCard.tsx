@@ -1,5 +1,5 @@
 import { Copy, Trash2, Plus, X, ChevronDown } from "lucide-react";
-import type { FilterGroup, FilterRule } from "../types";
+import type { FilterGroup, FilterRule } from "@/app/types";
 
 interface FilterGroupCardProps {
   group: FilterGroup;

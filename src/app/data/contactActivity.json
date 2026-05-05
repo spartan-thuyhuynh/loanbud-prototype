@@ -88,7 +88,7 @@
     "type": "sms_sent",
     "message": "Hi Sarah, following up on your equipment financing inquiry. Ready to help when you are!",
     "source": "Re-engagement Flow",
-    "sourceType": "campaign",
+    "sourceType": "manual",
     "assignee": "Mike Johnson",
     "timestamp": "2026-04-08T10:30:00.000Z"
   },
@@ -146,7 +146,7 @@
     "type": "email_sent",
     "subject": "SBA 7(a) Loan Program Overview",
     "source": "Partner Onboarding",
-    "sourceType": "campaign",
+    "sourceType": "manual",
     "stepName": "Day 0 Email",
     "assignee": "john.doe@loanbud.com",
     "timestamp": "2026-04-16T09:00:00.000Z"
@@ -159,7 +159,7 @@
     "disposition": "Not Needed",
     "note": "Emily has opted out of marketing. Marked accordingly.",
     "source": "Partner Onboarding",
-    "sourceType": "campaign",
+    "sourceType": "manual",
     "stepName": "Day 3 Call",
     "assignee": "John Doe",
     "timestamp": "2026-04-13T10:00:00.000Z"
@@ -170,7 +170,7 @@
     "type": "sms_sent",
     "message": "Hi Emily, quick note about your SBA application status. Reply STOP to opt out.",
     "source": "Partner Onboarding",
-    "sourceType": "campaign",
+    "sourceType": "manual",
     "assignee": "John Doe",
     "timestamp": "2026-04-09T12:00:00.000Z"
   },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SegmentBuilder, type SavedSegment } from './campaign/SegmentBuilder';
+import { SegmentBuilder, type SavedSegment } from './SegmentBuilder';
 import { useAppData } from '@/app/contexts/AppDataContext';
 import { useNavigate, useLocation } from 'react-router';
 import { toast } from 'sonner';

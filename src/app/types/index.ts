@@ -29,8 +29,6 @@ export type CRMView =
 
 export type EmailWorkflowView =
   | "overview"
-  | "compose"
-  | "campaigns"
   | "flows"
   | "user-segments"
   | "flow-builder"
@@ -123,6 +121,23 @@ export interface FilterRule {
   logic: "and" | "or";
 }
 
+export interface FilterGroup {
+  id: string;
+  filters: FilterRule[];
+  connectorAfter: "and" | "or";
+}
+
+export interface SavedSegment {
+  id: string;
+  name: string;
+  description: string;
+  filters: FilterRule[];
+  createdAt: Date;
+  excludeFilters?: FilterRule[];
+  includedContactIds?: string[];
+  excludedContactIds?: string[];
+}
+
 export interface Segment {
   id: string;
   name: string;
@@ -144,7 +159,7 @@ export interface TaskItem {
   contactStatus: string;
   taskType: string;
   source: string;
-  sourceType: "campaign" | "flow" | "manual";
+  sourceType: "flow" | "manual";
   dueDate: Date;
   assignee?: string;
   status: "pending" | "completed" | "overdue" | "suspended";
@@ -329,7 +344,7 @@ export interface ContactActivityRecord {
   disposition?: string;
   note?: string;
   source?: string;
-  sourceType?: "campaign" | "flow" | "manual";
+  sourceType?: "flow" | "manual";
   stepName?: string;
   subject?: string;
   message?: string;

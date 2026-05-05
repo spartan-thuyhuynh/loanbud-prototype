@@ -8,7 +8,6 @@ import { useAppData } from "@/app/contexts/AppDataContext";
 export function UserSegments() {
   const navigate = useNavigate();
   const { segments, handleDeleteSegment } = useAppData();
-  const onCompose = (segmentId: string) => navigate("/email-workflows/compose", { state: { segmentId } });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
@@ -306,12 +305,6 @@ export function UserSegments() {
             <div className="flex gap-3">
               <button className="px-4 py-2 border-2 border-border text-foreground rounded-lg hover:bg-muted transition-all">
                 Export
-              </button>
-              <button
-                onClick={() => onCompose(selectedSegments[0])}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
-              >
-                Create Campaign
               </button>
             </div>
           </div>

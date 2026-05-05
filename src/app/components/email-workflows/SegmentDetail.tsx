@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import type { FilterRule } from "@/app/types";
-import { InlineToggle } from "@/app/components/email-workflows/campaign/segment-builder/InlineToggle";
+import { InlineToggle } from "@/app/components/email-workflows/segment-builder/InlineToggle";
 
 const formatDateTime = (date: Date) =>
   new Intl.DateTimeFormat("en-US", {

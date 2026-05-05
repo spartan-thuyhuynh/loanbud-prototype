@@ -1,6 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import type { Contact } from "@/app/types";
-import { getAvatarColor, getInitials } from "../campaign-data";
+import { getAvatarColor, getInitials } from "./segment-utils";
 
 interface SegmentPreviewPanelProps {
   matchingContacts: Contact[];

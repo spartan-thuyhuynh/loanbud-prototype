@@ -1,11 +1,9 @@
 import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
-import type { Campaign } from "../components/email-workflows/campaign/types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
 import emailHistoryJson from "./emailHistory.json";
 import tasksJson from "./tasks.json";
-import campaignsJson from "./campaigns.json";
 import applicationsJson from "./applications.json";
 import businessAcquisitionsJson from "./businessAcquisitions.json";
 import workflowsJson from "./workflows.json";
@@ -23,7 +21,6 @@ const KEYS = {
   taskItems: "loanbudcrm:taskItems",
   emailHistory: "loanbudcrm:emailHistory",
   tasks: "loanbudcrm:tasks",
-  campaigns: "loanbudcrm:campaigns",
   applications: "loanbudcrm:applications",
   businessAcquisitions: "loanbudcrm:businessAcquisitions",
   workflows: "loanbudcrm:v2:workflows",
@@ -111,15 +108,6 @@ export const store = {
         ["scheduledFor", "completedAt"],
       ),
     write: (data: Task[]) => write(KEYS.tasks, data),
-  },
-  campaigns: {
-    read: () =>
-      read<Campaign>(
-        KEYS.campaigns,
-        campaignsJson as Campaign[],
-        ["sentAt", "scheduledFor"],
-      ),
-    write: (data: Campaign[]) => write(KEYS.campaigns, data),
   },
   applications: {
     read: () =>

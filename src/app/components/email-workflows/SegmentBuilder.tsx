@@ -1,8 +1,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { Plus, Save, ChevronDown } from "lucide-react";
-import { getAvatarColor, getInitials } from "./campaign-data";
-import type { Contact } from "@/app/types";
-import type { FilterGroup, FilterRule, SavedSegment } from "./types";
+import { getAvatarColor, getInitials } from "./segment-builder/segment-utils";
+import type { Contact, FilterGroup, FilterRule, SavedSegment } from "@/app/types";
 import { FilterGroupCard } from "./segment-builder/FilterGroupCard";
 import { SegmentPreviewPanel } from "./segment-builder/SegmentPreviewPanel";
 import { SaveSegmentModal } from "./segment-builder/SaveSegmentModal";

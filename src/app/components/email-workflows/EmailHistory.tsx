@@ -90,7 +90,7 @@ export function EmailHistory() {
             <div className="text-center">
               <Mail className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
               <h3 className="text-xl font-semibold mb-2">No Email History Yet</h3>
-              <p className="text-muted-foreground text-sm">Send your first email campaign to see it here</p>
+              <p className="text-muted-foreground text-sm">No emails have been sent yet</p>
             </div>
           </div>
         ) : (

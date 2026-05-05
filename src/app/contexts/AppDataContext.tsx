@@ -1,6 +1,5 @@
 import { createContext, useContext, useState } from "react";
 import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
-import type { Campaign } from "../components/email-workflows/campaign/types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
@@ -29,7 +28,6 @@ interface AppDataContextValue {
   tasks: Task[];
   taskItems: TaskItem[];
   contactActivity: ContactActivityRecord[];
-  campaigns: Campaign[];
   segments: Segment[];
   applications: Application[];
   businessAcquisitions: BusinessAcquisitionRecord[];
@@ -47,7 +45,7 @@ interface AppDataContextValue {
   handleBulkDeleteTask: (taskIds: string[]) => void;
   // Contact handlers
   handleUpdateContact: (contactId: string, updates: Partial<Contact>) => void;
-  // Standalone task creation (not tied to a campaign)
+  // Standalone task creation
   handleCreateTask: (params: {
     contactId: string;
     contactName: string;
@@ -57,11 +55,6 @@ interface AppDataContextValue {
     vmScript?: string;
     assignee?: string;
   }) => void;
-  // Remove a contact from a campaign and cancel their pending campaign tasks
-  handleRemoveContactFromCampaign: (contactId: string, campaignName: string) => void;
-  // Campaign/compose handler (navigation handled by the caller)
-  handleCompose: (params: any) => void;
-  handleDeleteCampaign: (campaignId: string) => void;
   // Segment handlers
   handleCreateSegment: (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => void;
   handleUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
@@ -119,7 +112,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(store.tasks.read());
   const [taskItems, setTaskItems] = useState<TaskItem[]>(store.taskItems.read());
   const [contactActivity, setContactActivity] = useState<ContactActivityRecord[]>(store.contactActivity.read());
-  const [campaigns, setCampaigns] = useState<Campaign[]>(store.campaigns.read());
   const [segments, setSegments] = useState<Segment[]>(store.segments.read());
   const [applications] = useState<Application[]>(store.applications.read());
   const [businessAcquisitions] = useState<BusinessAcquisitionRecord[]>(store.businessAcquisitions.read());
@@ -551,130 +543,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
-  const handleRemoveContactFromCampaign = (contactId: string, campaignName: string) => {
-    const updatedTasks = tasks.filter(
-      (t) => !(t.contactId === contactId && t.status === "pending"),
-    );
-    const updatedItems = taskItems.filter(
-      (ti) =>
-        !(
-          ti.contactId === contactId &&
-          ti.sourceType === "campaign" &&
-          ti.source === campaignName &&
-          ti.status === "pending"
-        ),
-    );
-    setTasks(updatedTasks);
-    setTaskItems(updatedItems);
-    store.tasks.write(updatedTasks);
-    store.taskItems.write(updatedItems);
-  };
-
   const handleUpdateContact = (contactId: string, updates: Partial<Contact>) => {
     const updated = contacts.map((c) =>
       c.id === contactId ? { ...c, ...updates } : c,
     );
     setContacts(updated);
     store.contacts.write(updated);
-  };
-
-  const handleCompose = (params: any) => {
-    const now = new Date();
-    const newEmails: EmailRecord[] = params.recipients.map((c: any, i: number) => ({
-      id: `email-${Date.now()}-${i}`,
-      contactId: c.id,
-      contactName: `${c.firstName} ${c.lastName}`,
-      subject: params.channel === "sms" ? "" : params.subject,
-      senderIdentity: params.senderIdentity,
-      status: "Sent" as const,
-      sequenceDay: 0,
-      sentAt: now,
-      channel: (params.channel ?? "email") as "email" | "sms",
-    }));
-
-    const newTasks: Task[] = [];
-    const newTaskItems: TaskItem[] = [];
-
-    params.reminders.forEach((reminder: any, rIdx: number) => {
-      params.recipients.forEach((c: any, cIdx: number) => {
-        const uniqueId = `${Date.now()}-${rIdx}-${cIdx}`;
-        newTasks.push({
-          id: `task-${uniqueId}`,
-          contactId: c.id,
-          contactName: `${c.firstName} ${c.lastName}`,
-          contactPhone: c.phone,
-          listingStatus: c.listingStatus,
-          callObjective: reminder.objective,
-          voicemailScript: reminder.vmScript,
-          dueDay: 0,
-          scheduledFor: new Date(reminder.dueDate),
-          status: "pending" as const,
-        });
-        newTaskItems.push({
-          id: `taskitem-${uniqueId}`,
-          contactName: `${c.firstName} ${c.lastName}`,
-          contactId: c.id,
-          contactStatus: c.listingStatus,
-          taskType: reminder.type,
-          source: params.campaignName || "Email Campaign",
-          sourceType: "campaign" as const,
-          dueDate: new Date(reminder.dueDate),
-          assignee: params.senderIdentity,
-          status: "pending" as const,
-          triggerContext: reminder.objective,
-          notes: reminder.vmScript || undefined,
-          disposition: "",
-        });
-      });
-    });
-
-    const sendMode: "now" | "scheduled" | "auto" = params.sendMode ?? "now";
-    const newCampaign: Campaign = {
-      id: `campaign-${Date.now()}`,
-      name: params.campaignName || "Campaign",
-      description: params.campaignDescription,
-      segmentId: params.segmentId,
-      segmentName: params.segmentName,
-      status: sendMode === "now" ? "sent" : sendMode === "scheduled" ? "scheduled" : "auto",
-      ...(sendMode === "now" ? { sentAt: now } : {}),
-      ...(sendMode === "scheduled" && params.scheduledAt ? { scheduledFor: params.scheduledAt } : {}),
-      recipientCount: params.recipients.length,
-      followUpTasks: params.reminders.map((r: any) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const due = new Date(r.dueDate + "T00:00:00");
-        const daysAfter = Math.max(0, Math.round((due.getTime() - today.getTime()) / 86400000));
-        return { daysAfter, taskType: r.type, description: r.objective };
-      }),
-      templateId: "",
-      templateName: "",
-      channel: (params.channel ?? "email") as "email" | "sms",
-      ...(sendMode === "auto" && params.triggerDelayMinutes != null
-        ? { triggerDelayMinutes: params.triggerDelayMinutes }
-        : {}),
-    };
-
-    const updatedHistory = [...emailHistory, ...newEmails];
-    const updatedTasks = [...tasks, ...newTasks];
-    const updatedItems = [...taskItems, ...newTaskItems];
-    const updatedCampaigns = [...campaigns, newCampaign];
-
-    setEmailHistory(updatedHistory);
-    setTasks(updatedTasks);
-    setTaskItems(updatedItems);
-    setCampaigns(updatedCampaigns);
-
-    store.emailHistory.write(updatedHistory);
-    store.tasks.write(updatedTasks);
-    store.taskItems.write(updatedItems);
-    store.campaigns.write(updatedCampaigns);
-    // Navigation after compose is handled by the ComposeEmail component
-  };
-
-  const handleDeleteCampaign = (campaignId: string) => {
-    const updated = campaigns.filter((c) => c.id !== campaignId);
-    setCampaigns(updated);
-    store.campaigns.write(updated);
   };
 
   const handleCreateSegment = (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => {
@@ -1526,7 +1400,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         tasks,
         taskItems,
         contactActivity,
-        campaigns,
         segments,
         applications,
         businessAcquisitions,
@@ -1539,9 +1412,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleBulkDeleteTask,
         handleUpdateContact,
         handleCreateTask,
-        handleRemoveContactFromCampaign,
-        handleCompose,
-        handleDeleteCampaign,
         handleCreateSegment,
         handleUpdateSegment,
         handleDeleteSegment,
