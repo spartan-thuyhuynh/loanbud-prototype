@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, ChevronRight, Check, AlertCircle,
   ArrowUp, ArrowDown, X,
-  Search, Users, Clock,
+  Search, Users, Clock, Mail, MessageSquare, Phone,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -13,7 +13,7 @@ import type { WorkflowStep } from "../../types";
 import { computeDayOffsets } from "../../lib/workflowUtils";
 import {
   StepTypeIcon, StepConfigFields, SectionLabel, FieldLabel,
-  STEP_DEFAULTS, TYPE_OPTIONS, TYPE_ICON_STYLE, TYPE_BADGE_STYLE, TYPE_HOVER_STYLE,
+  STEP_DEFAULTS, TYPE_OPTIONS, TYPE_ICON_STYLE, TYPE_ICON_BG, TYPE_BADGE_STYLE, TYPE_HOVER_STYLE,
   type ActionType, type StepDraft,
 } from "./StepConfigForm";
 
