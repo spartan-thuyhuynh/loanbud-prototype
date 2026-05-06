@@ -174,7 +174,7 @@ export function TaskQueue({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-white">
       {/* Page header — hidden when embedded inside another component */}
       {!tasksProp && <div className="border-b border-border bg-card px-8 py-5 shrink-0">
         <h1 className="text-3xl font-semibold text-foreground">Tasks</h1>

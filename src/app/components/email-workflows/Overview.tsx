@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  BarChart3,
   ChevronRight,
   GitBranch,
   FileText,
@@ -9,7 +8,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
 
-import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { CURRENT_USER } from "@/app/config/featureFlags";
 import { TaskQueue } from "./TaskQueue";
@@ -19,7 +17,6 @@ export function Overview() {
   const { taskItems: tasks, workflows, workflowEnrollments } = useAppData();
   // --- State ---
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "assignee">("list");
 
   // --- Logic ---
   const activeEnrollmentsByWorkflow = workflowEnrollments.reduce(
@@ -31,10 +28,6 @@ export function Overview() {
     {} as Record<string, number>,
   );
 
-  const assignees = Array.from(
-    new Set(tasks.map((t) => t.assignee).filter((a): a is string => !!a)),
-  );
-
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,20 +36,6 @@ export function Overview() {
     const matchesUser = task.assignee === CURRENT_USER;
     return matchesSearch && matchesUser;
   });
-
-  const tasksByAssignee = assignees.reduce(
-    (acc, assignee) => {
-      acc[assignee] = filteredTasks.filter((t) => t.assignee === assignee);
-      return acc;
-    },
-    {} as Record<string, TaskItem[]>,
-  );
-
-  const getWorkloadLevel = (taskCount: number) => {
-    if (taskCount >= 10) return { label: "High", color: "text-red-600" };
-    if (taskCount >= 5) return { label: "Medium", color: "text-amber-600" };
-    return { label: "Low", color: "text-green-600" };
-  };
 
   return (
     <div className="h-full flex flex-col bg-background overflow-auto font-sans">
@@ -175,58 +154,19 @@ export function Overview() {
                   Assigned to {CURRENT_USER} · {filteredTasks.filter(t => t.status !== "completed").length} pending
                 </p>
               </div>
+              <button
+                onClick={() => navigate("/email-workflows/tasks")}
+                className="flex items-center gap-1 text-sm text-primary hover:underline font-medium"
+              >
+                View all <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-              {/* Data Display */}
-              {viewMode === "list" ? (
-                <TaskQueue
-                  tasks={filteredTasks}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  viewMode={viewMode}
-                  onViewModeToggle={() =>
-                    setViewMode(viewMode === "list" ? "assignee" : "list")
-                  }
-                />
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 px-5 py-2.5 border-b border-border">
-                    <button
-                      onClick={() => setViewMode("list")}
-                      className="flex items-center gap-2 px-3 py-1.5 border border-border rounded-lg hover:bg-muted text-xs font-medium transition-colors"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      List View
-                    </button>
-                  </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {assignees.map((assignee) => (
-                      <div
-                        key={assignee}
-                        className="p-4 border border-border rounded-lg"
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold">{assignee}</span>
-                          <span
-                            className={
-                              getWorkloadLevel(tasksByAssignee[assignee].length)
-                                .color
-                            }
-                          >
-                            {
-                              getWorkloadLevel(tasksByAssignee[assignee].length)
-                                .label
-                            }
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {tasksByAssignee[assignee].length} active tasks
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+              <TaskQueue
+                tasks={filteredTasks}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+              />
             </div>
           </div>
         </div>

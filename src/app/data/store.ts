@@ -31,7 +31,19 @@ const KEYS = {
   voicemailScripts: "loanbudcrm:v2:voicemailScripts",
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
   senderIdentities: "loanbudcrm:v2:senderIdentities",
+  emailCategories: "loanbudcrm:v2:emailCategories",
+  smsCategories: "loanbudcrm:v2:smsCategories",
+  voicemailCategories: "loanbudcrm:v2:voicemailCategories",
 } as const;
+
+function readStringArray(key: string, fallback: string[]): string[] {
+  const raw = localStorage.getItem(key);
+  return raw ? (JSON.parse(raw) as string[]) : fallback;
+}
+
+function writeStringArray(key: string, data: string[]): void {
+  localStorage.setItem(key, JSON.stringify(data));
+}
 
 function reviveDates<T extends Record<string, unknown>>(
   items: T[],
@@ -199,5 +211,17 @@ export const store = {
         ["createdAt"],
       ),
     write: (data: SenderIdentity[]) => write(KEYS.senderIdentities, data),
+  },
+  emailCategories: {
+    read: () => readStringArray(KEYS.emailCategories, ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"]),
+    write: (data: string[]) => writeStringArray(KEYS.emailCategories, data),
+  },
+  smsCategories: {
+    read: () => readStringArray(KEYS.smsCategories, ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"]),
+    write: (data: string[]) => writeStringArray(KEYS.smsCategories, data),
+  },
+  voicemailCategories: {
+    read: () => readStringArray(KEYS.voicemailCategories, ["Initial Outreach", "Follow-up", "Re-engagement", "Custom"]),
+    write: (data: string[]) => writeStringArray(KEYS.voicemailCategories, data),
   },
 };

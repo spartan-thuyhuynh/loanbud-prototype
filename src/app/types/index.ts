@@ -356,12 +356,7 @@ export interface ContactActivityRecord {
 
 // ── Admin Configuration Types ─────────────────────────────────────────────────
 
-export type EmailTemplateCategory =
-  | "Initial Outreach"
-  | "Follow-up"
-  | "Nurture"
-  | "Re-engagement"
-  | "Custom";
+export type EmailTemplateCategory = string;
 
 export interface AdminEmailTemplate {
   id: string;
@@ -375,12 +370,7 @@ export interface AdminEmailTemplate {
   updatedAt: Date;
 }
 
-export type SmsTemplateCategory =
-  | "Follow-up"
-  | "Reminder"
-  | "Appointment"
-  | "Alert"
-  | "Custom";
+export type SmsTemplateCategory = string;
 
 export interface SmsTemplate {
   id: string;
@@ -392,11 +382,7 @@ export interface SmsTemplate {
   updatedAt: Date;
 }
 
-export type VoicemailCategory =
-  | "Initial Outreach"
-  | "Follow-up"
-  | "Re-engagement"
-  | "Custom";
+export type VoicemailCategory = string;
 
 export interface VoicemailScript {
   id: string;

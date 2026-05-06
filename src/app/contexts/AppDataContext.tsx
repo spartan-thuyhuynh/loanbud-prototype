@@ -82,6 +82,17 @@ interface AppDataContextValue {
   voicemailScripts: VoicemailScript[];
   voicemailSettings: VoicemailSettings;
   senderIdentities: SenderIdentity[];
+  // Template categories
+  emailCategories: string[];
+  smsCategories: string[];
+  voicemailCategories: string[];
+  // Category handlers
+  handleAddEmailCategory: (name: string) => void;
+  handleDeleteEmailCategory: (name: string) => void;
+  handleAddSmsCategory: (name: string) => void;
+  handleDeleteSmsCategory: (name: string) => void;
+  handleAddVoicemailCategory: (name: string) => void;
+  handleDeleteVoicemailCategory: (name: string) => void;
   // Email template handlers
   handleCreateAdminEmailTemplate: (t: Omit<AdminEmailTemplate, "id" | "createdAt" | "updatedAt">) => void;
   handleUpdateAdminEmailTemplate: (id: string, updates: Partial<Omit<AdminEmailTemplate, "id" | "createdAt">>) => void;
@@ -106,6 +117,10 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
+const EMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"];
+const SMS_CATEGORY_BUILTINS = ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"];
+const VOICEMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Re-engagement", "Custom"];
+
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>(store.contacts.read());
   const [emailHistory, setEmailHistory] = useState<EmailRecord[]>(store.emailHistory.read());
@@ -124,6 +139,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.voicemailSettings.read()[0] ?? { providerName: "", fromPhoneNumber: "", ringlessEnabled: false, defaultGreeting: "", recordingEnabled: false },
   );
   const [senderIdentities, setSenderIdentities] = useState<SenderIdentity[]>(store.senderIdentities.read());
+  const [emailCategories, setEmailCategories] = useState<string[]>(store.emailCategories.read());
+  const [smsCategories, setSmsCategories] = useState<string[]>(store.smsCategories.read());
+  const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
 
   const handleCompleteTask = (taskId: string, disposition: string, note?: string) => {
     const now = new Date();
@@ -1392,6 +1410,48 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.senderIdentities.write(updated);
   };
 
+  const handleAddEmailCategory = (name: string) => {
+    if (emailCategories.includes(name)) return;
+    const updated = [...emailCategories, name];
+    setEmailCategories(updated);
+    store.emailCategories.write(updated);
+  };
+
+  const handleDeleteEmailCategory = (name: string) => {
+    if (EMAIL_CATEGORY_BUILTINS.includes(name)) return;
+    const updated = emailCategories.filter((c) => c !== name);
+    setEmailCategories(updated);
+    store.emailCategories.write(updated);
+  };
+
+  const handleAddSmsCategory = (name: string) => {
+    if (smsCategories.includes(name)) return;
+    const updated = [...smsCategories, name];
+    setSmsCategories(updated);
+    store.smsCategories.write(updated);
+  };
+
+  const handleDeleteSmsCategory = (name: string) => {
+    if (SMS_CATEGORY_BUILTINS.includes(name)) return;
+    const updated = smsCategories.filter((c) => c !== name);
+    setSmsCategories(updated);
+    store.smsCategories.write(updated);
+  };
+
+  const handleAddVoicemailCategory = (name: string) => {
+    if (voicemailCategories.includes(name)) return;
+    const updated = [...voicemailCategories, name];
+    setVoicemailCategories(updated);
+    store.voicemailCategories.write(updated);
+  };
+
+  const handleDeleteVoicemailCategory = (name: string) => {
+    if (VOICEMAIL_CATEGORY_BUILTINS.includes(name)) return;
+    const updated = voicemailCategories.filter((c) => c !== name);
+    setVoicemailCategories(updated);
+    store.voicemailCategories.write(updated);
+  };
+
   return (
     <AppDataContext.Provider
       value={{
@@ -1450,6 +1510,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleUpdateSenderIdentity,
         handleDeleteSenderIdentity,
         handleSetDefaultSenderIdentity,
+        emailCategories,
+        smsCategories,
+        voicemailCategories,
+        handleAddEmailCategory,
+        handleDeleteEmailCategory,
+        handleAddSmsCategory,
+        handleDeleteSmsCategory,
+        handleAddVoicemailCategory,
+        handleDeleteVoicemailCategory,
       }}
     >
       {children}
