@@ -71,7 +71,9 @@ interface AppDataContextValue {
   handleAdvanceStep: (enrollmentId: string, stepId: string) => void;
   handleMoveToStep: (enrollmentId: string, targetStepId: string | "completed") => void;
   handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused") => void;
+  handleBulkSetEnrollmentStatus: (enrollmentIds: string[], status: "active" | "paused") => void;
   handleSkipStep: (enrollmentId: string, stepId: string) => void;
+  handleBulkSkipSteps: (items: { enrollmentId: string; stepId: string }[]) => void;
   handleUnskipStep: (enrollmentId: string, stepId: string) => void;
   handleCustomizeDelay: (enrollmentId: string, stepId: string, delayDays: number, delayHours: number, delayMinutes: number) => void;
   handleAddCustomStep: (enrollmentId: string, stepDef: Omit<WorkflowStep, "id" | "order" | "dayOffset">, insertAfterStepId: string | null) => void;
@@ -1023,6 +1025,72 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.contactActivity.write(updatedActivity);
   };
 
+  const handleBulkSetEnrollmentStatus = (enrollmentIds: string[], status: "active" | "paused") => {
+    const idSet = new Set(enrollmentIds);
+    const now = new Date();
+    const activityType = status === "paused" ? "enrollment_paused" : "enrollment_resumed";
+    const taskActivityType = status === "paused" ? "task_suspended" : "task_reactivated";
+
+    const updatedEnrollments = workflowEnrollments.map((e) =>
+      idSet.has(e.id) ? { ...e, status } : e,
+    );
+
+    const updatedItems = taskItems.map((ti) => {
+      const inSet = enrollmentIds.some(
+        (eid) =>
+          ti.enrollmentId === eid ||
+          ti.id.startsWith(`taskitem-call-${eid}-`) ||
+          ti.id.startsWith(`taskitem-flow-${eid}-`),
+      );
+      if (!inSet) return ti;
+      if (status === "paused" && ti.status === "pending") return { ...ti, status: "suspended" as const };
+      if (status === "active" && ti.status === "suspended") return { ...ti, status: "pending" as const };
+      return ti;
+    });
+
+    const newActivities: ContactActivityRecord[] = enrollmentIds.flatMap((eid, i) => {
+      const enrollment = workflowEnrollments.find((e) => e.id === eid);
+      if (!enrollment) return [];
+      const wf = workflows.find((w) => w.id === enrollment.workflowId);
+      const affected = updatedItems.filter(
+        (ti) =>
+          (ti.enrollmentId === eid ||
+            ti.id.startsWith(`taskitem-call-${eid}-`) ||
+            ti.id.startsWith(`taskitem-flow-${eid}-`)) &&
+          (status === "paused" ? ti.status === "suspended" : ti.status === "pending"),
+      );
+      return [
+        {
+          id: `activity-bulk-enrollment-${status}-${Date.now()}-${i}`,
+          contactId: enrollment.contactId,
+          type: activityType as ContactActivityRecord["type"],
+          source: wf?.name,
+          sourceType: "flow" as const,
+          assignee: "You",
+          timestamp: now,
+        },
+        ...affected.map((ti, j) => ({
+          id: `activity-bulk-task-${status}-${Date.now()}-${i}-${j}`,
+          contactId: enrollment.contactId,
+          type: taskActivityType as ContactActivityRecord["type"],
+          taskType: ti.taskType,
+          source: ti.source,
+          sourceType: ti.sourceType,
+          assignee: ti.assignee,
+          timestamp: now,
+        })),
+      ];
+    });
+
+    const updatedActivity = [...contactActivity, ...newActivities];
+    setWorkflowEnrollments(updatedEnrollments);
+    setTaskItems(updatedItems);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.taskItems.write(updatedItems);
+    store.contactActivity.write(updatedActivity);
+  };
+
   const handleSkipStep = (enrollmentId: string, stepId: string) => {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
@@ -1071,6 +1139,60 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setTaskItems(updatedItems);
     setContactActivity(updatedActivity);
     store.workflowEnrollments.write(updated);
+    store.taskItems.write(updatedItems);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleBulkSkipSteps = (items: { enrollmentId: string; stepId: string }[]) => {
+    const now = new Date();
+    let updatedEnrollments = [...workflowEnrollments];
+    let updatedItems = [...taskItems];
+    const newActivities: ContactActivityRecord[] = [];
+
+    items.forEach(({ enrollmentId, stepId }, i) => {
+      const enrollment = updatedEnrollments.find((e) => e.id === enrollmentId);
+      if (!enrollment) return;
+      const wf = workflows.find((w) => w.id === enrollment.workflowId);
+      const allSteps = mergeSteps(wf?.steps ?? [], enrollment.customSteps);
+      const step = allSteps.find((s) => s.id === stepId);
+      if (!step || step.actionType === "delay") return;
+
+      const updatedProgress = enrollment.stepProgress.map((p) =>
+        p.stepId === stepId && p.status === "pending" ? { ...p, status: "skipped" as const } : p,
+      );
+      const allDone = updatedProgress.every((p) => p.status === "done" || p.status === "skipped");
+      updatedEnrollments = updatedEnrollments.map((e) =>
+        e.id === enrollmentId
+          ? { ...e, stepProgress: updatedProgress, status: allDone ? ("completed" as const) : e.status }
+          : e,
+      );
+
+      updatedItems = updatedItems.map((ti) => {
+        const linked =
+          (ti.enrollmentId === enrollmentId && ti.stepId === stepId) ||
+          ti.id === `taskitem-call-${enrollmentId}-${stepId}`;
+        return linked && ti.status === "pending"
+          ? { ...ti, status: "completed" as const, disposition: "Skipped", completedAt: now }
+          : ti;
+      });
+
+      newActivities.push({
+        id: `activity-bulk-skip-${enrollmentId}-${stepId}-${Date.now()}-${i}`,
+        contactId: enrollment.contactId,
+        type: "step_skipped",
+        source: wf?.name,
+        sourceType: "flow",
+        stepName: step.name,
+        assignee: "You",
+        timestamp: now,
+      });
+    });
+
+    const updatedActivity = [...contactActivity, ...newActivities];
+    setWorkflowEnrollments(updatedEnrollments);
+    setTaskItems(updatedItems);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updatedEnrollments);
     store.taskItems.write(updatedItems);
     store.contactActivity.write(updatedActivity);
   };
@@ -1485,7 +1607,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleAdvanceStep,
         handleMoveToStep,
         handleSetEnrollmentStatus,
+        handleBulkSetEnrollmentStatus,
         handleSkipStep,
+        handleBulkSkipSteps,
         handleUnskipStep,
         handleCustomizeDelay,
         handleAddCustomStep,

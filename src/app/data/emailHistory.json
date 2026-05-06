@@ -152,5 +152,49 @@
     "sequenceDay": 0,
     "sentAt": "2026-04-01T08:00:00.000Z",
     "channel": "email"
+  },
+  {
+    "id": "eh-015",
+    "contactId": "3",
+    "contactName": "Michael Rodriguez",
+    "subject": "Welcome to LoanBud — Next Steps",
+    "senderIdentity": "onboarding@loanbud.com",
+    "status": "Bounced",
+    "sequenceDay": 0,
+    "sentAt": "2026-04-15T08:00:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-016",
+    "contactId": "5",
+    "contactName": "David Kim",
+    "subject": "Day 3 Follow-Up: Your Broker Application",
+    "senderIdentity": "support@loanbud.com",
+    "status": "Failed",
+    "sequenceDay": 3,
+    "sentAt": "2026-04-18T09:30:00.000Z",
+    "channel": "email"
+  },
+  {
+    "id": "eh-017",
+    "contactId": "7",
+    "contactName": "Robert Johnson",
+    "subject": "SMS: Day 7 Check-In",
+    "senderIdentity": "sms@loanbud.com",
+    "status": "Undelivered",
+    "sequenceDay": 7,
+    "sentAt": "2026-04-22T10:00:00.000Z",
+    "channel": "sms"
+  },
+  {
+    "id": "eh-018",
+    "contactId": "4",
+    "contactName": "Emily Davis",
+    "subject": "SMS: Reminder — Complete Your Profile",
+    "senderIdentity": "sms@loanbud.com",
+    "status": "Failed",
+    "sequenceDay": 3,
+    "sentAt": "2026-04-17T14:00:00.000Z",
+    "channel": "sms"
   }
 ]

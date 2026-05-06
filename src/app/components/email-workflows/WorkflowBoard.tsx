@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../ui/dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { Contact, WorkflowEnrollment, WorkflowStep } from "../../types";
+import { CURRENT_USER } from "../../config/featureFlags";
 
 const CARD_DRAG_TYPE = "WORKFLOW_CONTACT_CARD";
 
@@ -49,6 +50,26 @@ function getInitials(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+function fmtDate(d: Date) {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function fmtTime(d: Date) {
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function getScheduleGroup(date: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86_400_000);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  if (d < today) return "Overdue";
+  if (d.getTime() === today.getTime()) return "Today";
+  if (d.getTime() === tomorrow.getTime()) return "Tomorrow";
+  return date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+}
+
 // ── Steps Timeline ─────────────────────────────────────────────────────────
 
 const STEP_TYPE_CONFIG: Record<string, { icon: React.ReactNode; iconBg: string; iconColor: string; dayBg: string; dayColor: string }> = {
@@ -75,68 +96,124 @@ const STEP_TYPE_CONFIG: Record<string, { icon: React.ReactNode; iconBg: string; 
   },
 };
 
-function StepsTimeline({ steps }: { steps: WorkflowStep[] }) {
+function StepsTimeline({ steps, enrollmentStats }: {
+  steps: WorkflowStep[];
+  enrollmentStats: { total: number; active: number; completed: number; paused: number };
+}) {
+  const [expanded, setExpanded] = useState(false);
   const sorted = [...steps].sort((a, b) => a.order - b.order);
   if (sorted.length === 0) return null;
 
+  const actionSteps = sorted.filter((s) => s.actionType !== "delay");
+  const delaySteps = sorted.filter((s) => s.actionType === "delay");
+  const totalDays = delaySteps.reduce((sum, s) => sum + (s.delayDays ?? 0), 0);
+  const completionRate = enrollmentStats.total > 0
+    ? Math.round((enrollmentStats.completed / enrollmentStats.total) * 100)
+    : 0;
+
+  const typeCount = actionSteps.reduce<Record<string, number>>((acc, s) => {
+    acc[s.actionType] = (acc[s.actionType] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <div className="border-b border-border bg-background px-6 py-4 overflow-x-auto">
-      <div className="flex items-end gap-0 min-w-max">
-        {sorted.map((step) => {
-          if (step.actionType === "delay") {
+    <div className="border-b border-border bg-background">
+      {/* Compact summary bar */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-4 px-6 py-2.5 hover:bg-muted/40 transition-colors text-left"
+      >
+        {/* Flow shape */}
+        <span className="text-xs font-medium text-muted-foreground">{actionSteps.length} steps</span>
+        <span className="text-muted-foreground/30 text-xs">·</span>
+        <span className="text-xs text-muted-foreground">{totalDays}d total</span>
+        <span className="text-muted-foreground/30 text-xs">·</span>
+        <div className="flex items-center gap-1.5">
+          {Object.entries(typeCount).map(([type, count]) => {
+            const cfg = STEP_TYPE_CONFIG[type];
+            if (!cfg) return null;
             return (
-              <div key={step.id} className="flex flex-col items-center gap-0.5 self-end mb-[22px]">
-                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 whitespace-nowrap">
-                  +{step.delayDays}d wait
-                </span>
-                <div className="flex items-center w-16">
-                  <div className="h-px flex-1 bg-amber-300" />
-                  <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-amber-300" />
-                </div>
-              </div>
+              <span key={type} className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${cfg.iconBg} ${cfg.iconColor}`}>
+                {cfg.icon}
+                {count}
+              </span>
             );
-          }
-          const cfg = STEP_TYPE_CONFIG[step.actionType] ?? {
-            icon: null,
-            iconBg: "bg-muted",
-            iconColor: "text-muted-foreground",
-          };
-          return (
-            <div key={step.id} className="w-48 flex flex-col items-center">
-              <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card w-full">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
-                  {cfg.icon}
+          })}
+        </div>
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Health stats */}
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{enrollmentStats.total}</span> enrolled
+          </span>
+          <span className="inline-flex items-center gap-1 text-xs text-green-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+            <span className="font-semibold">{enrollmentStats.active}</span> active
+          </span>
+          {enrollmentStats.paused > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              <span className="font-semibold">{enrollmentStats.paused}</span> paused
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+            <span className="font-semibold">{enrollmentStats.completed}</span> completed
+          </span>
+          {enrollmentStats.total > 0 && (
+            <span className="text-xs font-semibold text-primary">{completionRate}% done</span>
+          )}
+        </div>
+
+        <ChevronDown className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Expanded full timeline */}
+      {expanded && (
+        <div className="px-6 pb-4 overflow-x-auto border-t border-border/60">
+          <div className="flex items-end gap-0 min-w-max pt-3">
+            {sorted.map((step) => {
+              if (step.actionType === "delay") {
+                return (
+                  <div key={step.id} className="flex flex-col items-center gap-0.5 self-end mb-[22px]">
+                    <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 whitespace-nowrap">
+                      +{step.delayDays}d wait
+                    </span>
+                    <div className="flex items-center w-16">
+                      <div className="h-px flex-1 bg-amber-300" />
+                      <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-amber-300" />
+                    </div>
+                  </div>
+                );
+              }
+              const cfg = STEP_TYPE_CONFIG[step.actionType] ?? {
+                icon: null,
+                iconBg: "bg-muted",
+                iconColor: "text-muted-foreground",
+              };
+              return (
+                <div key={step.id} className="w-48 flex flex-col items-center">
+                  <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-border bg-card w-full">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor}`}>
+                      {cfg.icon}
+                    </div>
+                    <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
+                  </div>
                 </div>
-                <span className="text-xs font-semibold leading-tight text-foreground">{step.name}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── ContactCard (kanban) ────────────────────────────────────────────────────
 
-// All step types show an actionable button
-const MANUAL_ACTION_CONFIG: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-  email: {
-    label: "Mark Sent",
-    icon: <Mail className="h-3 w-3" />,
-    className: "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200",
-  },
-  sms: {
-    label: "Mark Sent",
-    icon: <MessageCircle className="h-3 w-3" />,
-    className: "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200",
-  },
-  "call-reminder": {
-    label: "Log Call",
-    icon: <Phone className="h-3 w-3" />,
-    className: "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200",
-  },
-};
 
 
 function ContactCard({
@@ -144,7 +221,7 @@ function ContactCard({
   enrollmentId,
   columnId,
   currentStep,
-  onAdvance,
+  scheduledDate,
   onCreateTask,
   onCardClick,
 }: {
@@ -152,11 +229,12 @@ function ContactCard({
   enrollmentId: string;
   columnId: string;
   currentStep: WorkflowStep | null;
-  onAdvance: (() => void) | null;
+  scheduledDate: Date | null;
   onCreateTask: () => void;
   onCardClick: () => void;
 }) {
   const avatarClass = USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700";
+  const isCompleted = columnId === "completed";
 
   const [{ isDragging }, dragRef] = useDrag<DragItem, unknown, { isDragging: boolean }>({
     type: CARD_DRAG_TYPE,
@@ -164,63 +242,94 @@ function ContactCard({
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
-  const manualCfg = currentStep ? (MANUAL_ACTION_CONFIG[currentStep.actionType] ?? null) : null;
+  const isAutoStep = currentStep?.actionType === "email" || currentStep?.actionType === "sms";
+  const isCallReminder = currentStep?.actionType === "call-reminder";
+  const dueStr = scheduledDate && !isCompleted ? fmtDate(scheduledDate) : null;
+  const cantSend = isAutoStep && contact.optedOut;
+
+  const accentClass = isCompleted
+    ? "border-l-green-300"
+    : currentStep?.actionType === "email"
+      ? "border-l-blue-300"
+      : currentStep?.actionType === "sms"
+        ? "border-l-violet-300"
+        : currentStep?.actionType === "call-reminder"
+          ? "border-l-amber-300"
+          : "border-l-border";
 
   return (
     <div
       ref={dragRef}
       onClick={onCardClick}
-      className={`rounded-lg border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
+      className={`rounded-lg border border-border border-l-2 ${accentClass} bg-card p-3 shadow-sm hover:shadow-md transition-all cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
     >
-      <div className="flex items-start gap-2.5 mb-2.5">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${avatarClass}`}>
+      {/* Header: avatar + name/email */}
+      <div className="flex items-start gap-2.5">
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
           {getInitials(contact.firstName, contact.lastName)}
         </div>
         <div className="flex-1 min-w-0">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onCardClick(); }}
-            className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate block mb-0.5 text-left w-full"
+            className="text-sm font-semibold text-foreground hover:text-primary hover:underline truncate block text-left w-full leading-tight"
           >
             {contact.firstName} {contact.lastName}
           </button>
-          <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
-          {contact.phone && (
-            <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5">{contact.email}</p>
+          {contact.listingName && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <p className="text-[11px] text-muted-foreground truncate">{contact.listingName}</p>
+              <span className={`flex-shrink-0 inline-block text-[10px] px-1.5 py-0.5 rounded font-medium leading-none ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                {contact.listingStatus}
+              </span>
+            </div>
           )}
         </div>
       </div>
-      <div className="border-t border-border pt-2 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground truncate">
-            <span className="font-medium text-foreground">Listing:</span> {contact.listingName || "—"}
-          </p>
-          <span className={`flex-shrink-0 inline-block text-xs px-1.5 py-0.5 rounded font-medium ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
-            {contact.listingStatus}
-          </span>
+
+      {/* Footer: due date chip + action */}
+      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          {/* Due date chip */}
+          {dueStr && (
+            <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+              Due {dueStr}
+            </span>
+          )}
+          {isCompleted && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+              <Check className="h-2.5 w-2.5" /> Done
+            </span>
+          )}
+          {isCallReminder && !isCompleted && (
+            <span className="text-[10px] text-muted-foreground truncate">
+              {CURRENT_USER}
+            </span>
+          )}
+          {/* Auto status chips */}
+          {isAutoStep && cantSend && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              Can't Send
+            </span>
+          )}
+          {isAutoStep && !cantSend && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100">
+              <Clock className="h-2.5 w-2.5" />
+              Scheduled
+            </span>
+          )}
         </div>
-        {manualCfg && (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-wrap">
-              {manualCfg && onAdvance && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onAdvance(); }}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-colors cursor-pointer ${manualCfg.className}`}
-                >
-                  {manualCfg.icon}
-                  {manualCfg.label}
-                </button>
-              )}
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); onCreateTask(); }}
-              title="Create task"
-              className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              <ClipboardPlus className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onCreateTask(); }}
+            title="Create task"
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <ClipboardPlus className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -235,7 +344,6 @@ function KanbanColumn({
   contacts,
   currentStep,
   handleDrop,
-  handleAdvance,
   handleCreateTask,
   handleCardClick,
 }: {
@@ -245,7 +353,6 @@ function KanbanColumn({
   contacts: Contact[];
   currentStep: WorkflowStep | null;
   handleDrop: (enrollmentId: string, targetStepId: string) => void;
-  handleAdvance: (enrollmentId: string, stepId: string) => void;
   handleCreateTask: (contactId: string, contactName: string) => void;
   handleCardClick: (contactId: string, enrollmentId: string) => void;
 }) {
@@ -257,15 +364,16 @@ function KanbanColumn({
   });
 
   const isActive = isOver && canDrop;
+  const isAutoStep = currentStep && (currentStep.actionType === "email" || currentStep.actionType === "sms");
 
   return (
     <div className="w-72 flex-shrink-0 flex flex-col bg-muted/40 border border-border rounded-xl">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
             {label}
           </h3>
-          {currentStep && (currentStep.actionType === "email" || currentStep.actionType === "sms") && (
+          {isAutoStep && (
             <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 leading-none uppercase tracking-wide">
               Auto
             </span>
@@ -284,6 +392,9 @@ function KanbanColumn({
         {colEnrollments.map((enrollment) => {
           const contact = contacts.find((c) => c.id === enrollment.contactId);
           if (!contact) return null;
+          const scheduledDate = currentStep
+            ? new Date(enrollment.startDate.getTime() + currentStep.dayOffset * 86_400_000)
+            : null;
           return (
             <ContactCard
               key={enrollment.id}
@@ -291,7 +402,7 @@ function KanbanColumn({
               enrollmentId={enrollment.id}
               columnId={colId}
               currentStep={currentStep}
-              onAdvance={currentStep ? () => handleAdvance(enrollment.id, currentStep.id) : null}
+              scheduledDate={scheduledDate}
               onCreateTask={() => handleCreateTask(contact.id, `${contact.firstName} ${contact.lastName}`)}
               onCardClick={() => handleCardClick(contact.id, enrollment.id)}
             />
@@ -314,15 +425,21 @@ type ViewMode = "kanban" | "list";
 export function WorkflowBoard() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleCreateTask, handleUpdateWorkflow } = useAppData();
+  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleCreateTask, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
 
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showAutomationsModal, setShowAutomationsModal] = useState(false);
+  const [automationSearch, setAutomationSearch] = useState("");
+  const [selectedAutomationKeys, setSelectedAutomationKeys] = useState<Set<string>>(new Set());
 
-  // List view filters
-  const [listSearch, setListSearch] = useState("");
-  const [listStepFilter, setListStepFilter] = useState<string>("all");
+  // Shared filters (synced across kanban & list)
+  const [search, setSearch] = useState("");
+  const [stepFilter, setStepFilter] = useState<string>("all");
+
+  // List-only filter
   const [listStatusFilter, setListStatusFilter] = useState<string>("all");
 
   const workflow = workflows.find((wf) => wf.id === id);
@@ -338,8 +455,6 @@ export function WorkflowBoard() {
 
   const segment = segments.find((s) => s.id === workflow?.segmentId);
 
-
-
   // Map enrollment → column (first pending action step, or "completed")
   const getContactColumn = (enrollment: WorkflowEnrollment): string => {
     const firstPending = actionSteps.find(
@@ -347,6 +462,23 @@ export function WorkflowBoard() {
     );
     return firstPending?.id ?? "completed";
   };
+
+  const completedCount = useMemo(
+    () => myEnrollments.filter((e) => {
+      const firstPending = actionSteps.find(
+        (step) => e.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
+      );
+      return firstPending === undefined;
+    }).length,
+    [myEnrollments, actionSteps],
+  );
+
+  const enrollmentStats = useMemo(() => ({
+    total: myEnrollments.length,
+    active: myEnrollments.filter((e) => e.status === "active").length,
+    paused: myEnrollments.filter((e) => e.status === "paused").length,
+    completed: completedCount,
+  }), [myEnrollments, completedCount]);
 
   const handleAdvance = (enrollmentId: string, stepId: string) => {
     handleAdvanceStep(enrollmentId, stepId);
@@ -382,17 +514,58 @@ export function WorkflowBoard() {
         return { enrollment, contact, currentStep, colStepId };
       })
       .filter(({ contact, colStepId, enrollment }) => {
-        if (listSearch) {
-          const q = listSearch.toLowerCase();
+        if (search) {
+          const q = search.toLowerCase();
           const name = contact ? `${contact.firstName} ${contact.lastName}`.toLowerCase() : "";
           const email = contact?.email.toLowerCase() ?? "";
           if (!name.includes(q) && !email.includes(q)) return false;
         }
-        if (listStepFilter !== "all" && colStepId !== listStepFilter) return false;
+        if (stepFilter !== "all" && colStepId !== stepFilter) return false;
         if (listStatusFilter !== "all" && enrollment.status !== listStatusFilter) return false;
         return true;
       });
-  }, [myEnrollments, contacts, actionSteps, listSearch, listStepFilter, listStatusFilter]);
+  }, [myEnrollments, contacts, actionSteps, search, stepFilter, listStatusFilter]);
+
+  const completedRows = useMemo(() => {
+    return myEnrollments
+      .filter((e) => {
+        const firstPending = actionSteps.find(
+          (step) => e.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
+        );
+        return firstPending === undefined;
+      })
+      .map((enrollment) => {
+        const contact = contacts.find((c) => c.id === enrollment.contactId);
+        return { enrollment, contact };
+      });
+  }, [myEnrollments, contacts, actionSteps]);
+
+  const upcomingAutomations = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const items = myEnrollments
+      .filter((e) => e.status === "active")
+      .map((enrollment) => {
+        const contact = contacts.find((c) => c.id === enrollment.contactId);
+        const firstPending = actionSteps.find(
+          (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
+        );
+        if (!firstPending || (firstPending.actionType !== "email" && firstPending.actionType !== "sms")) return null;
+        const scheduledDate = new Date(enrollment.startDate.getTime() + firstPending.dayOffset * 86_400_000);
+        return { enrollment, contact, step: firstPending, scheduledDate };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    const upcoming = items
+      .filter((r) => r.scheduledDate >= todayStart)
+      .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
+    const overdue = items
+      .filter((r) => r.scheduledDate < todayStart)
+      .sort((a, b) => b.scheduledDate.getTime() - a.scheduledDate.getTime());
+
+    return [...upcoming, ...overdue];
+  }, [myEnrollments, contacts, actionSteps]);
 
   if (!workflow) {
     return (
@@ -406,6 +579,308 @@ export function WorkflowBoard() {
 
   return (
     <div className="flex flex-col h-full bg-background">
+      {/* Completed contacts modal */}
+      <Dialog open={showCompletedModal} onOpenChange={setShowCompletedModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Completed Contacts ({completedCount})</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 mt-2">
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 border-b border-border">
+                  <tr>
+                    {["Contact", "Enrollment Status", "Start Date"].map((col) => (
+                      <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-card">
+                  {completedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-5 py-8 text-center text-muted-foreground text-sm">
+                        No completed contacts yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    completedRows.map(({ enrollment, contact }) => (
+                      <tr
+                        key={enrollment.id}
+                        onClick={() => {
+                          if (contact) {
+                            setSelectedContactId(contact.id);
+                            setSelectedEnrollmentId(enrollment.id);
+                            setShowCompletedModal(false);
+                          }
+                        }}
+                        className="hover:bg-muted/10 transition-colors cursor-pointer"
+                      >
+                        <td className="px-5 py-3">
+                          {contact ? (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700"}`}>
+                                {getInitials(contact.firstName, contact.lastName)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{contact.firstName} {contact.lastName}</p>
+                                <p className="text-xs text-muted-foreground">{contact.email}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Unknown contact</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                            <Check className="h-3 w-3" /> Completed
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-muted-foreground text-xs">
+                          {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(enrollment.startDate)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upcoming automations modal */}
+      <Dialog open={showAutomationsModal} onOpenChange={(open) => { setShowAutomationsModal(open); if (!open) { setAutomationSearch(""); setSelectedAutomationKeys(new Set()); } }}>
+        <DialogContent className="max-w-3xl h-[80vh] overflow-hidden flex flex-col">
+          {/* X close button */}
+          <DialogClose className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground">
+            <X className="h-4 w-4" />
+          </DialogClose>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Upcoming Automations ({upcomingAutomations.length})
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">Sorted by nearest schedule. Skip a step or pause the enrollment to stop delivery.</p>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={automationSearch}
+              onChange={(e) => { setAutomationSearch(e.target.value); setSelectedAutomationKeys(new Set()); }}
+              placeholder="Search by contact name or email..."
+              className="w-full pl-8 pr-3 py-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          {(() => {
+            const filtered = automationSearch
+              ? upcomingAutomations.filter(({ contact }) => {
+                  const q = automationSearch.toLowerCase();
+                  const name = contact ? `${contact.firstName} ${contact.lastName}`.toLowerCase() : "";
+                  return name.includes(q) || (contact?.email.toLowerCase().includes(q) ?? false);
+                })
+              : upcomingAutomations;
+            const allRowKeys = filtered.map(({ enrollment, step }) => `${enrollment.id}::${step.id}`);
+            const allSelected = allRowKeys.length > 0 && allRowKeys.every((k) => selectedAutomationKeys.has(k));
+            const someSelected = allRowKeys.some((k) => selectedAutomationKeys.has(k));
+            const toggleAll = () => {
+              if (allSelected) {
+                setSelectedAutomationKeys(new Set());
+              } else {
+                setSelectedAutomationKeys(new Set(allRowKeys));
+              }
+            };
+            const toggleRow = (key: string) => {
+              setSelectedAutomationKeys((prev) => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              });
+            };
+            return (
+              <>
+                {selectedAutomationKeys.size > 0 && (
+                  <div className="flex items-center gap-3 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg text-xs">
+                    <span className="font-medium text-foreground flex items-center gap-1.5">
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                      {selectedAutomationKeys.size} selected
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => {
+                          const items = filtered
+                            .filter(({ enrollment, step }) => selectedAutomationKeys.has(`${enrollment.id}::${step.id}`))
+                            .map(({ enrollment, step }) => ({ enrollmentId: enrollment.id, stepId: step.id }));
+                          handleBulkSkipSteps(items);
+                          setSelectedAutomationKeys(new Set());
+                          toast.success(`Skipped ${items.length} step${items.length !== 1 ? "s" : ""}`);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-background hover:bg-muted transition-colors text-muted-foreground"
+                      >
+                        <SkipForward className="h-3 w-3" />
+                        Skip Selected
+                      </button>
+                      <button
+                        onClick={() => {
+                          const enrollmentIds = [...new Set(
+                            filtered
+                              .filter(({ enrollment, step }) => selectedAutomationKeys.has(`${enrollment.id}::${step.id}`))
+                              .map(({ enrollment }) => enrollment.id),
+                          )];
+                          handleBulkSetEnrollmentStatus(enrollmentIds, "paused");
+                          setSelectedAutomationKeys(new Set());
+                          toast.success(`Paused ${enrollmentIds.length} enrollment${enrollmentIds.length !== 1 ? "s" : ""}`);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-background hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors text-muted-foreground"
+                      >
+                        <PauseCircle className="h-3 w-3" />
+                        Pause Selected
+                      </button>
+                      <button
+                        onClick={() => setSelectedAutomationKeys(new Set())}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-background hover:bg-muted transition-colors text-muted-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-auto flex-1">
+                  {filtered.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground text-sm">No upcoming automated steps.</div>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40 border-b border-border sticky top-0">
+                          <tr>
+                            <th className="pl-4 pr-2 py-3 w-8">
+                              <button
+                                onClick={toggleAll}
+                                className="w-4 h-4 rounded border border-border bg-background flex items-center justify-center hover:border-primary transition-colors"
+                                title={allSelected ? "Deselect all" : "Select all"}
+                              >
+                                {allSelected ? (
+                                  <Check className="h-2.5 w-2.5 text-primary" />
+                                ) : someSelected ? (
+                                  <Square className="h-2.5 w-2.5 text-primary fill-primary/30" />
+                                ) : null}
+                              </button>
+                            </th>
+                            {["Contact", "Step", "Scheduled", "Actions"].map((col) => (
+                              <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border bg-card">
+                          {(() => {
+                            const groups = new Map<string, typeof upcomingAutomations>();
+                            for (const item of filtered) {
+                              const label = getScheduleGroup(item.scheduledDate);
+                              if (!groups.has(label)) groups.set(label, []);
+                              groups.get(label)!.push(item);
+                            }
+                            return [...groups.entries()].flatMap(([label, groupItems]) => [
+                              <tr key={`group-${label}`}>
+                                <td colSpan={5} className="px-5 py-2 bg-muted/60 border-y border-border">
+                                  <span className={`text-xs font-semibold uppercase tracking-wide ${label === "Today" ? "text-amber-600" : label === "Overdue" ? "text-red-600" : "text-muted-foreground"}`}>
+                                    {label}
+                                  </span>
+                                </td>
+                              </tr>,
+                              ...groupItems.map(({ enrollment, contact, step, scheduledDate }) => {
+                                const rowKey = `${enrollment.id}::${step.id}`;
+                                const isSelected = selectedAutomationKeys.has(rowKey);
+                                return (
+                                  <tr
+                                    key={`${enrollment.id}-${step.id}`}
+                                    className={`hover:bg-muted/10 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+                                  >
+                                    <td className="pl-4 pr-2 py-3 w-8">
+                                      <button
+                                        onClick={() => toggleRow(rowKey)}
+                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? "border-primary bg-primary" : "border-border bg-background hover:border-primary"}`}
+                                        title={isSelected ? "Deselect" : "Select"}
+                                      >
+                                        {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                                      </button>
+                                    </td>
+                                    <td className="px-5 py-3">
+                                      {contact ? (
+                                        <div className="flex items-center gap-2">
+                                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700"}`}>
+                                            {getInitials(contact.firstName, contact.lastName)}
+                                          </div>
+                                          <div>
+                                            <p className="font-medium text-foreground text-xs">{contact.firstName} {contact.lastName}</p>
+                                            <p className="text-[11px] text-muted-foreground">{contact.email}</p>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">Unknown</span>
+                                      )}
+                                    </td>
+                                    <td className="px-5 py-3">
+                                      <div className="flex items-center gap-1.5">
+                                        {step.actionType === "email" ? (
+                                          <Mail className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                        ) : (
+                                          <MessageCircle className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
+                                        )}
+                                        <span className="text-xs text-foreground truncate max-w-[160px]">{step.name}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-5 py-3 whitespace-nowrap">
+                                      <p className="text-xs font-medium text-foreground">{fmtDate(scheduledDate)}</p>
+                                      <p className="text-[11px] text-muted-foreground">{fmtTime(scheduledDate)}</p>
+                                    </td>
+                                    <td className="px-5 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => {
+                                            handleSkipStep(enrollment.id, step.id);
+                                            toast.success(`Step skipped for ${contact?.firstName ?? "contact"}`);
+                                          }}
+                                          className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-border hover:bg-muted transition-colors text-muted-foreground"
+                                          title="Skip this step"
+                                        >
+                                          <SkipForward className="h-3 w-3" />
+                                          Skip
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            handleSetEnrollmentStatus(enrollment.id, "paused");
+                                            toast.success(`Enrollment paused for ${contact?.firstName ?? "contact"}`);
+                                          }}
+                                          className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-border hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors text-muted-foreground"
+                                          title="Pause entire enrollment"
+                                        >
+                                          <PauseCircle className="h-3 w-3" />
+                                          Pause
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              }),
+                            ]);
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       <WorkflowContactPanel
         open={selectedContactId !== null}
         contactId={selectedContactId}
@@ -422,7 +897,16 @@ export function WorkflowBoard() {
           >
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
           </button>
-          <h2 className="text-xl font-semibold text-foreground">{workflow.name}</h2>
+          <div className="flex flex-col">
+            <h2 className="text-xl font-semibold text-foreground">{workflow.name}</h2>
+            {segment && (
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                Segment: <span className="font-medium">{segment.name}</span>
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => {
               if (workflow.status !== "active") {
@@ -446,31 +930,7 @@ export function WorkflowBoard() {
               {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
             </span>
           </button>
-          {segment && (
-            <span className="text-xs text-muted-foreground hidden sm:block">
-              Segment: <span className="font-medium">{segment.name}</span>
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex rounded-md border border-input overflow-hidden">
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={`px-3 py-1.5 transition-colors ${viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
-              title="Kanban view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`px-3 py-1.5 border-l border-input transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
-              title="List view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-          <Button size="sm" onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}>
+          <Button variant="secondary" size="sm" onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit Flow
           </Button>
@@ -478,7 +938,7 @@ export function WorkflowBoard() {
       </div>
 
       {/* Steps timeline */}
-      <StepsTimeline steps={sortedSteps} />
+      <StepsTimeline steps={sortedSteps} enrollmentStats={enrollmentStats} />
 
       {/* Body */}
       {emptyState ? (
@@ -489,16 +949,72 @@ export function WorkflowBoard() {
       ) : viewMode === "kanban" ? (
         /* ── Kanban view ─────────────────────────────────────────────────── */
         <DndProvider backend={HTML5Backend}>
-          <div className="flex-1 overflow-x-auto">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Toolbar row — stays fixed while columns scroll horizontally */}
+            <div className="flex items-center gap-3 px-6 pt-4 pb-2 flex-wrap flex-shrink-0">
+              {/* View toggle */}
+              <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
+                <button
+                  onClick={() => setViewMode("kanban")}
+                  className={`px-3 py-1.5 transition-colors ${viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  title="Kanban view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`px-3 py-1.5 border-l border-input transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  title="List view"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Search */}
+              <div className="relative flex-1 min-w-40 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search contacts..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setShowAutomationsModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  {`Automations (${upcomingAutomations.length})`}
+                </button>
+                <button
+                  onClick={() => setShowCompletedModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {`Show Completed (${completedCount})`}
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-x-auto">
             <div
               className="flex gap-4 p-6 min-h-full items-start"
-              style={{ minWidth: `${(actionSteps.length + 1) * 288}px` }}
+              style={{ minWidth: `${actionSteps.length * 288}px` }}
             >
-              {[...actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep })), { id: "completed", label: "Completed", step: null as WorkflowStep | null }].map(
-                ({ id: colId, label, step }) => {
-                  const colEnrollments = myEnrollments.filter(
-                    (e) => getContactColumn(e) === colId,
-                  );
+              {actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep }))
+              .map(({ id: colId, label, step }) => {
+                  const colEnrollments = myEnrollments.filter((e) => {
+                    if (getContactColumn(e) !== colId) return false;
+                    if (search) {
+                      const contact = contacts.find((c) => c.id === e.contactId);
+                      if (!contact) return false;
+                      const q = search.toLowerCase();
+                      const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+                      if (!fullName.includes(q) && !contact.email.toLowerCase().includes(q)) return false;
+                    }
+                    return true;
+                  });
                   return (
                     <KanbanColumn
                       key={colId}
@@ -508,7 +1024,6 @@ export function WorkflowBoard() {
                       contacts={contacts}
                       currentStep={step}
                       handleDrop={handleDrop}
-                      handleAdvance={handleAdvance}
                       handleCreateTask={handleTask}
                       handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
                     />
@@ -516,45 +1031,79 @@ export function WorkflowBoard() {
                 },
               )}
             </div>
+            </div>
           </div>
         </DndProvider>
       ) : (
         /* ── List view ───────────────────────────────────────────────────── */
         <div className="flex-1 overflow-auto flex flex-col">
           {/* Filters */}
-          <div className="px-8 py-3 border-b border-border bg-card flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-48 max-w-xs">
+          <div className="flex items-center gap-3 px-6 pt-4 pb-3 flex-wrap border-b border-border">
+            {/* View toggle */}
+            <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={`px-3 py-1.5 transition-colors ${viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                title="Kanban view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-1.5 border-l border-input transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="relative flex-1 min-w-40 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={listSearch}
-                onChange={(e) => setListSearch(e.target.value)}
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search contacts..."
-                className="pl-8"
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
-              value={listStepFilter}
-              onChange={(e) => setListStepFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              value={stepFilter}
+              onChange={(e) => setStepFilter(e.target.value)}
+              className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
             >
               <option value="all">All Steps</option>
-              {actionSteps.map((s) => (
+              {actionSteps.map((s, i) => (
                 <option key={s.id} value={s.id}>
-                  Day {s.dayOffset} — {ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}
+                  Step {i + 1} — {ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}
                 </option>
               ))}
-              <option value="completed">Completed</option>
             </select>
             <select
               value={listStatusFilter}
               onChange={(e) => setListStatusFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
               <option value="paused">Paused</option>
             </select>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setShowAutomationsModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {`Automations (${upcomingAutomations.length})`}
+              </button>
+              <button
+                onClick={() => setShowCompletedModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {`Show Completed (${completedCount})`}
+              </button>
+            </div>
           </div>
           {/* Table */}
           <div className="px-8 py-4 flex-1 overflow-auto">

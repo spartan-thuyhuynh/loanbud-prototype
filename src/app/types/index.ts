@@ -94,7 +94,7 @@ export interface EmailRecord {
   contactName: string;
   subject: string;
   senderIdentity: string;
-  status: "Sent" | "Delivered" | "Opened";
+  status: "Sent" | "Delivered" | "Opened" | "Failed" | "Bounced" | "Undelivered";
   sequenceDay: number;
   sentAt: Date;
   channel?: "email" | "sms";
