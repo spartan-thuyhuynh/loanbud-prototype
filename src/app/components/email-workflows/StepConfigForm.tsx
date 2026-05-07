@@ -1,6 +1,7 @@
 import { Mail, MessageSquare, Phone, Clock } from "lucide-react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useAppData } from "../../contexts/AppDataContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -146,32 +147,25 @@ export function StepConfigLeft({
 
   return (
     <div className="space-y-5">
-      {/* Step name */}
-      <div>
-        <FieldLabel>Step Name</FieldLabel>
-        <Input
-          value={draft.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder={STEP_DEFAULTS[draft.actionType]}
-        />
-      </div>
-
       {/* Sender Identity (email only) */}
       {draft.actionType === "email" && (
         <div>
           <FieldLabel>Sender Identity</FieldLabel>
-          <select
+          <Select
             value={draft.senderIdentity ?? ""}
-            onChange={(e) => onChange({ senderIdentity: e.target.value })}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            onValueChange={(v) => onChange({ senderIdentity: v })}
           >
-            <option value="">— Select identity —</option>
-            {senderIdentities.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.displayName} ({s.emailAddress})
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full border-gray-200">
+              <SelectValue placeholder="— Select identity —" />
+            </SelectTrigger>
+            <SelectContent>
+              {senderIdentities.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.displayName} ({s.emailAddress})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -179,29 +173,42 @@ export function StepConfigLeft({
       {draft.actionType === "call-reminder" && (
         <div>
           <FieldLabel>Remind Before</FieldLabel>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 w-fit">
+            <button
+              type="button"
+              onClick={() => onChange({ reminderDaysBefore: Math.max(0, (draft.reminderDaysBefore ?? 1) - 1) })}
+              className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-sm leading-none"
+            >−</button>
             <Input
               type="number"
               min={0}
               value={draft.reminderDaysBefore ?? 1}
               onChange={(e) => onChange({ reminderDaysBefore: Math.max(0, Number(e.target.value)) })}
-              className="w-24"
+              className="w-10 text-center border-0 shadow-none p-0 h-auto font-semibold focus-visible:ring-0"
             />
-            <span className="text-sm text-muted-foreground">day(s) before scheduled date</span>
+            <button
+              type="button"
+              onClick={() => onChange({ reminderDaysBefore: (draft.reminderDaysBefore ?? 1) + 1 })}
+              className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-sm leading-none"
+            >+</button>
+            <span className="text-sm text-muted-foreground pl-1">day(s) before scheduled date</span>
           </div>
         </div>
       )}
 
-      {/* Note / Script */}
-      <div>
-        <FieldLabel>Note / Script</FieldLabel>
-        <Textarea
-          value={draft.note ?? ""}
-          onChange={(e) => onChange({ note: e.target.value })}
-          placeholder="Agent notes or message content..."
-          rows={4}
-        />
-      </div>
+      {/* Note / Script — hidden for call-reminder (shown on right panel) */}
+      {draft.actionType !== "call-reminder" && (
+        <div>
+          <FieldLabel>Note / Script</FieldLabel>
+          <Textarea
+            value={draft.note ?? ""}
+            onChange={(e) => onChange({ note: e.target.value })}
+            placeholder="Agent notes or message content..."
+            rows={4}
+            className="border-gray-200"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -225,26 +232,29 @@ export function StepConfigRight({
       <div className="space-y-4">
         <div>
           <FieldLabel>Email Template</FieldLabel>
-          <select
+          <Select
             value={draft.templateId ?? ""}
-            onChange={(e) => {
-              const tpl = adminEmailTemplates.find((t) => t.id === e.target.value);
+            onValueChange={(v) => {
+              const tpl = adminEmailTemplates.find((t) => t.id === v);
               onChange({
-                templateId: e.target.value,
+                templateId: v,
                 templateName: tpl?.name ?? "",
                 subject: tpl?.subject ?? draft.subject,
                 body: tpl?.body ?? draft.body,
               });
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           >
-            <option value="">— Select a template —</option>
-            {adminEmailTemplates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} · {t.category}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full border-gray-200">
+              <SelectValue placeholder="— Select a template —" />
+            </SelectTrigger>
+            <SelectContent>
+              {adminEmailTemplates.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name} · {t.category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {selectedEmailTpl ? (
           <EmailPreview subject={selectedEmailTpl.subject} body={selectedEmailTpl.body} />
@@ -263,23 +273,26 @@ export function StepConfigRight({
       <div className="space-y-4">
         <div>
           <FieldLabel>SMS Template</FieldLabel>
-          <select
+          <Select
             value={draft.smsTemplateId ?? ""}
-            onChange={(e) => {
-              const tpl = smsTemplates.find((t) => t.id === e.target.value);
+            onValueChange={(v) => {
+              const tpl = smsTemplates.find((t) => t.id === v);
               onChange({
-                smsTemplateId: e.target.value,
+                smsTemplateId: v,
                 smsTemplateName: tpl?.name ?? "",
                 message: tpl?.message ?? draft.message,
               });
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           >
-            <option value="">— Select a template —</option>
-            {smsTemplates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full border-gray-200">
+              <SelectValue placeholder="— Select a template —" />
+            </SelectTrigger>
+            <SelectContent>
+              {smsTemplates.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {selectedSmsTpl ? (
           <SmsPreview message={selectedSmsTpl.message} />
@@ -294,10 +307,17 @@ export function StepConfigRight({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-center">
-      <Phone className="h-8 w-8 text-muted-foreground/40" />
-      <p className="text-sm font-medium text-muted-foreground">Call Reminder</p>
-      <p className="text-xs text-muted-foreground/70 max-w-[180px]">A reminder will be sent to the assigned agent at the configured time.</p>
+    <div className="space-y-4">
+      <div>
+        <FieldLabel>Call Objective</FieldLabel>
+        <Textarea
+          value={draft.note ?? ""}
+          onChange={(e) => onChange({ note: e.target.value })}
+          placeholder="Describe the goal of this call — what to say, ask, or follow up on…"
+          rows={6}
+          className="border-gray-200"
+        />
+      </div>
     </div>
   );
 }
@@ -313,10 +333,10 @@ export function StepConfigFields({
 }) {
   return (
     <div className="grid divide-x divide-border" style={{ gridTemplateColumns: '2fr 3fr' }}>
-      <div className="pr-6">
+      <div className="pr-6 min-w-0">
         <StepConfigLeft draft={draft} onChange={onChange} />
       </div>
-      <div className="pl-6">
+      <div className="pl-6 min-w-0">
         <StepConfigRight draft={draft} onChange={onChange} />
       </div>
     </div>

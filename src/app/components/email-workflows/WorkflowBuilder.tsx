@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
-  ArrowLeft, ChevronRight, Check, AlertCircle,
-  ArrowUp, ArrowDown, X,
+  ArrowLeft, ChevronRight, Check, AlertCircle, X,
   Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical,
 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -176,26 +175,34 @@ function StepRow({
         {isEditing ? (
           /* ── Edit form ── */
           <div className="rounded-xl border-2 border-primary/30 bg-card shadow-sm">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${TYPE_ICON_STYLE[step.actionType]}`}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <div className="flex items-center gap-2 flex-1 min-w-0 mr-4">
+                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${TYPE_ICON_STYLE[step.actionType]}`}>
                   <StepTypeIcon type={step.actionType} size="sm" />
                 </div>
-                <span className="text-sm font-semibold text-foreground">
-                  {draft.name || STEP_DEFAULTS[draft.actionType]}
-                </span>
+                <input
+                  value={draft.name}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  placeholder={STEP_DEFAULTS[draft.actionType]}
+                  className="text-sm font-semibold text-foreground bg-transparent border-0 border-b border-transparent focus:border-border focus:outline-none w-full placeholder:text-muted-foreground/50 transition-colors"
+                />
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>Save Step</Button>
+                <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>Save</Button>
               </div>
             </div>
-            <div className="p-5">
+            <div className="px-5 py-4">
               <StepConfigFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
             </div>
           </div>
         ) : (
           /* ── Collapsed card ── */
+          (() => {
+            const isIncomplete =
+              (step.actionType === "email" && !step.templateId) ||
+              (step.actionType === "sms" && !step.smsTemplateId);
+            return (
           <div className="rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
             <div ref={(el) => { drag(el); }} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 -ml-1">
               <GripVertical className="h-4 w-4" />
@@ -214,24 +221,11 @@ function StepRow({
               <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium whitespace-nowrap">
                 Day {step.dayOffset}
               </span>
+              {isIncomplete && (
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" title="Setup incomplete" />
+              )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={onMoveUp}
-                disabled={index === 0}
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Move up"
-              >
-                <ArrowUp className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={onMoveDown}
-                disabled={index === totalSteps - 1}
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Move down"
-              >
-                <ArrowDown className="h-3.5 w-3.5" />
-              </button>
               <button
                 onClick={onEdit}
                 className="px-3 h-7 text-xs font-semibold rounded-md border border-border bg-background hover:bg-muted text-foreground transition-colors"
@@ -248,6 +242,8 @@ function StepRow({
               </button>
             </div>
           </div>
+            );
+          })()
         )}
       </div>
     </div>
@@ -286,12 +282,12 @@ function DelayRow({
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Wait / Delay</span>
             <div className="flex items-center gap-1.5">
-              <div className="flex rounded border border-border overflow-hidden">
+              <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
                 <button
                   type="button"
                   onClick={() => setMode("duration")}
                   style={{ fontSize: '11px' }}
-                  className={`px-1 py-px font-medium transition-colors ${mode === "duration" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted"}`}
+                  className={`px-2 py-0.5 rounded font-medium transition-all ${mode === "duration" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Duration
                 </button>
@@ -299,7 +295,7 @@ function DelayRow({
                   type="button"
                   onClick={() => setMode("datetime")}
                   style={{ fontSize: '11px' }}
-                  className={`px-1 py-px font-medium transition-colors ${mode === "datetime" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted"}`}
+                  className={`px-2 py-0.5 rounded font-medium transition-all ${mode === "datetime" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Date & Time
                 </button>
