@@ -172,10 +172,11 @@ export function EmailTemplatesTab() {
     toast.success("Email template deleted.");
   };
 
-  const byCategory = emailCategories.reduce<Record<string, AdminEmailTemplate[]>>((acc, cat) => {
-    acc[cat] = adminEmailTemplates.filter((t) => t.category === cat);
-    return acc;
-  }, {});
+  const sortedTemplates = [...adminEmailTemplates].sort((a, b) => {
+    const ai = emailCategories.indexOf(a.category);
+    const bi = emailCategories.indexOf(b.category);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
 
   const viewVariables = extractVariables(`${selected?.subject ?? ""} ${selected?.body ?? ""}`);
 
@@ -190,28 +191,22 @@ export function EmailTemplatesTab() {
           emptyIcon={<Mail className="w-7 h-7 text-muted-foreground/30 mb-2" />}
           emptyText="No templates yet."
         >
-          {emailCategories.map((cat) =>
-            byCategory[cat]?.length > 0 ? (
-              <div key={cat}>
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-b border-border/50">
-                  {cat}
+          {sortedTemplates.map((t) => {
+            const isActive = selected?.id === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setSelected(t); setConfirmDeleteId(null); }}
+                className={`w-full text-left px-3 py-2.5 border-b border-border/40 last:border-b-0 transition-colors ${isActive ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
+              >
+                <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{t.name}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${CATEGORY_COLORS[t.category] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>{t.category}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{t.senderType.replace("-", " ")}</span>
                 </div>
-                {byCategory[cat].map((t) => {
-                  const isActive = selected?.id === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => { setSelected(t); setConfirmDeleteId(null); }}
-                      className={`w-full text-left px-3 py-2.5 border-b border-border/40 last:border-b-0 transition-colors ${isActive ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
-                    >
-                      <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{t.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 capitalize">{t.senderType.replace("-", " ")}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null,
-          )}
+              </button>
+            );
+          })}
         </TemplateSidebarShell>
 
         {selected ? (

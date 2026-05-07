@@ -31,7 +31,7 @@ export function TemplatesView() {
             value="voicemail-scripts"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-full text-sm"
           >
-            Voicemail Records
+            Voicemail Templates
           </TabsTrigger>
           <TabsTrigger
             value="voicemail-settings"

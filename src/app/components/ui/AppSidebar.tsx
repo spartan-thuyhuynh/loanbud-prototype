@@ -28,11 +28,18 @@ export function AppSidebar({
     );
   };
 
+  const hasActiveChild = (item: AppSidebarSection["items"][number]) =>
+    (item.children ?? []).some(
+      (child) =>
+        location.pathname === child.route ||
+        location.pathname.startsWith(child.route + "/")
+    );
+
   const handleItemClick = (route?: string) => {
     if (route) navigate(route);
   };
 
-  const renderItem = (item: AppSidebarSection["items"][number]) => {
+  const renderLeafItem = (item: AppSidebarSection["items"][number]) => {
     const Icon = item.icon;
     const active = isActive(item.route);
     const btn = (
@@ -83,6 +90,70 @@ export function AppSidebar({
 
     return btn;
   };
+
+  const renderFlyoutItem = (item: AppSidebarSection["items"][number]) => {
+    const Icon = item.icon;
+    const active = hasActiveChild(item);
+
+    const trigger = collapsed ? (
+      <button
+        className={`w-full flex justify-center p-3 rounded-lg transition-all duration-150
+          ${active ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+      >
+        <Icon className="w-5 h-5 shrink-0" />
+      </button>
+    ) : (
+      <button
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150
+          ${active ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+      >
+        <Icon className="w-5 h-5 shrink-0" />
+        <span className="text-sm flex-1 text-left">{item.label}</span>
+        <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" />
+      </button>
+    );
+
+    return (
+      <Tooltip.Provider key={item.id} delayDuration={100}>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>{trigger}</Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="right"
+              sideOffset={8}
+              align="start"
+              className="z-[100] bg-[#053f4f] border border-white/10 rounded-lg shadow-xl py-2 min-w-[168px] animate-in fade-in zoom-in-95 duration-150"
+            >
+              <p className="text-white/40 text-[10px] font-semibold uppercase tracking-wider px-4 pb-1.5">
+                {item.label}
+              </p>
+              {(item.children ?? []).map((child) => {
+                const ChildIcon = child.icon;
+                const childActive =
+                  location.pathname === child.route ||
+                  location.pathname.startsWith(child.route + "/");
+                return (
+                  <button
+                    key={child.id}
+                    onClick={() => navigate(child.route)}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors
+                      ${childActive ? "text-white bg-white/15" : "text-white/70 hover:text-white hover:bg-white/10"}`}
+                  >
+                    {ChildIcon && <ChildIcon className="w-4 h-4 shrink-0" />}
+                    <span>{child.label}</span>
+                  </button>
+                );
+              })}
+              <Tooltip.Arrow className="fill-[#053f4f]" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  };
+
+  const renderItem = (item: AppSidebarSection["items"][number]) =>
+    item.children?.length ? renderFlyoutItem(item) : renderLeafItem(item);
 
   return (
     <aside

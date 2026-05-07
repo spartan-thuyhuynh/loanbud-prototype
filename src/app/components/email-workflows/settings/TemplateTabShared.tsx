@@ -37,6 +37,7 @@ export function DetailSection({ label, headerRight, contentClassName = "px-4 py-
 // ── Left sidebar shell ────────────────────────────────────────────────────────
 
 interface TemplateSidebarShellProps {
+  header?: React.ReactNode;
   newLabel: string;
   onNew: () => void;
   onCategories: () => void;
@@ -47,6 +48,7 @@ interface TemplateSidebarShellProps {
 }
 
 export function TemplateSidebarShell({
+  header,
   newLabel,
   onNew,
   onCategories,
@@ -57,6 +59,7 @@ export function TemplateSidebarShell({
 }: TemplateSidebarShellProps) {
   return (
     <div className="w-64 border-r border-border flex flex-col shrink-0 bg-muted/20">
+      {header}
       <div className="px-3 py-3 border-b border-border space-y-2">
         <Button className="w-full" onClick={onNew}>
           <Plus className="w-3.5 h-3.5 mr-1.5" />

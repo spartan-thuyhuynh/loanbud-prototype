@@ -60,6 +60,13 @@ export interface EmailWorkflowSubItem {
   dividerAfter?: boolean;
 }
 
+export interface AppSidebarSubItem {
+  id: string;
+  label: string;
+  route: string;
+  icon?: React.ElementType;
+}
+
 export interface AppSidebarItem {
   id: string;
   label: string;
@@ -67,6 +74,7 @@ export interface AppSidebarItem {
   route?: string;
   action?: "openComposer" | "openDialer";
   externalIcon?: boolean;
+  children?: AppSidebarSubItem[];
 }
 
 export interface AppSidebarSection {
@@ -384,9 +392,12 @@ export interface SmsTemplate {
 
 export type VoicemailCategory = string;
 
+export type VoicemailScriptType = "record" | "script";
+
 export interface VoicemailScript {
   id: string;
   name: string;
+  type: VoicemailScriptType;
   scriptText: string;
   audioUrl: string;
   estimatedDurationSeconds: number;

@@ -11,67 +11,11 @@ import {
   Building,
   Calendar,
   Settings,
+  LayoutDashboard,
+  Layers,
+  CheckSquare,
 } from "lucide-react";
-import type { IconNavItem, EmailWorkflowSubItem, AppSidebarSection } from "../types";
-import type { CRMSubItem as BaseCRMSubItem } from "../types";
-
-// Extend CRMSubItem to include 'icon' property
-type CRMSubItem = BaseCRMSubItem & { icon: React.ElementType };
-
-export const iconNavItems: IconNavItem[] = [
-  {
-    id: "applications",
-    label: "Applications",
-    icon: FileText,
-    tooltip: "Applications",
-  },
-  {
-    id: "business-acquisition",
-    label: "Business Acquisition",
-    icon: Briefcase,
-    tooltip: "Business Acquisition",
-  },
-  {
-    id: "crm",
-    label: "CRM",
-    icon: UsersIcon,
-    tooltip: "CRM",
-    hasSubMenu: true,
-  },
-  {
-    id: "email-workflows",
-    label: "Email Workflows",
-    icon: Workflow,
-    tooltip: "Email Workflows",
-    hasSubMenu: true,
-  },
-  {
-    id: "users",
-    label: "Users",
-    icon: User,
-    tooltip: "Users",
-  },
-  {
-    id: "automations",
-    label: "Automations",
-    icon: Zap,
-    tooltip: "Automations",
-  },
-  {
-    id: "questionnaires",
-    label: "Questionnaires",
-    icon: ClipboardList,
-    tooltip: "Questionnaires",
-  },
-];
-
-export const crmSubItems: CRMSubItem[] = [
-  { id: "contacts", label: "Contacts", icon: UsersIcon },
-  { id: "companies", label: "Companies", icon: Building },
-  { id: "inbox", label: "Inbox", icon: Mail },
-  { id: "calls", label: "Calls", icon: Phone },
-  { id: "meetings", label: "Meetings", icon: Calendar },
-];
+import type { AppSidebarSection } from "../types";
 
 export const appSidebarSections: AppSidebarSection[] = [
   {
@@ -82,22 +26,36 @@ export const appSidebarSections: AppSidebarSection[] = [
   },
   {
     items: [
-      { id: "crm",             label: "CRM",             icon: UsersIcon,     route: "/crm/contacts" },
-      { id: "email-workflows", label: "Email Workflows", icon: Workflow,      route: "/email-workflows/overview" },
-      { id: "users",           label: "Users",           icon: User,          route: "/users" },
-      { id: "automations",     label: "Automations",     icon: Zap,           route: "/automations" },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: UsersIcon,
+        route: "/crm/contacts",
+        children: [
+          { id: "crm-contacts",  label: "Contacts",  route: "/crm/contacts",  icon: UsersIcon },
+          { id: "crm-companies", label: "Companies", route: "/crm/companies", icon: Building  },
+          { id: "crm-inbox",     label: "Inbox",     route: "/crm/inbox",     icon: Mail      },
+          { id: "crm-calls",     label: "Calls",     route: "/crm/calls",     icon: Phone     },
+          { id: "crm-meetings",  label: "Meetings",  route: "/crm/meetings",  icon: Calendar  },
+        ],
+      },
+      {
+        id: "email-workflows",
+        label: "Workflow",
+        icon: Workflow,
+        route: "/email-workflows/overview",
+        children: [
+          { id: "ew-overview",  label: "Overview",      route: "/email-workflows/overview",      icon: LayoutDashboard },
+          { id: "ew-segments",  label: "Segments",      route: "/email-workflows/user-segments", icon: Layers          },
+          { id: "ew-flows",     label: "Workflows",     route: "/email-workflows/flows",         icon: Workflow        },
+          { id: "ew-tasks",     label: "Tasks",         route: "/email-workflows/tasks",         icon: CheckSquare     },
+          { id: "ew-config",    label: "Configuration", route: "/email-workflows/templates",     icon: Settings        },
+        ],
+      },
+      { id: "users",           label: "Users",           icon: User,          route: "/users"          },
+      { id: "automations",     label: "Automations",     icon: Zap,           route: "/automations"    },
       { id: "questionnaires",  label: "Questionnaires",  icon: ClipboardList, route: "/questionnaires" },
       { id: "configurations",  label: "Configurations",  icon: Settings,      route: "/configurations" },
     ],
   },
-];
-
-export const emailWorkflowsSubItems: EmailWorkflowSubItem[] = [
-  { id: "overview", label: "Overview", dividerAfter: true },
-  { id: "user-segments", label: "Segments" },
-  { id: "flows", label: "Workflows", dividerAfter: true },
-  //{ id: "flow-builder", label: "Email Flows", dividerAfter: true },
-
-  { id: "tasks", label: "Tasks", dividerAfter: true },
-  { id: "templates", label: "Configuration" },
 ];

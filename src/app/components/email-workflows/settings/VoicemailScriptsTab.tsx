@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Mic, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import type { VoicemailScript, VoicemailCategory } from "../../../types";
+import type { VoicemailScript, VoicemailCategory, VoicemailScriptType } from "../../../types";
 import { useAppData } from "../../../contexts/AppDataContext";
 import { AudioPlayer } from "../../AudioPlayer";
 import { Badge } from "../../ui/badge";
@@ -30,6 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const emptyForm = {
   name: "",
+  type: "record" as VoicemailScriptType,
   scriptText: "",
   audioUrl: "",
   estimatedDurationSeconds: 20,
@@ -57,12 +58,14 @@ function RecordForm({
   form,
   audioFileName,
   categories,
+  showRecording,
   onChange,
   onAudioFileName,
 }: {
   form: FormState;
   audioFileName: string;
   categories: string[];
+  showRecording: boolean;
   onChange: (updates: Partial<FormState>) => void;
   onAudioFileName: (name: string) => void;
 }) {
@@ -106,9 +109,9 @@ function RecordForm({
         </div>
       </section>
 
-      <Divider />
+      {showRecording && <Divider />}
 
-      <section className="space-y-3">
+      {showRecording && <section className="space-y-3">
         <SectionHeading label="Recording" />
         {form.audioUrl ? (
           <div className="border border-border rounded-xl bg-muted/20 overflow-hidden">
@@ -148,14 +151,14 @@ function RecordForm({
           </button>
         )}
         <input ref={fileInputRef} type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
-      </section>
+      </section>}
 
       <Divider />
 
       <section className="space-y-3">
         <div>
-          <SectionHeading label="Transcript" />
-          <p className="text-xs text-muted-foreground mt-0.5">Word-for-word text of the recording — used as a reference during calls.</p>
+          <SectionHeading label={showRecording ? "Transcript" : "Script"} />
+          <p className="text-xs text-muted-foreground mt-0.5">{showRecording ? "Word-for-word text of the recording — used as a reference during calls." : "Write the script to read aloud when leaving a voicemail."}</p>
         </div>
         <Textarea
           value={form.scriptText}
@@ -190,6 +193,7 @@ export function VoicemailScriptsTab() {
     handleDeleteVoicemailCategory,
   } = useAppData();
 
+  const [activeType, setActiveType] = useState<VoicemailScriptType>("record");
   const [selected, setSelected] = useState<VoicemailScript | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -201,7 +205,9 @@ export function VoicemailScriptsTab() {
   const [editAudioFileName, setEditAudioFileName] = useState("");
   const [editConfirmSave, setEditConfirmSave] = useState(false);
 
-  const openNew = () => { setNewForm(emptyForm); setNewAudioFileName(""); setNewOpen(true); };
+  const visibleScripts = voicemailScripts.filter((s) => (s.type ?? "script") === activeType);
+
+  const openNew = () => { setNewForm({ ...emptyForm, type: activeType }); setNewAudioFileName(""); setNewOpen(true); };
 
   const handleCreate = () => {
     if (!newForm.name.trim() || !newForm.scriptText.trim()) {
@@ -215,7 +221,7 @@ export function VoicemailScriptsTab() {
 
   const openEdit = () => {
     if (!selected) return;
-    setEditForm({ name: selected.name, scriptText: selected.scriptText, audioUrl: selected.audioUrl, estimatedDurationSeconds: selected.estimatedDurationSeconds, category: selected.category });
+    setEditForm({ name: selected.name, type: selected.type, scriptText: selected.scriptText, audioUrl: selected.audioUrl, estimatedDurationSeconds: selected.estimatedDurationSeconds, category: selected.category });
     setEditAudioFileName(selected.audioUrl ? (selected.audioUrl.startsWith("data:") ? "Uploaded recording" : selected.audioUrl.split("/").pop() ?? "") : "");
     setEditConfirmSave(false);
     setEditOpen(true);
@@ -252,14 +258,29 @@ export function VoicemailScriptsTab() {
     <>
       <div className="flex h-full min-h-0">
         <TemplateSidebarShell
-          newLabel="New Record"
+          header={
+            <div className="flex items-center border-b border-border px-3 py-2.5">
+              <div className="flex items-center bg-muted rounded-lg p-1 gap-1 w-full">
+                {(["record", "script"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setActiveType(t); setSelected(null); setConfirmDeleteId(null); }}
+                    className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-all ${activeType === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {t === "record" ? "Record" : "Script"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }
+          newLabel={activeType === "record" ? "New Record" : "New Script"}
           onNew={openNew}
           onCategories={() => setCatModalOpen(true)}
-          isEmpty={voicemailScripts.length === 0}
+          isEmpty={visibleScripts.length === 0}
           emptyIcon={<Mic className="w-7 h-7 text-muted-foreground/30 mb-2" />}
-          emptyText="No voicemail records yet."
+          emptyText={activeType === "record" ? "No voicemail records yet." : "No voicemail scripts yet."}
         >
-          {voicemailScripts.map((s) => {
+          {visibleScripts.map((s) => {
             const isActive = selected?.id === s.id;
             return (
               <button
@@ -293,31 +314,35 @@ export function VoicemailScriptsTab() {
               onCancelDelete={() => setConfirmDeleteId(null)}
             />
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              <DetailSection label="Recording" contentClassName="p-4">
-                {selected.audioUrl ? (
-                  <div className="border border-border rounded-lg overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/60 bg-muted/20">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Mic className="w-3 h-3 text-primary" />
+              {selected.type === "record" && (
+                <DetailSection label="Recording" contentClassName="p-4">
+                  {selected.audioUrl ? (
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/60 bg-muted/20">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Mic className="w-3 h-3 text-primary" />
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {selected.audioUrl.startsWith("data:") ? "Uploaded recording" : selected.audioUrl.split("/").pop()}
+                        </p>
                       </div>
-                      <p className="text-xs font-medium text-foreground truncate">
-                        {selected.audioUrl.startsWith("data:") ? "Uploaded recording" : selected.audioUrl.split("/").pop()}
-                      </p>
+                      <div className="px-4 py-3">
+                        <AudioPlayer src={selected.audioUrl} />
+                      </div>
                     </div>
-                    <div className="px-4 py-3">
-                      <AudioPlayer src={selected.audioUrl} />
+                  ) : (
+                    <div className="flex items-center gap-2 py-4 px-4 rounded-lg border border-dashed border-border text-muted-foreground">
+                      <Mic className="w-4 h-4 opacity-40" />
+                      <p className="text-sm">No recording attached.</p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 py-4 px-4 rounded-lg border border-dashed border-border text-muted-foreground">
-                    <Mic className="w-4 h-4 opacity-40" />
-                    <p className="text-sm">No recording attached.</p>
-                  </div>
-                )}
-              </DetailSection>
-              <DetailSection label="Transcript" contentClassName="p-4">
+                  )}
+                </DetailSection>
+              )}
+              <DetailSection label={selected.type === "record" ? "Transcript" : "Script"} contentClassName="p-4">
                 <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground -mt-1">Word-for-word text of the recording.</p>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    {selected.type === "record" ? "Word-for-word text of the recording." : "Read this script aloud when leaving a voicemail."}
+                  </p>
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.scriptText}</p>
                   {variables.length > 0 && (
                     <div className="space-y-1.5 pt-1 border-t border-border">
@@ -334,17 +359,18 @@ export function VoicemailScriptsTab() {
         ) : (
           <TemplateEmptyState
             icon={<Mic className="w-5 h-5 text-muted-foreground/50" />}
-            label="No record selected"
-            hint="Pick a record from the list or create a new one."
+            label={activeType === "record" ? "No record selected" : "No script selected"}
+            hint={activeType === "record" ? "Pick a record from the list or create a new one." : "Pick a script from the list or create a new one."}
           />
         )}
       </div>
 
-      <TemplateModalShell open={newOpen} title="New Voicemail Record" saveLabel="Create Record" onOpenChange={setNewOpen} onSave={handleCreate}>
+      <TemplateModalShell open={newOpen} title={activeType === "record" ? "New Voicemail Record" : "New Voicemail Script"} saveLabel={activeType === "record" ? "Create Record" : "Create Script"} onOpenChange={setNewOpen} onSave={handleCreate}>
         <RecordForm
           form={newForm}
           audioFileName={newAudioFileName}
           categories={voicemailCategories}
+          showRecording={activeType === "record"}
           onChange={(u) => setNewForm((f) => ({ ...f, ...u }))}
           onAudioFileName={setNewAudioFileName}
         />
@@ -365,6 +391,7 @@ export function VoicemailScriptsTab() {
           form={editForm}
           audioFileName={editAudioFileName}
           categories={voicemailCategories}
+          showRecording={activeType === "record"}
           onChange={(u) => setEditForm((f) => ({ ...f, ...u }))}
           onAudioFileName={setEditAudioFileName}
         />

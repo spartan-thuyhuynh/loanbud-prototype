@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Outlet } from "react-router";
 import { AppSidebar } from "../components/ui/AppSidebar";
 import { AppHeader } from "../components/ui/AppHeader";
 import { DialerPanel } from "../components/dialer/DialerPanel";
@@ -14,12 +14,6 @@ function RootLayoutInner() {
   );
   const [composerOpen, setComposerOpen] = useState(false);
   const { dialerOpen, dialerNumber, session, openDialer, closeDialer } = useDialer();
-
-  const location = useLocation();
-  // These routes render their own sub-sidebar and handle AppHeader internally
-  const routeHasSubSidebar = ["/crm", "/email-workflows"].some((r) =>
-    location.pathname.startsWith(r)
-  );
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed((v) => {
@@ -36,7 +30,7 @@ function RootLayoutInner() {
         onToggle={handleToggleSidebar}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
-        {SHOW_APP_HEADER && !routeHasSubSidebar && (
+        {SHOW_APP_HEADER && (
           <AppHeader
             onOpenComposer={() => setComposerOpen(true)}
             onOpenDialer={() => openDialer()}
