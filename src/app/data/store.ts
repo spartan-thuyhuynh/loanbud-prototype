@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
@@ -14,6 +14,7 @@ import smsTemplatesJson from "./smsTemplates.json";
 import voicemailScriptsJson from "./voicemailScripts.json";
 import voicemailSettingsJson from "./voicemailSettings.json";
 import senderIdentitiesJson from "./senderIdentities.json";
+import notificationsJson from "./notifications.json";
 
 const KEYS = {
   contacts: "loanbudcrm:contacts",
@@ -31,6 +32,7 @@ const KEYS = {
   voicemailScripts: "loanbudcrm:v2:voicemailScripts",
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
   senderIdentities: "loanbudcrm:v2:senderIdentities",
+  notifications: "loanbudcrm:notifications",
   emailCategories: "loanbudcrm:v2:emailCategories",
   smsCategories: "loanbudcrm:v2:smsCategories",
   voicemailCategories: "loanbudcrm:v2:voicemailCategories",
@@ -211,6 +213,15 @@ export const store = {
         ["createdAt"],
       ),
     write: (data: SenderIdentity[]) => write(KEYS.senderIdentities, data),
+  },
+  notifications: {
+    read: () =>
+      read<Notification>(
+        KEYS.notifications,
+        notificationsJson as Notification[],
+        ["createdAt"],
+      ),
+    write: (data: Notification[]) => write(KEYS.notifications, data),
   },
   emailCategories: {
     read: () => readStringArray(KEYS.emailCategories, ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"]),

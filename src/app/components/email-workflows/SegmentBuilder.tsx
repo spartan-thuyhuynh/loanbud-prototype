@@ -1,10 +1,8 @@
-import { useState, useMemo, Fragment } from "react";
-import { Plus, Save, ChevronDown } from "lucide-react";
-import { getAvatarColor, getInitials } from "./segment-builder/segment-utils";
+import { useState, useMemo } from "react";
+import { Plus, Save, Pencil } from "lucide-react";
 import type { Contact, FilterGroup, FilterRule, SavedSegment } from "@/app/types";
 import { FilterGroupCard } from "./segment-builder/FilterGroupCard";
 import { SegmentPreviewPanel } from "./segment-builder/SegmentPreviewPanel";
-import { SaveSegmentModal } from "./segment-builder/SaveSegmentModal";
 import { SpecificContactPicker } from "./segment-builder/SpecificContactPicker";
 
 export type { SavedSegment };
@@ -152,229 +150,6 @@ function useGroupState(initial: FilterGroup[]) {
   };
 }
 
-// ── readable labels ──────────────────────────────────────────────────────────
-const FIELD_LABEL: Record<string, string> = {
-  listingStatus: "Listing Status",
-  userType: "User Type",
-};
-const OP_LABEL: Record<string, string> = { "=": "is", "!=": "is not" };
-
-function FilterChip({ filter, variant }: { filter: FilterRule; variant: "include" | "exclude" }) {
-  const base =
-    variant === "include"
-      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800"
-      : "bg-destructive/10 text-destructive border-destructive/20";
-  return (
-    <span className={`inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border ${base}`}>
-      {FIELD_LABEL[filter.field] ?? filter.field} {OP_LABEL[filter.operator] ?? filter.operator}{" "}
-      <strong className="ml-0.5">{filter.value}</strong>
-    </span>
-  );
-}
-
-function LogicBadge({ label }: { label: string }) {
-  return (
-    <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded uppercase tracking-wide">
-      {label}
-    </span>
-  );
-}
-
-function GroupChips({
-  groups,
-  variant,
-}: {
-  groups: FilterGroup[];
-  variant: "include" | "exclude";
-}) {
-  const nonEmpty = groups.filter((g) => g.filters.length > 0);
-  if (nonEmpty.length === 0) return null;
-  return (
-    <div className="space-y-1">
-      {nonEmpty.map((group, gi) => (
-        <Fragment key={group.id}>
-          <div className="flex flex-wrap gap-1.5 items-center">
-            {group.filters.map((f, fi) => (
-              <Fragment key={fi}>
-                <FilterChip filter={f} variant={variant} />
-                {fi < group.filters.length - 1 && <LogicBadge label={f.logic} />}
-              </Fragment>
-            ))}
-          </div>
-          {gi < nonEmpty.length - 1 && (
-            <div className="pl-1">
-              <LogicBadge label={group.connectorAfter} />
-            </div>
-          )}
-        </Fragment>
-      ))}
-    </div>
-  );
-}
-
-function RulesSummary({
-  includeGroups,
-  excludeGroups,
-  specificContacts,
-  contacts,
-}: {
-  includeGroups: FilterGroup[];
-  excludeGroups: FilterGroup[];
-  specificContacts: PinnedContact[];
-  contacts: Contact[];
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [expandedPinned, setExpandedPinned] = useState<"include" | "exclude" | null>(null);
-
-  const hasIncludeFilters = includeGroups.some((g) => g.filters.length > 0);
-  const hasExcludeFilters = excludeGroups.some((g) => g.filters.length > 0);
-  const pinnedIn = specificContacts.filter((p) => p.mode === "include");
-  const pinnedOut = specificContacts.filter((p) => p.mode === "exclude");
-  const includeCount = includeGroups.flatMap((g) => g.filters).length;
-  const excludeCount = excludeGroups.flatMap((g) => g.filters).length;
-  const hasRules =
-    hasIncludeFilters || hasExcludeFilters || pinnedIn.length > 0 || pinnedOut.length > 0;
-
-  const togglePinned = (mode: "include" | "exclude") =>
-    setExpandedPinned((prev) => (prev === mode ? null : mode));
-
-  const resolvePinnedContacts = (ids: PinnedContact[]) =>
-    ids
-      .map((p) => contacts.find((c) => c.id === p.contactId))
-      .filter((c): c is Contact => c !== undefined);
-
-  return (
-    <div className="border border-border rounded-lg bg-card overflow-hidden">
-      {/* Header — always visible, acts as the toggle */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Rules applied
-          </span>
-          {/* Compact count pills — visible even when collapsed */}
-          {hasRules ? (
-            <div className="flex items-center gap-1">
-              {includeCount > 0 && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">
-                  {includeCount} inc
-                </span>
-              )}
-              {excludeCount > 0 && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">
-                  {excludeCount} exc
-                </span>
-              )}
-              {pinnedIn.length > 0 && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400">
-                  +{pinnedIn.length}
-                </span>
-              )}
-              {pinnedOut.length > 0 && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                  −{pinnedOut.length}
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-[11px] text-muted-foreground/60">None</span>
-          )}
-        </div>
-        <ChevronDown
-          className={`w-3.5 h-3.5 text-muted-foreground transition-transform flex-shrink-0 ${expanded ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="border-t border-border px-4 pb-3 pt-2.5 max-h-48 overflow-y-auto space-y-2.5">
-          {!hasRules ? (
-            <p className="text-xs text-muted-foreground">No rules defined yet.</p>
-          ) : (
-            <>
-              {hasIncludeFilters && (
-                <div className="flex gap-2">
-                  <span className="text-[11px] text-muted-foreground w-14 flex-shrink-0 pt-1">
-                    Include
-                  </span>
-                  <GroupChips groups={includeGroups} variant="include" />
-                </div>
-              )}
-
-              {hasExcludeFilters && (
-                <div className="flex gap-2">
-                  <span className="text-[11px] text-muted-foreground w-14 flex-shrink-0 pt-1">
-                    Exclude
-                  </span>
-                  <GroupChips groups={excludeGroups} variant="exclude" />
-                </div>
-              )}
-
-              {(pinnedIn.length > 0 || pinnedOut.length > 0) && (
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-1.5 items-center">
-                    <span className="text-[11px] text-muted-foreground w-14 flex-shrink-0">
-                      Pinned
-                    </span>
-                    {pinnedIn.length > 0 && (
-                      <button
-                        onClick={() => togglePinned("include")}
-                        className={`inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                          expandedPinned === "include"
-                            ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300"
-                            : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800"
-                        }`}
-                      >
-                        +{pinnedIn.length} always in
-                      </button>
-                    )}
-                    {pinnedOut.length > 0 && (
-                      <button
-                        onClick={() => togglePinned("exclude")}
-                        className={`inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                          expandedPinned === "exclude"
-                            ? "bg-destructive/20 text-destructive border-destructive/40"
-                            : "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20"
-                        }`}
-                      >
-                        −{pinnedOut.length} always out
-                      </button>
-                    )}
-                  </div>
-
-                  {expandedPinned && (
-                    <div className="ml-16 space-y-1.5 pt-0.5">
-                      {resolvePinnedContacts(
-                        expandedPinned === "include" ? pinnedIn : pinnedOut,
-                      ).map((contact) => (
-                        <div key={contact.id} className="flex items-center gap-2">
-                          <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0 ${getAvatarColor(contact.firstName, contact.lastName)}`}
-                          >
-                            {getInitials(contact.firstName, contact.lastName)}
-                          </div>
-                          <span className="text-xs text-foreground">
-                            {contact.firstName} {contact.lastName}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground truncate">
-                            {contact.email}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── main component ────────────────────────────────────────────────────────────
 function filtersToGroup(filters: FilterRule[] | undefined): FilterGroup[] {
   if (!filters?.length) return [makeGroup()];
@@ -390,7 +165,9 @@ export function SegmentBuilder({
   initialSegment,
   embeddedMode = false,
 }: SegmentBuilderProps) {
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [segName, setSegName] = useState(initialName ?? "New segment");
+  const [segDescription, setSegDescription] = useState(initialDescription ?? "");
+  const [editingName, setEditingName] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("include");
   const [specificContacts, setSpecificContacts] = useState<PinnedContact[]>(() => {
     const inc = (initialSegment?.includedContactIds ?? []).map((id) => ({
@@ -458,12 +235,14 @@ export function SegmentBuilder({
       .map((p) => p.contactId),
   });
 
-  const handleSave = (name: string, description: string) => {
-    onSaveSegment(buildSegmentPayload(name, description, `segment-${Date.now()}`));
+  const handleSave = () => {
+    if (!segName.trim()) return;
+    onSaveSegment(buildSegmentPayload(segName.trim(), segDescription.trim(), `segment-${Date.now()}`));
     include.reset();
     exclude.reset();
     setSpecificContacts([]);
-    setShowSaveModal(false);
+    setSegName("New segment");
+    setSegDescription("");
   };
 
   const handleEmbeddedSave = () => {
@@ -494,21 +273,53 @@ export function SegmentBuilder({
     <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
       {/* Header — hidden in embedded mode */}
       {!embeddedMode && (
-        <div className="px-8 py-4 border-b border-border bg-card flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="px-8 py-4 border-b border-border bg-card flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm flex-shrink-0"
               >
                 ← Back
               </button>
             )}
-            <span className="text-muted-foreground text-sm">Segment Builder</span>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2 group">
+                {editingName ? (
+                  <input
+                    type="text"
+                    value={segName}
+                    onChange={(e) => setSegName(e.target.value)}
+                    onBlur={() => { if (!segName.trim()) setSegName("New segment"); setEditingName(false); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { if (!segName.trim()) setSegName("New segment"); setEditingName(false); } }}
+                    autoFocus
+                    className="text-base font-semibold bg-transparent border-b border-border outline-none focus:outline-none text-foreground min-w-0 flex-1"
+                  />
+                ) : (
+                  <>
+                    <span className="text-base font-semibold text-foreground truncate">{segName}</span>
+                    <button
+                      onClick={() => setEditingName(true)}
+                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+              <input
+                type="text"
+                value={segDescription}
+                onChange={(e) => setSegDescription(e.target.value)}
+                placeholder="Add a description (optional)"
+                className="text-xs bg-transparent border-none outline-none focus:outline-none placeholder:text-muted-foreground/40 text-muted-foreground w-full"
+              />
+            </div>
           </div>
           <button
-            onClick={() => setShowSaveModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all text-sm"
+            onClick={handleSave}
+            disabled={!segName.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
           >
             <Save className="w-4 h-4" />
             Save segment
@@ -519,14 +330,6 @@ export function SegmentBuilder({
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left: builder */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          {/* Rules overview */}
-          <RulesSummary
-            includeGroups={include.groups}
-            excludeGroups={exclude.groups}
-            specificContacts={specificContacts}
-            contacts={contacts}
-          />
-
           {/* Tabs */}
           <div className="border border-border rounded-lg bg-card">
             {/* Tab bar */}
@@ -649,15 +452,6 @@ export function SegmentBuilder({
         />
       </div>
 
-      {!embeddedMode && (
-        <SaveSegmentModal
-          isOpen={showSaveModal}
-          onSave={handleSave}
-          onClose={() => setShowSaveModal(false)}
-          initialName={initialName}
-          initialDescription={initialDescription}
-        />
-      )}
     </div>
   );
 }

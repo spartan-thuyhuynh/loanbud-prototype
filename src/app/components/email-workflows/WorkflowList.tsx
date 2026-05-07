@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Pencil, Trash2, LayoutList, PlayCircle, PauseCircle } from "lucide-react";
+import { Plus, LayoutList } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "../../contexts/AppDataContext";
 
@@ -16,8 +15,7 @@ function formatDate(d: Date): string {
 
 export function WorkflowList() {
   const navigate = useNavigate();
-  const { workflows, handleDeleteWorkflow, handleUpdateWorkflow } = useAppData();
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const { workflows } = useAppData();
 
   const totalFlows = workflows.length;
   const activeFlows = workflows.filter((w) => w.status === "active").length;
@@ -25,38 +23,6 @@ export function WorkflowList() {
 
   const handleRowClick = (id: string) => {
     navigate(`/email-workflows/flows/${id}/board`);
-  };
-
-  const handleEdit = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    navigate(`/email-workflows/flows/${id}/edit`);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setConfirmDeleteId(id);
-  };
-
-  const confirmDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirmDeleteId) {
-      handleDeleteWorkflow(confirmDeleteId);
-      setConfirmDeleteId(null);
-    }
-  };
-
-  const cancelDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDeleteId(null);
-  };
-
-  const handleToggleStatus = (e: React.MouseEvent, id: string, currentStatus: string) => {
-    e.stopPropagation();
-    if (currentStatus === "active") {
-      handleUpdateWorkflow(id, { status: "paused" });
-    } else {
-      handleUpdateWorkflow(id, { status: "active", createdAt: new Date() });
-    }
   };
 
   return (
@@ -81,9 +47,9 @@ export function WorkflowList() {
             { label: "Active Flows", value: activeFlows },
             { label: "Total Enrolled", value: totalEnrolled },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg border border-border bg-background px-5 py-3 min-w-[120px]">
+            <div key={label} className="rounded-lg border border-border bg-background px-4 py-2 min-w-[100px]">
               <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-2xl font-semibold text-foreground mt-0.5">{value}</p>
+              <p className="text-xl font-semibold text-foreground mt-0.5">{value}</p>
             </div>
           ))}
         </div>
@@ -107,7 +73,7 @@ export function WorkflowList() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border">
                 <tr>
-                  {["Actions", "Name", "Segment", "Status", "Steps", "Activated"].map((col) => (
+                  {["Name", "Segment", "Status", "Steps", "Activated"].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {col}
                     </th>
@@ -121,53 +87,6 @@ export function WorkflowList() {
                     className="hover:bg-muted/20 transition-colors cursor-pointer"
                     onClick={() => handleRowClick(wf.id)}
                   >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1">
-                        {confirmDeleteId === wf.id ? (
-                          <>
-                            <button
-                              className="px-2 py-1 text-xs rounded bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={confirmDelete}
-                            >
-                              Delete
-                            </button>
-                            <button
-                              className="px-2 py-1 text-xs rounded border border-border hover:bg-muted"
-                              onClick={cancelDelete}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              className="p-1.5 rounded hover:bg-muted transition-colors"
-                              onClick={(e) => handleToggleStatus(e, wf.id, wf.status)}
-                              title={wf.status === "active" ? "Pause" : "Activate"}
-                            >
-                              {wf.status === "active"
-                                ? <PauseCircle className="h-3.5 w-3.5 text-yellow-500" />
-                                : <PlayCircle className="h-3.5 w-3.5 text-green-600" />
-                              }
-                            </button>
-                            <button
-                              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              onClick={(e) => handleEdit(e, wf.id)}
-                              title="Edit"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                              onClick={(e) => handleDeleteClick(e, wf.id)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-5 py-4">
                       <div className="font-medium text-foreground">{wf.name}</div>
                       {wf.description && (

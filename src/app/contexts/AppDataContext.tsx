@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity } from "../types";
+import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
@@ -115,6 +115,11 @@ interface AppDataContextValue {
   handleDeleteSenderIdentity: (id: string) => void;
   handleSetDefaultSenderIdentity: (id: string) => void;
   handleSendTaskEmail: (taskId: string, subject: string, sender: string) => void;
+  // Notification data & handlers
+  notifications: Notification[];
+  handleMarkNotificationRead: (id: string) => void;
+  handleMarkAllNotificationsRead: () => void;
+  handleDismissNotification: (id: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -144,6 +149,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [emailCategories, setEmailCategories] = useState<string[]>(store.emailCategories.read());
   const [smsCategories, setSmsCategories] = useState<string[]>(store.smsCategories.read());
   const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
+  const [notifications, setNotifications] = useState<Notification[]>(store.notifications.read());
+
+  const handleMarkNotificationRead = (id: string) => {
+    const updated = notifications.map((n) => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    store.notifications.write(updated);
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    const updated = notifications.map((n) => ({ ...n, read: true }));
+    setNotifications(updated);
+    store.notifications.write(updated);
+  };
+
+  const handleDismissNotification = (id: string) => {
+    const updated = notifications.filter((n) => n.id !== id);
+    setNotifications(updated);
+    store.notifications.write(updated);
+  };
 
   const handleCompleteTask = (taskId: string, disposition: string, note?: string) => {
     const now = new Date();
@@ -1643,6 +1667,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleDeleteSmsCategory,
         handleAddVoicemailCategory,
         handleDeleteVoicemailCategory,
+        notifications,
+        handleMarkNotificationRead,
+        handleMarkAllNotificationsRead,
+        handleDismissNotification,
       }}
     >
       {children}

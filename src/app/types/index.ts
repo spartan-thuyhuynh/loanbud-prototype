@@ -424,3 +424,12 @@ export interface SenderIdentity {
   isDefault: boolean;
   createdAt: Date;
 }
+
+export interface Notification {
+  id: string;
+  type: "task_due" | "task_overdue" | "workflow_update" | "application_update";
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Date;
+}

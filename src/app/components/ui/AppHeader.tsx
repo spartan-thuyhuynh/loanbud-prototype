@@ -7,6 +7,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { NotificationPanel } from "./NotificationPanel";
+import { useAppData } from "../../contexts/AppDataContext";
 
 interface AppHeaderProps {
   onOpenComposer: () => void;
@@ -14,6 +16,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onOpenComposer, onOpenDialer }: AppHeaderProps) {
+  const { notifications, handleMarkNotificationRead, handleMarkAllNotificationsRead, handleDismissNotification } = useAppData();
+
   return (
     <header className="flex items-center h-12 px-4 bg-white border-b border-gray-200 shrink-0 z-10">
       <div className="flex items-center gap-1 ml-auto">
@@ -32,6 +36,13 @@ export function AppHeader({ onOpenComposer, onOpenDialer }: AppHeaderProps) {
           <Phone className="w-4.5 h-4.5" />
         </button>
         <div className="w-px h-5 bg-gray-200 mx-2" />
+
+        <NotificationPanel
+          notifications={notifications}
+          onMarkRead={handleMarkNotificationRead}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+          onDismiss={handleDismissNotification}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

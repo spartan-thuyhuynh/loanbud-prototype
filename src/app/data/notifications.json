@@ -1,0 +1,42 @@
+[
+  {
+    "id": "notif-001",
+    "type": "task_overdue",
+    "title": "Overdue Call — Maria Santos",
+    "message": "A call task for Maria Santos was due 2 days ago and has not been completed.",
+    "read": false,
+    "createdAt": "2026-05-05T09:15:00.000Z"
+  },
+  {
+    "id": "notif-002",
+    "type": "task_due",
+    "title": "Task Due Today — James Whitfield",
+    "message": "You have a follow-up call with James Whitfield scheduled for today.",
+    "read": false,
+    "createdAt": "2026-05-07T08:00:00.000Z"
+  },
+  {
+    "id": "notif-003",
+    "type": "workflow_update",
+    "title": "Workflow Activated — Q2 Broker Outreach",
+    "message": "The workflow \"Q2 Broker Outreach\" was activated and enrolled 8 contacts.",
+    "read": false,
+    "createdAt": "2026-05-06T14:30:00.000Z"
+  },
+  {
+    "id": "notif-004",
+    "type": "application_update",
+    "title": "Application Moved to Underwriting",
+    "message": "Application #LB-20240312 for Apex Holdings was submitted to underwriting.",
+    "read": true,
+    "createdAt": "2026-05-04T11:00:00.000Z"
+  },
+  {
+    "id": "notif-005",
+    "type": "workflow_update",
+    "title": "Enrollment Completed — David Kim",
+    "message": "David Kim has completed all steps in the \"Initial Lender Sequence\" workflow.",
+    "read": true,
+    "createdAt": "2026-05-03T16:45:00.000Z"
+  }
+]
