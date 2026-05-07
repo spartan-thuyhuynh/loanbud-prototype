@@ -11,7 +11,6 @@ import {
   Building,
   Calendar,
   Settings,
-  LayoutDashboard,
   Layers,
   CheckSquare,
 } from "lucide-react";
@@ -43,9 +42,8 @@ export const appSidebarSections: AppSidebarSection[] = [
         id: "email-workflows",
         label: "Workflow",
         icon: Workflow,
-        route: "/email-workflows/overview",
+        route: "/email-workflows/flows",
         children: [
-          { id: "ew-overview",  label: "Overview",      route: "/email-workflows/overview",      icon: LayoutDashboard },
           { id: "ew-segments",  label: "Segments",      route: "/email-workflows/user-segments", icon: Layers          },
           { id: "ew-flows",     label: "Workflows",     route: "/email-workflows/flows",         icon: Workflow        },
           { id: "ew-tasks",     label: "Tasks",         route: "/email-workflows/tasks",         icon: CheckSquare     },

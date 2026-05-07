@@ -1,4 +1,4 @@
-import { Plus, Users, User as UserIcon } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { useNavigate } from "react-router";
@@ -81,52 +81,6 @@ export function UserSegments() {
         </div>
       </div>
 
-      {/* Stats Bar */}
-      <div className="border-b border-border bg-card px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-8">
-          {/* Total Segments */}
-          <div className="flex-1">
-            <div className="bg-white rounded-xl px-5 py-4 flex items-center gap-3 shadow-sm h-full">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">
-                  Total Segments
-                </div>
-                <div
-                  className="text-2xl"
-                  style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}
-                >
-                  {segments.length}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Contacts */}
-          <div className="flex-1">
-            <div className="bg-white rounded-xl px-5 py-4 flex items-center gap-3 shadow-sm h-full">
-              <div className="p-2 bg-blue-600/10 rounded-lg">
-                <UserIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">
-                  Total Contacts
-                </div>
-                <div
-                  className="text-2xl"
-                  style={{ fontFamily: "var(--font-mono)", fontWeight: 600 }}
-                >
-                  {segments
-                    .reduce((sum, s) => sum + s.contactCount, 0)
-                    .toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Segments Table */}
       <div className="flex-1 overflow-auto px-8 py-6">

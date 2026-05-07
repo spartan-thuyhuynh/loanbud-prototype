@@ -5,7 +5,6 @@ import { EmailWorkflowsLayout } from "./layouts/EmailWorkflowsLayout";
 import { ApplicationList, BusinessAcquisitionList } from "./components/applications";
 import { ContactList, ContactDetail } from "./components/crm";
 import {
-  Overview,
   FlowBuilder,
   UserSegments,
   SegmentsView,
@@ -62,8 +61,7 @@ export const router = createBrowserRouter(
         path: "email-workflows",
         element: <EmailWorkflowsLayout />,
         children: [
-          { index: true, element: <Navigate to="/email-workflows/overview" replace /> },
-          { path: "overview", element: <Overview /> },
+          { index: true, element: <Navigate to="/email-workflows/flows" replace /> },
           { path: "flows", element: <WorkflowList /> },
           { path: "flows/new", element: <WorkflowBuilder /> },
           { path: "flows/:id/edit", element: <WorkflowBuilder /> },
