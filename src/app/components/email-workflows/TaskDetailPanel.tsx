@@ -182,7 +182,7 @@ export function TaskDetailPanel({
   contactEmail,
   contactListingName,
 }: TaskDetailPanelProps) {
-  const { handleCompleteTaskWithOutcome, handleRescheduleTask, handleSendTaskEmail } = useAppData();
+  const { handleCompleteTaskWithOutcome, handleRescheduleTask, handleSendTaskEmail, workflowEnrollments } = useAppData();
   const { openDialerForTask, session } = useDialer();
 
   const [showVmScript, setShowVmScript] = useState(false);
@@ -196,6 +196,13 @@ export function TaskDetailPanel({
   const [editObjective, setEditObjective] = useState("");
 
   if (!task) return null;
+
+  const sourceEnrollment = task.enrollmentId
+    ? workflowEnrollments.find((e) => e.id === task.enrollmentId)
+    : undefined;
+  const workflowLink = sourceEnrollment
+    ? `/email-workflows/flows/${sourceEnrollment.workflowId}/board`
+    : undefined;
 
   const config = getTaskTypeConfig(task.taskType);
   const TypeIcon = config.icon;
@@ -342,9 +349,20 @@ export function TaskDetailPanel({
 
               <PropRow icon={Workflow} label="Source">
                 <div className="min-w-0">
-                  <span className="text-sm text-foreground truncate block" title={task.source}>
-                    {task.source || <span className="text-muted-foreground/50">—</span>}
-                  </span>
+                  {workflowLink ? (
+                    <Link
+                      to={workflowLink}
+                      state={{ openContactId: sourceEnrollment!.contactId, openEnrollmentId: sourceEnrollment!.id }}
+                      className="text-sm text-primary hover:underline truncate block"
+                      title={task.source}
+                    >
+                      {task.source}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-foreground truncate block" title={task.source}>
+                      {task.source || <span className="text-muted-foreground/50">—</span>}
+                    </span>
+                  )}
                   {task.ruleName && (
                     <span className="text-xs text-muted-foreground">{task.ruleName}</span>
                   )}

@@ -61,7 +61,7 @@ function LogicBadge({ label }: { label: string }) {
 export function SegmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { segments, contacts, handleUpdateSegment } = useAppData();
+  const { segments, contacts, workflows, handleUpdateSegment } = useAppData();
 
   const segment = segments.find((s) => s.id === id);
 
@@ -221,49 +221,32 @@ export function SegmentDetail() {
         )}
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mt-5">
-          <div className="bg-white rounded-xl px-5 py-4 shadow-sm flex items-center gap-3">
-            <div className="p-2 bg-blue-600/10 rounded-lg">
-              <UserIcon className="w-4 h-4 text-blue-600" />
+        {(() => {
+          const activeWorkflows = workflows.filter((w) => w.segmentId === segment.id && w.status === "active").length;
+          const totalWorkflows = workflows.filter((w) => w.segmentId === segment.id).length;
+          const excludedCount = segment.excludedContactIds?.length ?? 0;
+          const stats = [
+            { icon: <Users className="w-3.5 h-3.5 text-blue-600" />, label: "Contacts", value: segment.contactCount.toLocaleString() },
+            { icon: <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />, label: "Created By", value: segment.createdBy },
+            { icon: <Calendar className="w-3.5 h-3.5 text-violet-600" />, label: "Created", value: formatDateTime(segment.createdAt) },
+            { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />, label: "Last Updated", value: formatDateTime(segment.lastUpdatedAt) },
+            { icon: <Workflow className="w-3.5 h-3.5 text-emerald-600" />, label: "Workflows", value: `${totalWorkflows} total · ${activeWorkflows} active` },
+            ...(excludedCount > 0 ? [{ icon: <Ban className="w-3.5 h-3.5 text-red-400" />, label: "Excluded", value: `${excludedCount} contact${excludedCount !== 1 ? "s" : ""}` }] : []),
+          ];
+          return (
+            <div className="mt-4 flex items-stretch gap-3">
+              {stats.map((s) => (
+                <div key={s.label} className="flex items-center gap-2 px-3 py-3 rounded-lg bg-white border border-gray-200 min-w-0 flex-1">
+                  {s.icon}
+                  <div className="min-w-0">
+                    <div className="text-[10px] text-muted-foreground leading-none mb-0.5">{s.label}</div>
+                    <div className="text-xs font-medium text-foreground truncate">{s.value}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Created By</div>
-              <div className="text-sm font-medium truncate max-w-[120px]">
-                {segment.createdBy}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl px-5 py-4 shadow-sm flex items-center gap-3">
-            <div className="p-2 bg-violet-600/10 rounded-lg">
-              <Calendar className="w-4 h-4 text-violet-600" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Created At</div>
-              <div
-                className="text-xs font-medium"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                {formatDateTime(segment.createdAt)}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl px-5 py-4 shadow-sm flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Clock className="w-4 h-4 text-amber-500" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Last Updated</div>
-              <div
-                className="text-xs font-medium"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                {formatDateTime(segment.lastUpdatedAt)}
-              </div>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Disable confirm modal */}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useLocation } from "react-router";
 import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
@@ -425,11 +425,14 @@ type ViewMode = "kanban" | "list";
 export function WorkflowBoard() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleCreateTask, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
 
+  const navState = location.state as { openContactId?: string; openEnrollmentId?: string } | null;
+
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(navState?.openContactId ?? null);
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(navState?.openEnrollmentId ?? null);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showAutomationsModal, setShowAutomationsModal] = useState(false);
   const [automationSearch, setAutomationSearch] = useState("");
