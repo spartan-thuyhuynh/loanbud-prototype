@@ -3,11 +3,13 @@ import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, ChevronRight, Check, AlertCircle,
   ArrowUp, ArrowDown, X,
-  Search, Users, Clock, Mail, MessageSquare, Phone,
+  Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical,
 } from "lucide-react";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { WorkflowStep } from "../../types";
 import { computeDayOffsets } from "../../lib/workflowUtils";
@@ -18,9 +20,6 @@ import {
 } from "./StepConfigForm";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-
-const WIZARD_STEPS = ["Choose Segment", "Configure Steps"];
 
 // ─── Step templates ───────────────────────────────────────────────────────────
 
@@ -90,41 +89,9 @@ function defaultDelayStep(): WorkflowStep {
   };
 }
 
-// ─── Wizard step indicator ────────────────────────────────────────────────────
-
-function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
-  return (
-    <div className="flex items-center mb-8">
-      {steps.map((label, i) => {
-        const isComplete = i < current;
-        const isActive = i === current;
-        return (
-          <div key={label} className="flex items-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors ${
-                  isComplete || isActive
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : "bg-background border-muted text-muted-foreground"
-                }`}
-              >
-                {isComplete ? <Check className="h-4 w-4" /> : i + 1}
-              </div>
-              <span className={`text-xs whitespace-nowrap font-medium ${isActive ? "text-primary" : isComplete ? "text-muted-foreground" : "text-muted-foreground"}`}>
-                {label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div className={`h-0.5 w-20 mx-3 mb-5 rounded-full transition-colors ${i < current ? "bg-primary" : "bg-border"}`} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── StepRow ──────────────────────────────────────────────────────────────────
+
+const STEP_DRAG_TYPE = "WORKFLOW_STEP";
 
 interface StepRowProps {
   step: WorkflowStep;
@@ -137,14 +104,31 @@ interface StepRowProps {
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
   showConnector: boolean;
 }
 
 function StepRow({
   step, index, totalSteps, isEditing,
   onEdit, onSave, onCancel, onRemove,
-  onMoveUp, onMoveDown, showConnector,
+  onMoveUp, onMoveDown, onReorder, showConnector,
 }: StepRowProps) {
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: STEP_DRAG_TYPE,
+    item: { index },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+  const [{ isOver }, drop] = useDrop<{ index: number }, void, { isOver: boolean }>({
+    accept: STEP_DRAG_TYPE,
+    collect: (monitor) => ({ isOver: monitor.isOver() }),
+    hover(item) {
+      if (item.index !== index) {
+        onReorder(item.index, index);
+        item.index = index;
+      }
+    },
+  });
+
   const [draft, setDraft] = useState<StepDraft>({
     name: step.name,
     actionType: step.actionType as ActionType,
@@ -178,7 +162,7 @@ function StepRow({
   }, [step, isEditing]);
 
   return (
-    <div className="flex gap-4">
+    <div ref={(node) => { dragPreview(drop(node)); }} className={`flex gap-4 transition-opacity ${isDragging ? "opacity-40" : ""} ${isOver ? "ring-2 ring-primary/30 rounded-xl" : ""}`}>
       {/* Timeline column */}
       <div className="flex flex-col items-center flex-shrink-0 w-10">
         <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white shadow-sm ${TYPE_ICON_STYLE[step.actionType]}`}>
@@ -201,21 +185,21 @@ function StepRow({
                   {draft.name || STEP_DEFAULTS[draft.actionType]}
                 </span>
               </div>
-              <button onClick={onCancel} className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>Save Step</Button>
+              </div>
             </div>
             <div className="p-5">
               <StepConfigFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
-              <div className="flex items-center gap-2 pt-5 mt-5 border-t border-border">
-                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>Save Step</Button>
-                <Button size="sm" variant="outline" onClick={onCancel}>Cancel</Button>
-              </div>
             </div>
           </div>
         ) : (
           /* ── Collapsed card ── */
           <div className="rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
+            <div ref={(el) => { drag(el); }} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 -ml-1">
+              <GripVertical className="h-4 w-4" />
+            </div>
             <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center flex-shrink-0 select-none">
               {index + 1}
             </span>
@@ -278,41 +262,119 @@ function DelayRow({
   onRemove,
 }: {
   step: WorkflowStep;
-  onChangeDays: (days: number) => void;
+  onChangeDays: (days: number, hours?: number, minutes?: number, untilDate?: string, untilTime?: string) => void;
   onRemove: () => void;
 }) {
+  const [mode, setMode] = useState<"duration" | "datetime">("duration");
+  const [untilDate, setUntilDate] = useState(step.note?.startsWith("until:") ? step.note.split("|")[0].replace("until:", "") : "");
+  const [untilTime, setUntilTime] = useState(step.note?.startsWith("until:") ? step.note.split("|")[1] ?? "09:00" : "09:00");
+
   return (
-    <div className="flex items-center gap-3 py-1 pl-10 pr-0 my-1">
-      <div className="h-px flex-1 bg-amber-200" />
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-dashed border-amber-300 bg-amber-50 shrink-0">
-        <Clock className="h-3.5 w-3.5 text-amber-500" />
-        <span className="text-xs font-medium text-amber-700">Wait</span>
-        <button
-          type="button"
-          onClick={() => onChangeDays(Math.max(1, (step.delayDays ?? 1) - 1))}
-          className="w-5 h-5 flex items-center justify-center rounded text-amber-600 hover:bg-amber-200 transition-colors text-sm font-bold leading-none"
-        >
-          −
-        </button>
-        <span className="text-xs font-bold text-amber-700 w-5 text-center">{step.delayDays ?? 1}</span>
-        <button
-          type="button"
-          onClick={() => onChangeDays((step.delayDays ?? 1) + 1)}
-          className="w-5 h-5 flex items-center justify-center rounded text-amber-600 hover:bg-amber-200 transition-colors text-sm font-bold leading-none"
-        >
-          +
-        </button>
-        <span className="text-xs text-amber-600">{(step.delayDays ?? 1) === 1 ? "day" : "days"}</span>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="w-5 h-5 flex items-center justify-center rounded text-amber-500 hover:bg-amber-200 hover:text-amber-700 transition-colors ml-1"
-          title="Remove delay"
-        >
-          <X className="h-3 w-3" />
-        </button>
+    <div className="flex gap-4 mb-4">
+      {/* Timeline column spacer */}
+      <div className="flex flex-col items-center flex-shrink-0 w-10">
+        <div className="w-0.5 bg-border h-2 rounded-full" />
+        <div className="w-9 h-9 rounded-full border-2 border-dashed border-border bg-muted/40 flex items-center justify-center">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="w-0.5 bg-border flex-1 min-h-2 mt-1 rounded-full" />
       </div>
-      <div className="h-px flex-1 bg-amber-200" />
+
+      {/* Card */}
+      <div className="flex-1 pb-2">
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Wait / Delay</span>
+            <div className="flex items-center gap-1.5">
+              <div className="flex rounded border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setMode("duration")}
+                  style={{ fontSize: '11px' }}
+                  className={`px-1 py-px font-medium transition-colors ${mode === "duration" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted"}`}
+                >
+                  Duration
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("datetime")}
+                  style={{ fontSize: '11px' }}
+                  className={`px-1 py-px font-medium transition-colors ${mode === "datetime" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted"}`}
+                >
+                  Date & Time
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={onRemove}
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Remove delay"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+
+          {mode === "duration" ? (
+            <div className="flex items-center gap-4">
+              {/* Days */}
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => onChangeDays(Math.max(0, (step.delayDays ?? 1) - 1))}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
+                <input type="number" min={0} value={step.delayDays ?? 1}
+                  onChange={(e) => onChangeDays(Math.max(0, Number(e.target.value)), step.delayHours, step.delayMinutes)}
+                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
+                <button type="button" onClick={() => onChangeDays((step.delayDays ?? 1) + 1, step.delayHours, step.delayMinutes)}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
+                <span className="text-xs text-muted-foreground">d</span>
+              </div>
+              {/* Hours */}
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, Math.max(0, (step.delayHours ?? 0) - 1), step.delayMinutes)}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
+                <input type="number" min={0} max={23} value={step.delayHours ?? 0}
+                  onChange={(e) => onChangeDays(step.delayDays ?? 1, Math.min(23, Math.max(0, Number(e.target.value))), step.delayMinutes)}
+                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
+                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, Math.min(23, (step.delayHours ?? 0) + 1), step.delayMinutes)}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
+                <span className="text-xs text-muted-foreground">h</span>
+              </div>
+              {/* Minutes */}
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.max(0, (step.delayMinutes ?? 0) - 5))}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
+                <input type="number" min={0} max={59} step={5} value={step.delayMinutes ?? 0}
+                  onChange={(e) => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.min(59, Math.max(0, Number(e.target.value))))}
+                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
+                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.min(59, (step.delayMinutes ?? 0) + 5))}
+                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
+                <span className="text-xs text-muted-foreground">m</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Date</span>
+                <input
+                  type="date"
+                  value={untilDate}
+                  onChange={(e) => { setUntilDate(e.target.value); onChangeDays(0, 0, 0, e.target.value, untilTime); }}
+                  className="text-sm text-foreground bg-transparent border-b border-border focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Time</span>
+                <input
+                  type="time"
+                  value={untilTime}
+                  onChange={(e) => { setUntilTime(e.target.value); onChangeDays(0, 0, 0, untilDate, e.target.value); }}
+                  className="text-sm text-foreground bg-transparent border-b border-border focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -332,6 +394,8 @@ export function WorkflowBuilder() {
   const [steps, setSteps] = useState<WorkflowStep[]>([defaultStep(0)]);
   const [editingIndex, setEditingIndex] = useState<number | null>(0);
   const [step1Error, setStep1Error] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const hasSeeded = useRef(false);
 
@@ -364,7 +428,6 @@ export function WorkflowBuilder() {
   const maxDay = steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) : 0;
 
   const handleNextStep = () => {
-    if (!name.trim()) { setStep1Error("Workflow name is required."); return; }
     if (!selectedSegmentId) { setStep1Error("Please select a segment."); return; }
     setStep1Error("");
     setWizardStep(1);
@@ -386,9 +449,14 @@ export function WorkflowBuilder() {
     setSteps(recompute(arr));
   };
 
-  const handleDelayDaysChange = (index: number, days: number) => {
+  const handleDelayDaysChange = (index: number, days: number, hours?: number, _minutes?: number, untilDate?: string, untilTime?: string) => {
     const updated = steps.map((s, i) =>
-      i === index ? { ...s, delayDays: Math.max(1, days) } : s,
+      i === index ? {
+        ...s,
+        delayDays: Math.max(0, days),
+        delayHours: hours ?? s.delayHours ?? 0,
+        note: untilDate ? `until:${untilDate}|${untilTime ?? "09:00"}` : s.note,
+      } : s,
     );
     setSteps(recompute(updated));
   };
@@ -422,6 +490,14 @@ export function WorkflowBuilder() {
     else if (editingIndex === index + 1) setEditingIndex(index);
   };
 
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    const ns = [...steps];
+    const [moved] = ns.splice(fromIndex, 1);
+    ns.splice(toIndex, 0, moved);
+    setSteps(recompute(ns));
+    if (editingIndex === fromIndex) setEditingIndex(toIndex);
+  };
+
   const handleLoadTemplate = (tpl: StepTemplate) => {
     const actionStepsCount = steps.filter((s) => s.actionType !== "delay").length;
     if (actionStepsCount > 0) {
@@ -441,20 +517,31 @@ export function WorkflowBuilder() {
   };
 
   const handleSave = () => {
+    if (id) {
+      // edit mode: validate name then save directly
+      if (!name.trim()) { setShowSaveModal(true); return; }
+      const sortedSteps = recompute([...steps]);
+      const segmentName = selectedSegment?.name ?? "";
+      handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
+      navigate("/email-workflows/flows");
+    } else {
+      setShowSaveModal(true);
+    }
+  };
+
+  const handleConfirmSave = () => {
+    if (!name.trim()) { setSaveError("Flow name is required."); return; }
     const sortedSteps = recompute([...steps]);
     const segmentName = selectedSegment?.name ?? "";
-    if (id) {
-      handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
-    } else {
-      handleCreateWorkflow({ name, description, segmentId: selectedSegmentId, segmentName, status: "draft", createdBy: "Admin", steps: sortedSteps });
-    }
+    handleCreateWorkflow({ name, description, segmentId: selectedSegmentId, segmentName, status: "draft", createdBy: "Admin", steps: sortedSteps });
+    setShowSaveModal(false);
     navigate("/email-workflows/flows");
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* ── Page header ── */}
-      <div className="border-b border-border bg-card px-8 py-4 flex items-center justify-between gap-3 flex-shrink-0">
+      <div className="border-b border-border bg-card px-8 py-3 flex items-center justify-between gap-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/email-workflows/flows")}
@@ -464,14 +551,32 @@ export function WorkflowBuilder() {
             Back
           </button>
           <span className="text-border">|</span>
-          <h1 className="text-lg font-semibold text-foreground">
-            {id ? "Edit Flow" : "Create New Flow"}
-          </h1>
+          <div>
+            <h1 className="text-lg font-semibold text-foreground leading-tight">
+              {id ? "Edit Flow" : "Create New Flow"}
+            </h1>
+            {wizardStep === 1 && selectedSegment && (
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {selectedSegment.name} · {selectedSegment.contactCount.toLocaleString()} contacts
+              </p>
+            )}
+          </div>
         </div>
         {wizardStep === 1 && (
-          <Button onClick={handleSave} disabled={steps.length === 0}>
-            {id ? "Update Flow" : "Save Flow"}
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Summary stats */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground border-r border-border pr-4">
+              <span><span className="font-semibold text-foreground">{actionStepCount}</span> Steps</span>
+              <span><span className="font-semibold text-foreground">{maxDay}</span> Days</span>
+              <span className="flex items-center gap-1 text-emerald-700 font-medium"><Mail className="h-3.5 w-3.5" />{emailCount}</span>
+              <span className="flex items-center gap-1 text-purple-700 font-medium"><MessageSquare className="h-3.5 w-3.5" />{smsCount}</span>
+              <span className="flex items-center gap-1 text-blue-700 font-medium"><Phone className="h-3.5 w-3.5" />{callCount}</span>
+            </div>
+            <Button onClick={handleSave} disabled={steps.length === 0}>
+              {id ? "Update Flow" : "Save Flow"}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -480,32 +585,7 @@ export function WorkflowBuilder() {
         {/* ════════════ STEP 1: Choose Segment ════════════ */}
         {wizardStep === 0 && (
           <div className="max-w-2xl mx-auto px-8 py-8">
-            <StepIndicator current={0} steps={WIZARD_STEPS} />
-
             <div className="space-y-5">
-              {/* Flow details card */}
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                <SectionLabel>Flow Details</SectionLabel>
-                <div>
-                  <FieldLabel required>Flow Name</FieldLabel>
-                  <Input
-                    value={name}
-                    onChange={(e) => { setName(e.target.value); if (step1Error) setStep1Error(""); }}
-                    placeholder="e.g. New Broker Onboarding"
-                    className={!name.trim() && step1Error ? "border-destructive focus-visible:ring-destructive" : ""}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Description</FieldLabel>
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe what this flow does and who it targets…"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
               {/* Segment picker card */}
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
                 <SectionLabel>Target Segment</SectionLabel>
@@ -579,25 +659,6 @@ export function WorkflowBuilder() {
           <div className="px-8 py-8 flex gap-8 items-start max-w-6xl mx-auto w-full">
             {/* ── Main content ── */}
             <div className="flex-1 min-w-0 space-y-5">
-              <StepIndicator current={1} steps={WIZARD_STEPS} />
-
-              {/* Segment info bar */}
-              <div className="flex items-center gap-4 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3.5">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Users className="h-4.5 w-4.5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-primary/60 mb-0.5">Target Segment</p>
-                  <p className="font-semibold text-foreground truncate">{selectedSegment?.name}</p>
-                </div>
-                {selectedSegment && (
-                  <div className="ml-auto text-right flex-shrink-0">
-                    <p className="text-base font-bold text-primary leading-tight">{selectedSegment.contactCount.toLocaleString()}</p>
-                    <p className="text-[11px] text-muted-foreground">contacts</p>
-                  </div>
-                )}
-              </div>
-
               {/* Steps timeline */}
               {steps.filter((s) => s.actionType !== "delay").length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-border p-12 text-center text-muted-foreground">
@@ -606,57 +667,90 @@ export function WorkflowBuilder() {
                   <p className="text-sm">Add a step from the panel on the right to get started.</p>
                 </div>
               ) : (
-                <div>
-                  {steps.map((step, i) => {
-                    if (step.actionType === "delay") {
+                <DndProvider backend={HTML5Backend}>
+                  <div>
+                    {steps.map((step, i) => {
+                      if (step.actionType === "delay") {
+                        return (
+                          <DelayRow
+                            key={step.id}
+                            step={step}
+                            onChangeDays={(days, hours, minutes, untilDate, untilTime) => handleDelayDaysChange(i, days, hours, minutes, untilDate, untilTime)}
+                            onRemove={() => handleRemoveStep(i)}
+                          />
+                        );
+                      }
+                      const isLastStep = i === steps.length - 1;
+                      const nextIsDelay = !isLastStep && steps[i + 1]?.actionType === "delay";
                       return (
-                        <DelayRow
-                          key={step.id}
-                          step={step}
-                          onChangeDays={(days) => handleDelayDaysChange(i, days)}
-                          onRemove={() => handleRemoveStep(i)}
-                        />
+                        <div key={step.id}>
+                          <StepRow
+                            step={step}
+                            index={i}
+                            totalSteps={steps.length}
+                            isEditing={editingIndex === i}
+                            onEdit={() => setEditingIndex(i)}
+                            onSave={(updated) => handleStepSave(i, updated)}
+                            onCancel={() => setEditingIndex(null)}
+                            onRemove={() => handleRemoveStep(i)}
+                            onMoveUp={() => handleMoveUp(i)}
+                            onMoveDown={() => handleMoveDown(i)}
+                            onReorder={handleReorder}
+                            showConnector={!isLastStep && !nextIsDelay}
+                          />
+                          {!isLastStep && !nextIsDelay && (
+                            <button
+                              type="button"
+                              onClick={() => handleInsertDelay(i)}
+                              className="flex items-center gap-1.5 mx-auto pl-12 py-0.5 text-[11px] text-muted-foreground hover:text-amber-600 transition-colors group"
+                            >
+                              <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
+                              <Clock className="h-3 w-3 opacity-50 group-hover:opacity-100" />
+                              <span>add delay</span>
+                              <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
+                            </button>
+                          )}
+                        </div>
                       );
-                    }
-                    const isLastStep = i === steps.length - 1;
-                    const nextIsDelay = !isLastStep && steps[i + 1]?.actionType === "delay";
-                    return (
-                      <div key={step.id}>
-                        <StepRow
-                          step={step}
-                          index={i}
-                          totalSteps={steps.length}
-                          isEditing={editingIndex === i}
-                          onEdit={() => setEditingIndex(i)}
-                          onSave={(updated) => handleStepSave(i, updated)}
-                          onCancel={() => setEditingIndex(null)}
-                          onRemove={() => handleRemoveStep(i)}
-                          onMoveUp={() => handleMoveUp(i)}
-                          onMoveDown={() => handleMoveDown(i)}
-                          showConnector={!isLastStep && !nextIsDelay}
-                        />
-                        {!isLastStep && !nextIsDelay && (
-                          <button
-                            type="button"
-                            onClick={() => handleInsertDelay(i)}
-                            className="flex items-center gap-1.5 mx-auto pl-12 py-0.5 text-[11px] text-muted-foreground hover:text-amber-600 transition-colors group"
-                          >
-                            <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
-                            <Clock className="h-3 w-3 opacity-50 group-hover:opacity-100" />
-                            <span>add delay</span>
-                            <span className="h-px w-8 bg-border group-hover:bg-amber-300 transition-colors" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                    })}
+                  </div>
+                </DndProvider>
               )}
+
 
             </div>
 
             {/* ── Right sidebar ── */}
             <div className="w-72 flex-shrink-0 sticky top-8">
+              {/* Add step */}
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
+                <SectionLabel>Add Step</SectionLabel>
+                <div className="grid grid-cols-2 gap-2">
+                  {TYPE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleAddStep(opt.value)}
+                      className={`flex flex-col items-center justify-center gap-2 px-2 py-3 rounded-lg border border-border bg-background transition-all duration-150 group ${TYPE_HOVER_STYLE[opt.value]}`}
+                    >
+                      <span className={`w-9 h-9 rounded-lg flex items-center justify-center ${TYPE_ICON_BG[opt.value]}`}>
+                        <StepTypeIcon type={opt.value} />
+                      </span>
+                      <span className="text-xs font-medium text-foreground leading-tight text-center">{opt.label}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handleInsertDelay(steps.length - 1)}
+                    disabled={steps.length === 0}
+                    className="flex flex-col items-center justify-center gap-2 px-2 py-3 rounded-lg border border-border bg-background transition-all duration-150 hover:border-amber-300 hover:bg-amber-50/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
+                      <Clock className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-medium text-foreground leading-tight text-center">Add Delay</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Templates */}
               <div className="rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
                 <SectionLabel>Templates</SectionLabel>
@@ -693,79 +787,49 @@ export function WorkflowBuilder() {
                 </div>
               </div>
 
-              {/* Add step */}
-              <div className="rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
-                <SectionLabel>Add Step</SectionLabel>
-                <div className="space-y-2">
-                  {TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => handleAddStep(opt.value)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-background text-left transition-all duration-150 group ${TYPE_HOVER_STYLE[opt.value]}`}
-                    >
-                      <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_ICON_BG[opt.value]}`}>
-                        <StepTypeIcon type={opt.value} />
-                      </span>
-                      <span className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-foreground leading-snug">{opt.label}</span>
-                        <span className="text-[11px] text-muted-foreground leading-snug truncate">{opt.description}</span>
-                      </span>
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handleInsertDelay(steps.length - 1)}
-                    disabled={steps.length === 0}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-background text-left transition-all duration-150 hover:border-amber-300 hover:bg-amber-50/40 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <span className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
-                      <Clock className="h-4 w-4" />
-                    </span>
-                    <span className="flex flex-col min-w-0">
-                      <span className="text-sm font-medium text-foreground leading-snug">Add Delay</span>
-                      <span className="text-[11px] text-muted-foreground leading-snug">Wait period between steps</span>
-                    </span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Summary */}
-              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <SectionLabel>Summary</SectionLabel>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-foreground leading-tight">{actionStepCount}</p>
-                    <p className="text-[11px] text-muted-foreground">Steps</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-foreground leading-tight">{maxDay}</p>
-                    <p className="text-[11px] text-muted-foreground">Days</p>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-emerald-50">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                      <Mail className="h-3.5 w-3.5" /> Emails
-                    </span>
-                    <span className="text-xs font-bold text-emerald-700">{emailCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-purple-50">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-purple-700">
-                      <MessageSquare className="h-3.5 w-3.5" /> SMS
-                    </span>
-                    <span className="text-xs font-bold text-purple-700">{smsCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-blue-50">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
-                      <Phone className="h-3.5 w-3.5" /> Calls
-                    </span>
-                    <span className="text-xs font-bold text-blue-700">{callCount}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Save flow modal */}
+      <Dialog open={showSaveModal} onOpenChange={(open) => { setShowSaveModal(open); if (!open) setSaveError(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Flow</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <FieldLabel required>Flow Name</FieldLabel>
+              <Input
+                value={name}
+                onChange={(e) => { setName(e.target.value); if (saveError) setSaveError(""); }}
+                placeholder="e.g. New Broker Onboarding"
+                className={!name.trim() && saveError ? "border-destructive focus-visible:ring-destructive" : ""}
+                autoFocus
+              />
+              {saveError && (
+                <p className="flex items-center gap-1.5 text-sm text-destructive mt-1.5">
+                  <AlertCircle className="h-4 w-4" /> {saveError}
+                </p>
+              )}
+            </div>
+            <div>
+              <FieldLabel>Description</FieldLabel>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional description…"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowSaveModal(false); setSaveError(""); }}>Cancel</Button>
+            <Button onClick={handleConfirmSave}>Save Flow</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
