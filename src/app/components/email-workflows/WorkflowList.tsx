@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, LayoutList } from "lucide-react";
+import { Plus, LayoutList, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "../../contexts/AppDataContext";
 
@@ -16,49 +17,49 @@ function formatDate(d: Date): string {
 export function WorkflowList() {
   const navigate = useNavigate();
   const { workflows } = useAppData();
-
-  const totalFlows = workflows.length;
-  const activeFlows = workflows.filter((w) => w.status === "active").length;
-  const totalEnrolled = workflows.reduce((sum, w) => sum + w.enrolledCount, 0);
+  const [search, setSearch] = useState("");
 
   const handleRowClick = (id: string) => {
     navigate(`/email-workflows/flows/${id}/board`);
   };
 
+  const filtered = workflows.filter((wf) =>
+    wf.name.toLowerCase().includes(search.toLowerCase()) ||
+    wf.segmentName?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card px-8 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold text-foreground">Flows</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage and track contact workflows</p>
+      <div className="border-b border-border bg-card px-8 py-6">
+        <div className="mb-4">
+          <h1 className="text-3xl font-semibold text-foreground mb-1">Flows</h1>
+          <p className="text-sm text-muted-foreground">Manage and track contact workflows</p>
         </div>
-        <Button onClick={() => navigate("/email-workflows/flows/new")}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Flow
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search flows..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              style={{ height: "38px" }}
+            />
+          </div>
+          <Button onClick={() => navigate("/email-workflows/flows/new")}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Flow
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="px-8 py-4 border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto flex gap-4">
-          {[
-            { label: "Total Flows", value: totalFlows },
-            { label: "Active Flows", value: activeFlows },
-            { label: "Total Enrolled", value: totalEnrolled },
-          ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg border border-border bg-background px-4 py-2 min-w-[100px]">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-xl font-semibold text-foreground mt-0.5">{value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto px-8 py-6">
         <div className="max-w-7xl mx-auto">
-        {workflows.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <LayoutList className="h-12 w-12 opacity-30" />
             <p className="text-lg font-medium text-foreground">No Flows Yet</p>
@@ -81,7 +82,7 @@ export function WorkflowList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card">
-                {workflows.map((wf) => (
+                {filtered.map((wf) => (
                   <tr
                     key={wf.id}
                     className="hover:bg-muted/20 transition-colors cursor-pointer"

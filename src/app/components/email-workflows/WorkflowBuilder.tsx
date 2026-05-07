@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useLocation } from "react-router";
 import {
   ArrowLeft, ChevronRight, Check, AlertCircle, X,
   Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical, Pencil,
@@ -379,13 +379,18 @@ function DelayRow({
 export function WorkflowBuilder() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const { workflows, segments, handleCreateWorkflow, handleUpdateWorkflow } = useAppData();
 
-  const [wizardStep, setWizardStep] = useState(0);
+  const preselectedSegmentId = !id
+    ? ((location.state as { segmentId?: string } | null)?.segmentId ?? "")
+    : "";
+
+  const [wizardStep, setWizardStep] = useState(preselectedSegmentId ? 1 : 0);
   const [name, setName] = useState("New communication flow");
   const [description, setDescription] = useState("");
   const [editingName, setEditingName] = useState(false);
-  const [selectedSegmentId, setSelectedSegmentId] = useState("");
+  const [selectedSegmentId, setSelectedSegmentId] = useState(preselectedSegmentId);
   const [segmentSearch, setSegmentSearch] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([defaultStep(0)]);
   const [editingIndex, setEditingIndex] = useState<number | null>(0);

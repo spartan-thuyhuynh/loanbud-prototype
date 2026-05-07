@@ -145,7 +145,7 @@ export function SegmentDetail() {
               {segment.status}
             </span>
             <button
-              onClick={() => navigate("/email-workflows/flows/new")}
+              onClick={() => navigate("/email-workflows/flows/new", { state: { segmentId: segment.id } })}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all"
             >
               <Workflow className="w-4 h-4" />
