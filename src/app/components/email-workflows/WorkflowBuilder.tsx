@@ -2,13 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft, ChevronRight, Check, AlertCircle, X,
-  Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical,
+  Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical, Pencil,
 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { WorkflowStep } from "../../types";
 import { computeDayOffsets } from "../../lib/workflowUtils";
@@ -383,15 +382,15 @@ export function WorkflowBuilder() {
   const { workflows, segments, handleCreateWorkflow, handleUpdateWorkflow } = useAppData();
 
   const [wizardStep, setWizardStep] = useState(0);
-  const [name, setName] = useState("");
+  const [name, setName] = useState("New communication flow");
   const [description, setDescription] = useState("");
+  const [editingName, setEditingName] = useState(false);
   const [selectedSegmentId, setSelectedSegmentId] = useState("");
   const [segmentSearch, setSegmentSearch] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([defaultStep(0)]);
   const [editingIndex, setEditingIndex] = useState<number | null>(0);
   const [step1Error, setStep1Error] = useState("");
   const [saveError, setSaveError] = useState("");
-  const [showSaveModal, setShowSaveModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const hasSeeded = useRef(false);
 
@@ -513,24 +512,14 @@ export function WorkflowBuilder() {
   };
 
   const handleSave = () => {
-    if (id) {
-      // edit mode: validate name then save directly
-      if (!name.trim()) { setShowSaveModal(true); return; }
-      const sortedSteps = recompute([...steps]);
-      const segmentName = selectedSegment?.name ?? "";
-      handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
-      navigate("/email-workflows/flows");
-    } else {
-      setShowSaveModal(true);
-    }
-  };
-
-  const handleConfirmSave = () => {
     if (!name.trim()) { setSaveError("Flow name is required."); return; }
     const sortedSteps = recompute([...steps]);
     const segmentName = selectedSegment?.name ?? "";
-    handleCreateWorkflow({ name, description, segmentId: selectedSegmentId, segmentName, status: "draft", createdBy: "Admin", steps: sortedSteps });
-    setShowSaveModal(false);
+    if (id) {
+      handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
+    } else {
+      handleCreateWorkflow({ name, description, segmentId: selectedSegmentId, segmentName, status: "draft", createdBy: "Admin", steps: sortedSteps });
+    }
     navigate("/email-workflows/flows");
   };
 
@@ -548,14 +537,44 @@ export function WorkflowBuilder() {
           </button>
           <span className="text-border">|</span>
           <div>
-            <h1 className="text-lg font-semibold text-foreground leading-tight">
-              {id ? "Edit Flow" : "Create New Flow"}
-            </h1>
-            {wizardStep === 1 && selectedSegment && (
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {selectedSegment.name} · {selectedSegment.contactCount.toLocaleString()} contacts
-              </p>
+            {wizardStep === 1 ? (
+              <div>
+                {editingName ? (
+                  <input
+                    autoFocus
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); if (saveError) setSaveError(""); }}
+                    onBlur={() => setEditingName(false)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingName(false); }}
+                    placeholder="Flow name…"
+                    className="bg-transparent border-none outline-none text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-72 leading-tight block"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    className="flex items-center gap-1.5 group"
+                  >
+                    <span className="text-lg font-semibold text-foreground leading-tight">{name || "Flow name…"}</span>
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
+                {saveError && (
+                  <p className="flex items-center gap-1 text-[11px] text-destructive leading-none">
+                    <AlertCircle className="h-3 w-3" /> {saveError}
+                  </p>
+                )}
+                <input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add a description…"
+                  className="bg-transparent border-none outline-none text-xs text-muted-foreground placeholder:text-muted-foreground/40 focus:ring-0 w-64 mt-0.5 block"
+                />
+              </div>
+            ) : (
+              <h1 className="text-lg font-semibold text-foreground leading-tight">
+                {id ? "Edit Flow" : "Create New Flow"}
+              </h1>
             )}
           </div>
         </div>
@@ -655,6 +674,14 @@ export function WorkflowBuilder() {
           <div className="px-8 py-8 flex gap-8 items-start max-w-6xl mx-auto w-full">
             {/* ── Main content ── */}
             <div className="flex-1 min-w-0 space-y-5">
+              {/* Segment info card */}
+              {selectedSegment && (
+                <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm font-medium text-foreground">{selectedSegment.name}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{selectedSegment.contactCount.toLocaleString()} contacts</span>
+                </div>
+              )}
               {/* Steps timeline */}
               {steps.filter((s) => s.actionType !== "delay").length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-border p-12 text-center text-muted-foreground">
@@ -789,43 +816,6 @@ export function WorkflowBuilder() {
         )}
       </div>
 
-      {/* Save flow modal */}
-      <Dialog open={showSaveModal} onOpenChange={(open) => { setShowSaveModal(open); if (!open) setSaveError(""); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Save Flow</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <FieldLabel required>Flow Name</FieldLabel>
-              <Input
-                value={name}
-                onChange={(e) => { setName(e.target.value); if (saveError) setSaveError(""); }}
-                placeholder="e.g. New Broker Onboarding"
-                className={!name.trim() && saveError ? "border-destructive focus-visible:ring-destructive" : ""}
-                autoFocus
-              />
-              {saveError && (
-                <p className="flex items-center gap-1.5 text-sm text-destructive mt-1.5">
-                  <AlertCircle className="h-4 w-4" /> {saveError}
-                </p>
-              )}
-            </div>
-            <div>
-              <FieldLabel>Description</FieldLabel>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional description…"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowSaveModal(false); setSaveError(""); }}>Cancel</Button>
-            <Button onClick={handleConfirmSave}>Save Flow</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -66,7 +66,7 @@ export function SegmentDetail() {
   const segment = segments.find((s) => s.id === id);
 
   const [confirmContactId, setConfirmContactId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<"contacts" | "configuration">("contacts");
+  const [detailTab, setDetailTab] = useState<"contacts" | "settings">("contacts");
 
   const disabledIds = new Set(segment?.excludedContactIds ?? []);
 
@@ -306,7 +306,7 @@ export function SegmentDetail() {
 
       {/* Tab bar */}
       <div className="border-b border-border bg-card px-8 flex gap-1">
-        {(["contacts", "configuration"] as const).map((tab) => (
+        {(["contacts", "settings"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setDetailTab(tab)}
@@ -325,9 +325,9 @@ export function SegmentDetail() {
       </div>
 
       {/* Configuration tab */}
-      {detailTab === "configuration" && (
+      {detailTab === "settings" && (
         <div className="flex-1 overflow-auto px-8 py-6">
-          <div className="max-w-2xl space-y-6">
+          <div className="max-w-2xl mx-auto space-y-6">
 
             {/* Status */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">
