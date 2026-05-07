@@ -226,12 +226,12 @@ export function SegmentDetail() {
           const totalWorkflows = workflows.filter((w) => w.segmentId === segment.id).length;
           const excludedCount = segment.excludedContactIds?.length ?? 0;
           const stats = [
-            { icon: <Users className="w-3.5 h-3.5 text-blue-600" />, label: "Contacts", value: segment.contactCount.toLocaleString() },
-            { icon: <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />, label: "Created By", value: segment.createdBy },
-            { icon: <Calendar className="w-3.5 h-3.5 text-violet-600" />, label: "Created", value: formatDateTime(segment.createdAt) },
-            { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />, label: "Last Updated", value: formatDateTime(segment.lastUpdatedAt) },
-            { icon: <Workflow className="w-3.5 h-3.5 text-emerald-600" />, label: "Workflows", value: `${totalWorkflows} total · ${activeWorkflows} active` },
-            ...(excludedCount > 0 ? [{ icon: <Ban className="w-3.5 h-3.5 text-red-400" />, label: "Excluded", value: `${excludedCount} contact${excludedCount !== 1 ? "s" : ""}` }] : []),
+            { icon: <Users className="w-4.5 h-4.5 text-blue-600" />, label: "Contacts", value: segment.contactCount.toLocaleString() },
+            { icon: <UserIcon className="w-4.5 h-4.5 text-muted-foreground" />, label: "Created By", value: segment.createdBy },
+            { icon: <Calendar className="w-4.5 h-4.5 text-violet-600" />, label: "Created", value: formatDateTime(segment.createdAt) },
+            { icon: <Clock className="w-4.5 h-4.5 text-amber-500" />, label: "Last Updated", value: formatDateTime(segment.lastUpdatedAt) },
+            { icon: <Workflow className="w-4.5 h-4.5 text-emerald-600" />, label: "Workflows", value: `${totalWorkflows} total · ${activeWorkflows} active` },
+            ...(excludedCount > 0 ? [{ icon: <Ban className="w-4.5 h-4.5 text-red-400" />, label: "Excluded", value: `${excludedCount} contact${excludedCount !== 1 ? "s" : ""}` }] : []),
           ];
           return (
             <div className="mt-4 flex items-stretch gap-3">
@@ -351,7 +351,7 @@ export function SegmentDetail() {
                   }
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
                 >
-                  <Edit className="w-3.5 h-3.5" />
+                  <Edit className="w-4.5 h-4.5" />
                   Edit Rules
                 </button>
               </div>
