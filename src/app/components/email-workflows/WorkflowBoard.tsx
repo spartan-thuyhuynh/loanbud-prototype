@@ -959,14 +959,14 @@ export function WorkflowBoard() {
               <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
                 <button
                   onClick={() => setViewMode("kanban")}
-                  className={`px-3 py-1.5 transition-colors ${viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  className="px-3 py-1.5 transition-colors bg-primary text-primary-foreground"
                   title="Kanban view"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`px-3 py-1.5 border-l border-input transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  className="px-3 py-1.5 border-l border-input transition-colors bg-background text-muted-foreground hover:bg-muted"
                   title="List view"
                 >
                   <List className="h-4 w-4" />
@@ -1046,14 +1046,14 @@ export function WorkflowBoard() {
             <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
               <button
                 onClick={() => setViewMode("kanban")}
-                className={`px-3 py-1.5 transition-colors ${viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                className="px-3 py-1.5 transition-colors bg-background text-muted-foreground hover:bg-muted"
                 title="Kanban view"
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-1.5 border-l border-input transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                className="px-3 py-1.5 border-l border-input transition-colors bg-primary text-primary-foreground"
                 title="List view"
               >
                 <List className="h-4 w-4" />

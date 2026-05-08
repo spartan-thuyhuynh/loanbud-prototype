@@ -191,6 +191,7 @@ export function VoicemailScriptsTab() {
     voicemailCategories,
     handleAddVoicemailCategory,
     handleDeleteVoicemailCategory,
+    handleRenameVoicemailCategory,
   } = useAppData();
 
   const [activeType, setActiveType] = useState<VoicemailScriptType>("record");
@@ -405,6 +406,7 @@ export function VoicemailScriptsTab() {
         onOpenChange={setCatModalOpen}
         onAdd={handleAddVoicemailCategory}
         onDelete={handleDeleteVoicemailCategory}
+        onRename={handleRenameVoicemailCategory}
       />
     </>
   );

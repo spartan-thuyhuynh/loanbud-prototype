@@ -387,17 +387,31 @@ export function WorkflowBuilder() {
     : "";
 
   const [wizardStep, setWizardStep] = useState(preselectedSegmentId ? 1 : 0);
-  const [name, setName] = useState("New communication flow");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [selectedSegmentId, setSelectedSegmentId] = useState(preselectedSegmentId);
   const [segmentSearch, setSegmentSearch] = useState("");
+  const [segmentOpen, setSegmentOpen] = useState(false);
+  const segmentRef = useRef<HTMLDivElement>(null);
   const [steps, setSteps] = useState<WorkflowStep[]>([defaultStep(0)]);
   const [editingIndex, setEditingIndex] = useState<number | null>(0);
+  const [nameError, setNameError] = useState("");
   const [step1Error, setStep1Error] = useState("");
   const [saveError, setSaveError] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const hasSeeded = useRef(false);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (segmentRef.current && !segmentRef.current.contains(e.target as Node)) {
+        setSegmentOpen(false);
+        setSegmentSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (id && !hasSeeded.current) {
@@ -417,7 +431,7 @@ export function WorkflowBuilder() {
   }, [id, workflows]);
 
   const filteredSegments = segments.filter((s) =>
-    s.name.toLowerCase().includes(segmentSearch.toLowerCase()),
+    s.name.toLowerCase().includes(segmentSearch.trim().toLowerCase()),
   );
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId);
 
@@ -428,6 +442,8 @@ export function WorkflowBuilder() {
   const maxDay = steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) : 0;
 
   const handleNextStep = () => {
+    if (!name.trim()) { setNameError("Flow name is required."); return; }
+    setNameError("");
     if (!selectedSegmentId) { setStep1Error("Please select a segment."); return; }
     setStep1Error("");
     setWizardStep(1);
@@ -604,70 +620,118 @@ export function WorkflowBuilder() {
       <div className="flex-1 overflow-auto">
         {/* ════════════ STEP 1: Choose Segment ════════════ */}
         {wizardStep === 0 && (
-          <div className="max-w-2xl mx-auto px-8 py-8">
-            <div className="space-y-5">
-              {/* Segment picker card */}
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
-                <SectionLabel>Target Segment</SectionLabel>
-                <FieldLabel required>Segment</FieldLabel>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <div className="max-w-xl mx-auto px-8 py-10">
+            <div className="space-y-4">
+              {/* ── Flow Details card ── */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                <SectionLabel>Flow Details</SectionLabel>
+                <div className="space-y-1.5">
+                  <FieldLabel required>Flow Name</FieldLabel>
                   <Input
-                    value={segmentSearch}
-                    onChange={(e) => setSegmentSearch(e.target.value)}
-                    placeholder="Search segments…"
-                    className="pl-9"
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }}
+                    placeholder="e.g. 30-Day Lead Nurture"
+                    className={nameError ? "border-destructive focus-visible:ring-destructive/30" : ""}
+                  />
+                  {nameError && (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5" /> {nameError}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Description</FieldLabel>
+                  <Input
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional — describe the purpose of this flow"
                   />
                 </div>
-
-                {selectedSegmentId && !segmentSearch && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/8 border border-primary/20 text-sm">
-                    <Users className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span className="font-medium text-primary truncate">{selectedSegment?.name}</span>
-                    <span className="text-primary/70 ml-auto whitespace-nowrap text-xs">{selectedSegment?.contactCount.toLocaleString()} contacts</span>
-                  </div>
-                )}
-
-                <ul className="max-h-56 overflow-y-auto rounded-lg border border-input bg-background divide-y divide-border">
-                  {filteredSegments.length === 0 ? (
-                    <li className="px-4 py-5 text-sm text-muted-foreground text-center">No segments found</li>
-                  ) : (
-                    filteredSegments.map((seg) => (
-                      <li
-                        key={seg.id}
-                        onClick={() => { setSelectedSegmentId(seg.id); setSegmentSearch(""); }}
-                        className={`flex items-center justify-between px-4 py-3 text-sm cursor-pointer transition-colors ${
-                          selectedSegmentId === seg.id
-                            ? "bg-primary/5 border-l-2 border-primary"
-                            : "hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          {selectedSegmentId === seg.id && (
-                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                          )}
-                          <span className={`font-medium ${selectedSegmentId === seg.id ? "text-primary" : "text-foreground"}`}>
-                            {seg.name}
-                          </span>
-                        </div>
-                        <span className="text-muted-foreground text-xs ml-4">{seg.contactCount.toLocaleString()} contacts</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
               </div>
 
-              {/* Error */}
-              {step1Error && (
-                <p className="flex items-center gap-1.5 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" /> {step1Error}
-                </p>
-              )}
+              {/* ── Target Segment card ── */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
+                <SectionLabel>Target Segment</SectionLabel>
+                <div className="space-y-2">
+                  <FieldLabel required>Segment</FieldLabel>
+
+                  {/* Search input with dropdown */}
+                  <div className="relative" ref={segmentRef}>
+                    <div
+                      className={`flex items-center gap-2 px-3 h-9 rounded-md border bg-background cursor-pointer transition-colors ${
+                        segmentOpen ? "border-primary ring-2 ring-primary/20" : "border-input hover:border-primary/40"
+                      } ${step1Error ? "border-destructive" : ""}`}
+                      onClick={() => { setSegmentOpen(true); }}
+                    >
+                      <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      {segmentOpen ? (
+                        <input
+                          autoFocus
+                          value={segmentSearch}
+                          onChange={(e) => { setSegmentSearch(e.target.value); if (step1Error) setStep1Error(""); }}
+                          placeholder="Search segments…"
+                          className="flex-1 text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground min-w-0"
+                        />
+                      ) : selectedSegmentId ? (
+                        <>
+                          <span className="flex-1 text-sm font-medium text-foreground truncate">{selectedSegment?.name}</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{selectedSegment?.contactCount.toLocaleString()} contacts</span>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); setSelectedSegmentId(""); }}
+                            className="ml-1 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Select a segment…</span>
+                      )}
+                    </div>
+
+                    {segmentOpen && (
+                      <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-lg border border-input bg-background shadow-md overflow-hidden">
+                        <ul className="max-h-52 overflow-y-auto divide-y divide-border">
+                          {filteredSegments.length === 0 ? (
+                            <li className="px-4 py-4 text-sm text-muted-foreground text-center">No segments found</li>
+                          ) : (
+                            filteredSegments.map((seg) => (
+                              <li
+                                key={seg.id}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { setSelectedSegmentId(seg.id); setSegmentSearch(""); setSegmentOpen(false); if (step1Error) setStep1Error(""); }}
+                                className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                                  selectedSegmentId === seg.id ? "bg-primary/5 text-primary" : "hover:bg-muted/40 text-foreground"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {selectedSegmentId === seg.id
+                                    ? <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                    : <span className="h-3.5 w-3.5 flex-shrink-0" />}
+                                  <span className="font-medium truncate">{seg.name}</span>
+                                </div>
+                                <span className="text-muted-foreground text-xs ml-4 whitespace-nowrap">{seg.contactCount.toLocaleString()} contacts</span>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {step1Error && (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5" /> {step1Error}
+                    </p>
+                  )}
+                </div>
+              </div>
 
               {/* Actions */}
-              <div className="flex justify-end">
-                <Button onClick={handleNextStep} size="default">
-                  Next — Configure Steps <ChevronRight className="h-4 w-4 ml-1" />
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleNextStep} size="default" className="gap-1.5">
+                  Next — Configure Steps <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>

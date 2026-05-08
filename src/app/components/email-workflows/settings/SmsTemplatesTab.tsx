@@ -102,6 +102,7 @@ export function SmsTemplatesTab() {
     smsCategories,
     handleAddSmsCategory,
     handleDeleteSmsCategory,
+    handleRenameSmsCategory,
   } = useAppData();
 
   const [selected, setSelected] = useState<SmsTemplate | null>(null);
@@ -259,6 +260,7 @@ export function SmsTemplatesTab() {
         onOpenChange={setCatModalOpen}
         onAdd={handleAddSmsCategory}
         onDelete={handleDeleteSmsCategory}
+        onRename={handleRenameSmsCategory}
       />
     </>
   );

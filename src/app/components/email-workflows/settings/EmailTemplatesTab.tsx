@@ -117,6 +117,7 @@ export function EmailTemplatesTab() {
     emailCategories,
     handleAddEmailCategory,
     handleDeleteEmailCategory,
+    handleRenameEmailCategory,
   } = useAppData();
 
   const [selected, setSelected] = useState<AdminEmailTemplate | null>(null);
@@ -287,6 +288,7 @@ export function EmailTemplatesTab() {
         onOpenChange={setCatModalOpen}
         onAdd={handleAddEmailCategory}
         onDelete={handleDeleteEmailCategory}
+        onRename={handleRenameEmailCategory}
       />
     </>
   );

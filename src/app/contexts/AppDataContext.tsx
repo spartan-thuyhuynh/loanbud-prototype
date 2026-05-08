@@ -91,10 +91,13 @@ interface AppDataContextValue {
   // Category handlers
   handleAddEmailCategory: (name: string) => void;
   handleDeleteEmailCategory: (name: string) => void;
+  handleRenameEmailCategory: (oldName: string, newName: string) => void;
   handleAddSmsCategory: (name: string) => void;
   handleDeleteSmsCategory: (name: string) => void;
+  handleRenameSmsCategory: (oldName: string, newName: string) => void;
   handleAddVoicemailCategory: (name: string) => void;
   handleDeleteVoicemailCategory: (name: string) => void;
+  handleRenameVoicemailCategory: (oldName: string, newName: string) => void;
   // Email template handlers
   handleCreateAdminEmailTemplate: (t: Omit<AdminEmailTemplate, "id" | "createdAt" | "updatedAt">) => void;
   handleUpdateAdminEmailTemplate: (id: string, updates: Partial<Omit<AdminEmailTemplate, "id" | "createdAt">>) => void;
@@ -124,9 +127,6 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
-const EMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"];
-const SMS_CATEGORY_BUILTINS = ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"];
-const VOICEMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Re-engagement", "Custom"];
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>(store.contacts.read());
@@ -1564,8 +1564,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleDeleteEmailCategory = (name: string) => {
-    if (EMAIL_CATEGORY_BUILTINS.includes(name)) return;
     const updated = emailCategories.filter((c) => c !== name);
+    setEmailCategories(updated);
+    store.emailCategories.write(updated);
+  };
+
+  const handleRenameEmailCategory = (oldName: string, newName: string) => {
+    if (!newName || emailCategories.includes(newName)) return;
+    const updated = emailCategories.map((c) => (c === oldName ? newName : c));
     setEmailCategories(updated);
     store.emailCategories.write(updated);
   };
@@ -1578,8 +1584,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleDeleteSmsCategory = (name: string) => {
-    if (SMS_CATEGORY_BUILTINS.includes(name)) return;
     const updated = smsCategories.filter((c) => c !== name);
+    setSmsCategories(updated);
+    store.smsCategories.write(updated);
+  };
+
+  const handleRenameSmsCategory = (oldName: string, newName: string) => {
+    if (!newName || smsCategories.includes(newName)) return;
+    const updated = smsCategories.map((c) => (c === oldName ? newName : c));
     setSmsCategories(updated);
     store.smsCategories.write(updated);
   };
@@ -1592,8 +1604,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleDeleteVoicemailCategory = (name: string) => {
-    if (VOICEMAIL_CATEGORY_BUILTINS.includes(name)) return;
     const updated = voicemailCategories.filter((c) => c !== name);
+    setVoicemailCategories(updated);
+    store.voicemailCategories.write(updated);
+  };
+
+  const handleRenameVoicemailCategory = (oldName: string, newName: string) => {
+    if (!newName || voicemailCategories.includes(newName)) return;
+    const updated = voicemailCategories.map((c) => (c === oldName ? newName : c));
     setVoicemailCategories(updated);
     store.voicemailCategories.write(updated);
   };
@@ -1663,10 +1681,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         voicemailCategories,
         handleAddEmailCategory,
         handleDeleteEmailCategory,
+        handleRenameEmailCategory,
         handleAddSmsCategory,
         handleDeleteSmsCategory,
+        handleRenameSmsCategory,
         handleAddVoicemailCategory,
         handleDeleteVoicemailCategory,
+        handleRenameVoicemailCategory,
         notifications,
         handleMarkNotificationRead,
         handleMarkAllNotificationsRead,
