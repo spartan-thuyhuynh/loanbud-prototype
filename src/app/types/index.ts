@@ -149,6 +149,7 @@ export interface SavedSegment {
 export interface Segment {
   id: string;
   name: string;
+  description?: string;
   contactCount: number;
   status: "Active" | "Inactive";
   lastUpdatedAt: Date;

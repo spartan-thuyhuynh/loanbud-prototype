@@ -1,20 +1,50 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import {
-  ArrowLeft, ChevronRight, Check, AlertCircle, X,
-  Search, Users, Clock, Mail, MessageSquare, Phone, GripVertical, Pencil,
+  ArrowLeft,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  AlertCircle,
+  X,
+  Search,
+  Users,
+  Clock,
+  Mail,
+  MessageSquare,
+  Phone,
+  GripVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { WorkflowStep } from "../../types";
 import { computeDayOffsets } from "../../lib/workflowUtils";
 import {
-  StepTypeIcon, StepConfigFields, SectionLabel, FieldLabel,
-  STEP_DEFAULTS, TYPE_OPTIONS, TYPE_ICON_STYLE, TYPE_ICON_BG, TYPE_BADGE_STYLE, TYPE_HOVER_STYLE,
-  type ActionType, type StepDraft,
+  StepTypeIcon,
+  StepConfigFields,
+  SectionLabel,
+  FieldLabel,
+  STEP_DEFAULTS,
+  TYPE_OPTIONS,
+  TYPE_ICON_STYLE,
+  TYPE_ICON_BG,
+  TYPE_HOVER_STYLE,
+  type ActionType,
+  type StepDraft,
 } from "./StepConfigForm";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -32,29 +62,31 @@ const STEP_TEMPLATES: StepTemplate[] = [
   {
     id: "14-day-comms",
     name: "Active Sequence",
-    description: "11-step sequence over 14 days: email, call, and SMS touchpoints",
+    description:
+      "11-step sequence over 14 days: email, call, and SMS touchpoints",
     steps: [
-      { name: "First Email",        actionType: "email",         dayOffset: 0  },
-      { name: "Call Reminder Step", actionType: "call-reminder", dayOffset: 0  },
-      { name: "Send SMS Step",      actionType: "sms",           dayOffset: 0  },
-      { name: "Send Email Step",    actionType: "email",         dayOffset: 2  },
-      { name: "Call Reminder",      actionType: "call-reminder", dayOffset: 3  },
-      { name: "Delayed SMS",        actionType: "sms",           dayOffset: 4  },
-      { name: "Follow up Email",    actionType: "email",         dayOffset: 6  },
-      { name: "Call Reminder",      actionType: "call-reminder", dayOffset: 7  },
-      { name: "Send SMS Step",      actionType: "sms",           dayOffset: 9  },
-      { name: "Send Email Step",    actionType: "email",         dayOffset: 11 },
-      { name: "Final Call",         actionType: "call-reminder", dayOffset: 14 },
+      { name: "First Email", actionType: "email", dayOffset: 0 },
+      { name: "Call Reminder Step", actionType: "call-reminder", dayOffset: 0 },
+      { name: "Send SMS Step", actionType: "sms", dayOffset: 0 },
+      { name: "Send Email Step", actionType: "email", dayOffset: 2 },
+      { name: "Call Reminder", actionType: "call-reminder", dayOffset: 3 },
+      { name: "Delayed SMS", actionType: "sms", dayOffset: 4 },
+      { name: "Follow up Email", actionType: "email", dayOffset: 6 },
+      { name: "Call Reminder", actionType: "call-reminder", dayOffset: 7 },
+      { name: "Send SMS Step", actionType: "sms", dayOffset: 9 },
+      { name: "Send Email Step", actionType: "email", dayOffset: 11 },
+      { name: "Final Call", actionType: "call-reminder", dayOffset: 14 },
     ],
   },
   {
     id: "calls-closed",
     name: "Calls Closed Sequence",
-    description: "3-step closing sequence: email, call reminder, then SMS follow-up",
+    description:
+      "3-step closing sequence: email, call reminder, then SMS follow-up",
     steps: [
-      { name: "Send Email",    actionType: "email",         dayOffset: 0 },
+      { name: "Send Email", actionType: "email", dayOffset: 0 },
       { name: "Call Reminder", actionType: "call-reminder", dayOffset: 1 },
-      { name: "Send SMS",      actionType: "sms",           dayOffset: 2 },
+      { name: "Send SMS", actionType: "sms", dayOffset: 2 },
     ],
   },
 ];
@@ -65,7 +97,10 @@ function makeStepId() {
   return `step-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function defaultStep(dayOffset: number, type: ActionType = "email"): WorkflowStep {
+function defaultStep(
+  dayOffset: number,
+  type: ActionType = "email",
+): WorkflowStep {
   return {
     id: makeStepId(),
     name: STEP_DEFAULTS[type] ?? "Step",
@@ -100,23 +135,34 @@ interface StepRowProps {
   onSave: (updated: WorkflowStep) => void;
   onCancel: () => void;
   onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   showConnector: boolean;
+  onDirty: () => void;
 }
 
 function StepRow({
-  step, index, totalSteps, isEditing,
-  onEdit, onSave, onCancel, onRemove,
-  onMoveUp, onMoveDown, onReorder, showConnector,
+  step,
+  index,
+  totalSteps,
+  isEditing,
+  onEdit,
+  onSave,
+  onCancel,
+  onRemove,
+  onReorder,
+  showConnector,
+  onDirty,
 }: StepRowProps) {
   const [{ isDragging }, drag, dragPreview] = useDrag({
     type: STEP_DRAG_TYPE,
     item: { index },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
-  const [{ isOver }, drop] = useDrop<{ index: number }, void, { isOver: boolean }>({
+  const [{ isOver }, drop] = useDrop<
+    { index: number },
+    void,
+    { isOver: boolean }
+  >({
     accept: STEP_DRAG_TYPE,
     collect: (monitor) => ({ isOver: monitor.isOver() }),
     hover(item) {
@@ -126,6 +172,8 @@ function StepRow({
       }
     },
   });
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<StepDraft>({
     name: step.name,
@@ -159,14 +207,28 @@ function StepRow({
     });
   }, [step, isEditing]);
 
+  function updateDraft(patch: Partial<StepDraft>) {
+    setDraft((d) => ({ ...d, ...patch }));
+    onDirty();
+  }
+
   return (
-    <div ref={(node) => { dragPreview(drop(node)); }} className={`flex gap-4 transition-opacity ${isDragging ? "opacity-40" : ""} ${isOver ? "ring-2 ring-primary/30 rounded-xl" : ""}`}>
+    <div
+      ref={(node) => {
+        dragPreview(drop(node));
+      }}
+      className={`flex gap-4 transition-opacity ${isDragging ? "opacity-40" : ""} ${isOver ? "ring-2 ring-primary/30 rounded-xl" : ""}`}
+    >
       {/* Timeline column */}
       <div className="flex flex-col items-center flex-shrink-0 w-10">
-        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white shadow-sm ${TYPE_ICON_STYLE[step.actionType]}`}>
+        <div
+          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center bg-white shadow-sm ${TYPE_ICON_STYLE[step.actionType]}`}
+        >
           <StepTypeIcon type={step.actionType} />
         </div>
-        {showConnector && <div className="w-0.5 bg-border/60 flex-1 min-h-6 mt-1 rounded-full" />}
+        {showConnector && (
+          <div className="w-0.5 bg-border/60 flex-1 min-h-6 mt-1 rounded-full" />
+        )}
       </div>
 
       {/* Card column */}
@@ -176,23 +238,59 @@ function StepRow({
           <div className="rounded-xl border-2 border-primary/30 bg-card shadow-sm">
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
               <div className="flex items-center gap-2 flex-1 min-w-0 mr-4">
-                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${TYPE_ICON_STYLE[step.actionType]}`}>
+                <div
+                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${TYPE_ICON_STYLE[step.actionType]}`}
+                >
                   <StepTypeIcon type={step.actionType} size="sm" />
                 </div>
-                <input
-                  value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                  placeholder={STEP_DEFAULTS[draft.actionType]}
-                  className="text-sm font-semibold text-foreground bg-transparent border-0 border-b border-transparent focus:border-border focus:outline-none w-full placeholder:text-muted-foreground/50 transition-colors"
-                />
+                <div className="flex items-center gap-1.5 group/name">
+                  <input
+                    ref={nameInputRef}
+                    value={draft.name}
+                    onChange={(e) => updateDraft({ name: e.target.value })}
+                    placeholder={STEP_DEFAULTS[draft.actionType]}
+                    size={Math.max(12, (draft.name || STEP_DEFAULTS[draft.actionType]).length + 1)}
+                    className="text-sm font-semibold text-foreground bg-transparent border-0 border-b border-transparent focus:border-border focus:outline-none placeholder:text-muted-foreground/50 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.select(); }}
+                    className="opacity-0 group-hover/name:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                    title="Edit name"
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground/40" />
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>Save</Button>
+                <button
+                  onClick={onRemove}
+                  disabled={totalSteps <= 1}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Remove step"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <Button size="sm" variant="outline" onClick={onCancel}>
+                  Discard
+                </Button>
+                <Button size="sm" onClick={() => onSave({ ...step, ...draft })}>
+                  Save
+                </Button>
+                <button
+                  onClick={onCancel}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Collapse"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
               </div>
             </div>
             <div className="px-5 py-4">
-              <StepConfigFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
+              <StepConfigFields
+                draft={draft}
+                onChange={(p) => updateDraft(p)}
+              />
             </div>
           </div>
         ) : (
@@ -202,45 +300,37 @@ function StepRow({
               (step.actionType === "email" && !step.templateId) ||
               (step.actionType === "sms" && !step.smsTemplateId);
             return (
-          <div className="rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
-            <div ref={(el) => { drag(el); }} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 -ml-1">
-              <GripVertical className="h-4 w-4" />
-            </div>
-            <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center flex-shrink-0 select-none">
-              {index + 1}
-            </span>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="font-semibold text-foreground text-sm truncate">
-                {step.name || STEP_DEFAULTS[step.actionType]}
-              </span>
-              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${TYPE_BADGE_STYLE[step.actionType]}`}>
-                <StepTypeIcon type={step.actionType} size="sm" />
-                {TYPE_OPTIONS.find((o) => o.value === step.actionType)?.label}
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium whitespace-nowrap">
-                Day {step.dayOffset}
-              </span>
-              {isIncomplete && (
-                <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" title="Setup incomplete" />
-              )}
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={onEdit}
-                className="px-3 h-7 text-xs font-semibold rounded-md border border-border bg-background hover:bg-muted text-foreground transition-colors"
+                onKeyDown={(e) => e.key === "Enter" && onEdit()}
+                className="rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3 cursor-pointer"
               >
-                Edit
-              </button>
-              <button
-                onClick={onRemove}
-                disabled={totalSteps <= 1}
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Remove step"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
+                <div
+                  ref={(el) => { drag(el); }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 -ml-1"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold flex items-center justify-center flex-shrink-0 select-none whitespace-nowrap">
+                  Step {index + 1} · Day {Math.floor(step.dayOffset)}
+                </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="font-semibold text-foreground text-sm truncate">
+                    {step.name || STEP_DEFAULTS[step.actionType]}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {isIncomplete && (
+                    <span title="Setup incomplete — missing template" className="flex-shrink-0">
+                      <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                    </span>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
             );
           })()
         )}
@@ -251,18 +341,69 @@ function StepRow({
 
 // ─── DelayRow ─────────────────────────────────────────────────────────────────
 
+function parseDelayInput(input: string): { days: number; hours: number; minutes: number } | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const dayMatch = trimmed.match(/(\d+)\s*d/i);
+  const hourMatch = trimmed.match(/(\d+)\s*h/i);
+  const minMatch = trimmed.match(/(\d+)\s*m/i);
+  if (!dayMatch && !hourMatch && !minMatch) return null;
+  return {
+    days: dayMatch ? parseInt(dayMatch[1]) : 0,
+    hours: hourMatch ? Math.min(23, parseInt(hourMatch[1])) : 0,
+    minutes: minMatch ? Math.min(59, parseInt(minMatch[1])) : 0,
+  };
+}
+
+function stepToDelayString(step: WorkflowStep): string {
+  const parts: string[] = [];
+  if ((step.delayDays ?? 1) > 0) parts.push(`${step.delayDays ?? 1}d`);
+  if ((step.delayHours ?? 0) > 0) parts.push(`${step.delayHours}h`);
+  if ((step.delayMinutes ?? 0) > 0) parts.push(`${step.delayMinutes}m`);
+  return parts.length ? parts.join(" ") : "1d";
+}
+
 function DelayRow({
   step,
+  isOpen,
+  onOpen,
+  onClose,
   onChangeDays,
   onRemove,
+  onDirty,
 }: {
   step: WorkflowStep;
-  onChangeDays: (days: number, hours?: number, minutes?: number, untilDate?: string, untilTime?: string) => void;
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onChangeDays: (days: number, hours?: number, minutes?: number) => void;
   onRemove: () => void;
+  onDirty: () => void;
 }) {
-  const [mode, setMode] = useState<"duration" | "datetime">("duration");
-  const [untilDate, setUntilDate] = useState(step.note?.startsWith("until:") ? step.note.split("|")[0].replace("until:", "") : "");
-  const [untilTime, setUntilTime] = useState(step.note?.startsWith("until:") ? step.note.split("|")[1] ?? "09:00" : "09:00");
+  const [savedValue, setSavedValue] = useState(() => stepToDelayString(step));
+  const [inputValue, setInputValue] = useState(() => stepToDelayString(step));
+  const [error, setError] = useState<string | null>(null);
+
+  function handleChange(value: string) {
+    setInputValue(value);
+    const parsed = parseDelayInput(value);
+    setError(parsed ? null : 'Invalid format — use e.g. "2d 4h 30m"');
+    onDirty();
+  }
+
+  function handleSave() {
+    const parsed = parseDelayInput(inputValue);
+    if (!parsed) return;
+    onChangeDays(parsed.days, parsed.hours, parsed.minutes);
+    setSavedValue(inputValue);
+    onClose();
+  }
+
+  function handleDiscard() {
+    setInputValue(savedValue);
+    setError(null);
+    onClose();
+  }
 
   return (
     <div className="flex gap-4 mb-4">
@@ -277,98 +418,93 @@ function DelayRow({
 
       {/* Card */}
       <div className="flex-1 pb-2">
-        <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Wait / Delay</span>
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
+        {isOpen ? (
+          /* ── Expanded ── */
+          <div className="rounded-xl border-2 border-primary/30 bg-card shadow-sm">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Wait / Delay
+              </span>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setMode("duration")}
-                  style={{ fontSize: '11px' }}
-                  className={`px-2 py-0.5 rounded font-medium transition-all ${mode === "duration" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={onRemove}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  title="Remove delay"
                 >
-                  Duration
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
+                <Button size="sm" variant="outline" onClick={handleDiscard}>
+                  Discard
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={!!error}>
+                  Save
+                </Button>
                 <button
                   type="button"
-                  onClick={() => setMode("datetime")}
-                  style={{ fontSize: '11px' }}
-                  className={`px-2 py-0.5 rounded font-medium transition-all ${mode === "datetime" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={handleDiscard}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Collapse"
                 >
-                  Date & Time
+                  <ChevronDown className="h-4 w-4" />
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={onRemove}
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Remove delay"
-              >
-                <X className="h-3 w-3" />
-              </button>
+            </div>
+
+            <div className="px-4 py-4 flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => handleChange(e.target.value)}
+                  placeholder="e.g. 1d 4h 30m"
+                  className={`w-44 text-sm font-medium text-foreground bg-background border rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${error ? "border-destructive focus:ring-destructive/30" : "border-border"}`}
+                />
+                {error ? (
+                  <span className="flex items-center gap-1 text-[11px] text-destructive">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    {error}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">
+                    Use <span className="font-mono text-foreground/70">d</span> days,{" "}
+                    <span className="font-mono text-foreground/70">h</span> hours,{" "}
+                    <span className="font-mono text-foreground/70">m</span> minutes — e.g.{" "}
+                    <span className="font-mono text-foreground/70">2d</span>,{" "}
+                    <span className="font-mono text-foreground/70">4h 30m</span>,{" "}
+                    <span className="font-mono text-foreground/70">1d 2h</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border/60 pt-2.5">
+                The sequence pauses here for the set duration before the next step is sent. The timer starts once the previous step has been completed or delivered.
+              </p>
             </div>
           </div>
-
-          {mode === "duration" ? (
-            <div className="flex items-center gap-4">
-              {/* Days */}
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => onChangeDays(Math.max(0, (step.delayDays ?? 1) - 1))}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
-                <input type="number" min={0} value={step.delayDays ?? 1}
-                  onChange={(e) => onChangeDays(Math.max(0, Number(e.target.value)), step.delayHours, step.delayMinutes)}
-                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
-                <button type="button" onClick={() => onChangeDays((step.delayDays ?? 1) + 1, step.delayHours, step.delayMinutes)}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
-                <span className="text-xs text-muted-foreground">d</span>
-              </div>
-              {/* Hours */}
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, Math.max(0, (step.delayHours ?? 0) - 1), step.delayMinutes)}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
-                <input type="number" min={0} max={23} value={step.delayHours ?? 0}
-                  onChange={(e) => onChangeDays(step.delayDays ?? 1, Math.min(23, Math.max(0, Number(e.target.value))), step.delayMinutes)}
-                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
-                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, Math.min(23, (step.delayHours ?? 0) + 1), step.delayMinutes)}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
-                <span className="text-xs text-muted-foreground">h</span>
-              </div>
-              {/* Minutes */}
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.max(0, (step.delayMinutes ?? 0) - 5))}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">−</button>
-                <input type="number" min={0} max={59} step={5} value={step.delayMinutes ?? 0}
-                  onChange={(e) => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.min(59, Math.max(0, Number(e.target.value))))}
-                  className="w-8 text-center text-sm font-bold text-foreground bg-transparent border-b border-border focus:outline-none" />
-                <button type="button" onClick={() => onChangeDays(step.delayDays ?? 1, step.delayHours ?? 0, Math.min(59, (step.delayMinutes ?? 0) + 5))}
-                  className="w-5 h-5 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted font-bold text-xs">+</button>
-                <span className="text-xs text-muted-foreground">m</span>
-              </div>
+        ) : (
+          /* ── Collapsed ── */
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={onOpen}
+            onKeyDown={(e) => e.key === "Enter" && onOpen()}
+            className="rounded-xl border border-dashed border-border bg-muted/30 hover:border-primary/30 hover:shadow-sm transition-all px-4 py-2.5 flex items-center gap-3 cursor-pointer"
+          >
+            <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Wait
+              </span>
+              <span className="text-xs font-mono font-semibold text-foreground/80 bg-muted px-1.5 py-0.5 rounded">
+                {savedValue}
+              </span>
+              {error && (
+                <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+              )}
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] text-muted-foreground font-medium">Date</span>
-                <input
-                  type="date"
-                  value={untilDate}
-                  onChange={(e) => { setUntilDate(e.target.value); onChangeDays(0, 0, 0, e.target.value, untilTime); }}
-                  className="text-sm text-foreground bg-transparent border-b border-border focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] text-muted-foreground font-medium">Time</span>
-                <input
-                  type="time"
-                  value={untilTime}
-                  onChange={(e) => { setUntilTime(e.target.value); onChangeDays(0, 0, 0, untilDate, e.target.value); }}
-                  className="text-sm text-foreground bg-transparent border-b border-border focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -380,31 +516,41 @@ export function WorkflowBuilder() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { workflows, segments, handleCreateWorkflow, handleUpdateWorkflow } = useAppData();
+  const { workflows, segments, handleCreateWorkflow, handleUpdateWorkflow } =
+    useAppData();
 
   const preselectedSegmentId = !id
     ? ((location.state as { segmentId?: string } | null)?.segmentId ?? "")
     : "";
 
-  const [wizardStep, setWizardStep] = useState(preselectedSegmentId ? 1 : 0);
+  const [wizardStep, setWizardStep] = useState(id || preselectedSegmentId ? 1 : 0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [editingName, setEditingName] = useState(false);
-  const [selectedSegmentId, setSelectedSegmentId] = useState(preselectedSegmentId);
+  const [selectedSegmentId, setSelectedSegmentId] =
+    useState(preselectedSegmentId);
   const [segmentSearch, setSegmentSearch] = useState("");
   const [segmentOpen, setSegmentOpen] = useState(false);
   const segmentRef = useRef<HTMLDivElement>(null);
   const [steps, setSteps] = useState<WorkflowStep[]>([defaultStep(0)]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [isDirty, setIsDirty] = useState(false);
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [nameError, setNameError] = useState("");
   const [step1Error, setStep1Error] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [incompleteModalOpen, setIncompleteModalOpen] = useState(false);
+  const [incompleteCount, setIncompleteCount] = useState(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const hasSeeded = useRef(false);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (segmentRef.current && !segmentRef.current.contains(e.target as Node)) {
+      if (
+        segmentRef.current &&
+        !segmentRef.current.contains(e.target as Node)
+      ) {
         setSegmentOpen(false);
         setSegmentSearch("");
       }
@@ -424,7 +570,7 @@ export function WorkflowBuilder() {
           [...wf.steps].sort((a, b) => a.order - b.order),
         ).map((s, i) => ({ ...s, order: i + 1 }));
         setSteps(seeded);
-        setEditingIndex(null);
+        setOpenIndex(null);
         hasSeeded.current = true;
       }
     }
@@ -437,14 +583,23 @@ export function WorkflowBuilder() {
 
   const emailCount = steps.filter((s) => s.actionType === "email").length;
   const smsCount = steps.filter((s) => s.actionType === "sms").length;
-  const callCount = steps.filter((s) => s.actionType === "call-reminder").length;
+  const callCount = steps.filter(
+    (s) => s.actionType === "call-reminder",
+  ).length;
   const actionStepCount = steps.filter((s) => s.actionType !== "delay").length;
-  const maxDay = steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) : 0;
+  const maxDay =
+    steps.length > 0 ? Math.max(...steps.map((s) => s.dayOffset)) : 0;
 
   const handleNextStep = () => {
-    if (!name.trim()) { setNameError("Flow name is required."); return; }
+    if (!name.trim()) {
+      setNameError("Flow name is required.");
+      return;
+    }
     setNameError("");
-    if (!selectedSegmentId) { setStep1Error("Please select a segment."); return; }
+    if (!selectedSegmentId) {
+      setStep1Error("Please select a segment.");
+      return;
+    }
     setStep1Error("");
     setWizardStep(1);
   };
@@ -452,11 +607,33 @@ export function WorkflowBuilder() {
   const recompute = (arr: WorkflowStep[]) =>
     computeDayOffsets(arr).map((s, i) => ({ ...s, order: i + 1 }));
 
+  function tryOpen(index: number) {
+    if (openIndex !== null && openIndex !== index && isDirty) {
+      setPendingIndex(index);
+      setConfirmDiscardOpen(true);
+    } else {
+      setOpenIndex(index);
+      setIsDirty(false);
+    }
+  }
+
+  function confirmDiscard() {
+    setConfirmDiscardOpen(false);
+    setOpenIndex(pendingIndex);
+    setIsDirty(false);
+    setPendingIndex(null);
+  }
+
+  function cancelDiscard() {
+    setConfirmDiscardOpen(false);
+    setPendingIndex(null);
+  }
+
   const handleAddStep = (type: ActionType) => {
     const newStep = defaultStep(0, type);
     const newSteps = recompute([...steps, newStep]);
     setSteps(newSteps);
-    setEditingIndex(newSteps.length - 1);
+    tryOpen(newSteps.length - 1);
   };
 
   const handleInsertDelay = (afterIndex: number) => {
@@ -465,45 +642,39 @@ export function WorkflowBuilder() {
     setSteps(recompute(arr));
   };
 
-  const handleDelayDaysChange = (index: number, days: number, hours?: number, _minutes?: number, untilDate?: string, untilTime?: string) => {
+  const handleDelayDaysChange = (
+    index: number,
+    days: number,
+    hours?: number,
+    _minutes?: number,
+    untilDate?: string,
+    untilTime?: string,
+  ) => {
     const updated = steps.map((s, i) =>
-      i === index ? {
-        ...s,
-        delayDays: Math.max(0, days),
-        delayHours: hours ?? s.delayHours ?? 0,
-        note: untilDate ? `until:${untilDate}|${untilTime ?? "09:00"}` : s.note,
-      } : s,
+      i === index
+        ? {
+            ...s,
+            delayDays: Math.max(0, days),
+            delayHours: hours ?? s.delayHours ?? 0,
+            note: untilDate
+              ? `until:${untilDate}|${untilTime ?? "09:00"}`
+              : s.note,
+          }
+        : s,
     );
     setSteps(recompute(updated));
   };
 
   const handleStepSave = (index: number, updated: WorkflowStep) => {
     setSteps(recompute(steps.map((s, i) => (i === index ? updated : s))));
-    setEditingIndex(null);
+    setOpenIndex(null);
+    setIsDirty(false);
   };
 
   const handleRemoveStep = (index: number) => {
     const filtered = steps.filter((_, i) => i !== index);
     setSteps(recompute(filtered));
-    if (editingIndex === index) setEditingIndex(null);
-  };
-
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const ns = [...steps];
-    [ns[index - 1], ns[index]] = [ns[index], ns[index - 1]];
-    setSteps(recompute(ns));
-    if (editingIndex === index) setEditingIndex(index - 1);
-    else if (editingIndex === index - 1) setEditingIndex(index);
-  };
-
-  const handleMoveDown = (index: number) => {
-    if (index === steps.length - 1) return;
-    const ns = [...steps];
-    [ns[index], ns[index + 1]] = [ns[index + 1], ns[index]];
-    setSteps(recompute(ns));
-    if (editingIndex === index) setEditingIndex(index + 1);
-    else if (editingIndex === index + 1) setEditingIndex(index);
+    if (openIndex === index) { setOpenIndex(null); setIsDirty(false); }
   };
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
@@ -511,13 +682,20 @@ export function WorkflowBuilder() {
     const [moved] = ns.splice(fromIndex, 1);
     ns.splice(toIndex, 0, moved);
     setSteps(recompute(ns));
-    if (editingIndex === fromIndex) setEditingIndex(toIndex);
+    if (openIndex === fromIndex) setOpenIndex(toIndex);
   };
 
   const handleLoadTemplate = (tpl: StepTemplate) => {
-    const actionStepsCount = steps.filter((s) => s.actionType !== "delay").length;
+    const actionStepsCount = steps.filter(
+      (s) => s.actionType !== "delay",
+    ).length;
     if (actionStepsCount > 0) {
-      if (!window.confirm(`Replace current steps with the "${tpl.name}" template?`)) return;
+      if (
+        !window.confirm(
+          `Replace current steps with the "${tpl.name}" template?`,
+        )
+      )
+        return;
     }
     const sorted = [...tpl.steps].sort((a, b) => a.dayOffset - b.dayOffset);
     const result: WorkflowStep[] = [];
@@ -529,17 +707,45 @@ export function WorkflowBuilder() {
       }
     });
     setSteps(recompute(result));
-    setEditingIndex(null);
+    setOpenIndex(null);
+    setIsDirty(false);
   };
 
   const handleSave = () => {
-    if (!name.trim()) { setSaveError("Flow name is required."); return; }
+    if (!name.trim()) {
+      setSaveError("Flow name is required.");
+      return;
+    }
+    const incompleteSteps = steps.filter(
+      (s) =>
+        (s.actionType === "email" && !s.templateId) ||
+        (s.actionType === "sms" && !s.smsTemplateId),
+    );
+    if (incompleteSteps.length > 0) {
+      setIncompleteCount(incompleteSteps.length);
+      setIncompleteModalOpen(true);
+      return;
+    }
     const sortedSteps = recompute([...steps]);
     const segmentName = selectedSegment?.name ?? "";
     if (id) {
-      handleUpdateWorkflow(id, { name, description, segmentId: selectedSegmentId, segmentName, steps: sortedSteps });
+      handleUpdateWorkflow(id, {
+        name,
+        description,
+        segmentId: selectedSegmentId,
+        segmentName,
+        steps: sortedSteps,
+      });
     } else {
-      handleCreateWorkflow({ name, description, segmentId: selectedSegmentId, segmentName, status: "draft", createdBy: "Admin", steps: sortedSteps });
+      handleCreateWorkflow({
+        name,
+        description,
+        segmentId: selectedSegmentId,
+        segmentName,
+        status: "draft",
+        createdBy: "Admin",
+        steps: sortedSteps,
+      });
     }
     navigate("/email-workflows/flows");
   };
@@ -564,9 +770,15 @@ export function WorkflowBuilder() {
                   <input
                     autoFocus
                     value={name}
-                    onChange={(e) => { setName(e.target.value); if (saveError) setSaveError(""); }}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (saveError) setSaveError("");
+                    }}
                     onBlur={() => setEditingName(false)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingName(false); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape")
+                        setEditingName(false);
+                    }}
                     placeholder="Flow name…"
                     className="bg-transparent border-none outline-none text-lg font-semibold text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-72 leading-tight block"
                   />
@@ -576,7 +788,9 @@ export function WorkflowBuilder() {
                     onClick={() => setEditingName(true)}
                     className="flex items-center gap-1.5 group"
                   >
-                    <span className="text-lg font-semibold text-foreground leading-tight">{name || "Flow name…"}</span>
+                    <span className="text-lg font-semibold text-foreground leading-tight">
+                      {name || "Flow name…"}
+                    </span>
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 )}
@@ -603,11 +817,28 @@ export function WorkflowBuilder() {
           <div className="flex items-center gap-4">
             {/* Summary stats */}
             <div className="flex items-center gap-3 text-xs text-muted-foreground border-r border-border pr-4">
-              <span><span className="font-semibold text-foreground">{actionStepCount}</span> Steps</span>
-              <span><span className="font-semibold text-foreground">{maxDay}</span> Days</span>
-              <span className="flex items-center gap-1 text-emerald-700 font-medium"><Mail className="h-3.5 w-3.5" />{emailCount}</span>
-              <span className="flex items-center gap-1 text-purple-700 font-medium"><MessageSquare className="h-3.5 w-3.5" />{smsCount}</span>
-              <span className="flex items-center gap-1 text-blue-700 font-medium"><Phone className="h-3.5 w-3.5" />{callCount}</span>
+              <span>
+                <span className="font-semibold text-foreground">
+                  {actionStepCount}
+                </span>{" "}
+                Steps
+              </span>
+              <span>
+                <span className="font-semibold text-foreground">{maxDay}</span>{" "}
+                Days
+              </span>
+              <span className="flex items-center gap-1 text-blue-600 font-medium">
+                <Mail className="h-3.5 w-3.5" />
+                {emailCount}
+              </span>
+              <span className="flex items-center gap-1 text-violet-600 font-medium">
+                <MessageSquare className="h-3.5 w-3.5" />
+                {smsCount}
+              </span>
+              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                <Phone className="h-3.5 w-3.5" />
+                {callCount}
+              </span>
             </div>
             <Button onClick={handleSave} disabled={steps.length === 0}>
               {id ? "Update Flow" : "Save Flow"}
@@ -629,9 +860,16 @@ export function WorkflowBuilder() {
                   <FieldLabel required>Flow Name</FieldLabel>
                   <Input
                     value={name}
-                    onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (nameError) setNameError("");
+                    }}
                     placeholder="e.g. 30-Day Lead Nurture"
-                    className={nameError ? "border-destructive focus-visible:ring-destructive/30" : ""}
+                    className={
+                      nameError
+                        ? "border-destructive focus-visible:ring-destructive/30"
+                        : ""
+                    }
                   />
                   {nameError && (
                     <p className="flex items-center gap-1 text-xs text-destructive">
@@ -659,34 +897,51 @@ export function WorkflowBuilder() {
                   <div className="relative" ref={segmentRef}>
                     <div
                       className={`flex items-center gap-2 px-3 h-9 rounded-md border bg-background cursor-pointer transition-colors ${
-                        segmentOpen ? "border-primary ring-2 ring-primary/20" : "border-input hover:border-primary/40"
+                        segmentOpen
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-input hover:border-primary/40"
                       } ${step1Error ? "border-destructive" : ""}`}
-                      onClick={() => { setSegmentOpen(true); }}
+                      onClick={() => {
+                        setSegmentOpen(true);
+                      }}
                     >
                       <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       {segmentOpen ? (
                         <input
                           autoFocus
                           value={segmentSearch}
-                          onChange={(e) => { setSegmentSearch(e.target.value); if (step1Error) setStep1Error(""); }}
+                          onChange={(e) => {
+                            setSegmentSearch(e.target.value);
+                            if (step1Error) setStep1Error("");
+                          }}
                           placeholder="Search segments…"
                           className="flex-1 text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground min-w-0"
                         />
                       ) : selectedSegmentId ? (
                         <>
-                          <span className="flex-1 text-sm font-medium text-foreground truncate">{selectedSegment?.name}</span>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{selectedSegment?.contactCount.toLocaleString()} contacts</span>
+                          <span className="flex-1 text-sm font-medium text-foreground truncate">
+                            {selectedSegment?.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {selectedSegment?.contactCount.toLocaleString()}{" "}
+                            contacts
+                          </span>
                           <button
                             type="button"
                             onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => { e.stopPropagation(); setSelectedSegmentId(""); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSegmentId("");
+                            }}
                             className="ml-1 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Select a segment…</span>
+                        <span className="text-sm text-muted-foreground">
+                          Select a segment…
+                        </span>
                       )}
                     </div>
 
@@ -694,24 +949,39 @@ export function WorkflowBuilder() {
                       <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-lg border border-input bg-background shadow-md overflow-hidden">
                         <ul className="max-h-52 overflow-y-auto divide-y divide-border">
                           {filteredSegments.length === 0 ? (
-                            <li className="px-4 py-4 text-sm text-muted-foreground text-center">No segments found</li>
+                            <li className="px-4 py-4 text-sm text-muted-foreground text-center">
+                              No segments found
+                            </li>
                           ) : (
                             filteredSegments.map((seg) => (
                               <li
                                 key={seg.id}
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => { setSelectedSegmentId(seg.id); setSegmentSearch(""); setSegmentOpen(false); if (step1Error) setStep1Error(""); }}
+                                onClick={() => {
+                                  setSelectedSegmentId(seg.id);
+                                  setSegmentSearch("");
+                                  setSegmentOpen(false);
+                                  if (step1Error) setStep1Error("");
+                                }}
                                 className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                                  selectedSegmentId === seg.id ? "bg-primary/5 text-primary" : "hover:bg-muted/40 text-foreground"
+                                  selectedSegmentId === seg.id
+                                    ? "bg-primary/5 text-primary"
+                                    : "hover:bg-muted/40 text-foreground"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  {selectedSegmentId === seg.id
-                                    ? <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                    : <span className="h-3.5 w-3.5 flex-shrink-0" />}
-                                  <span className="font-medium truncate">{seg.name}</span>
+                                  {selectedSegmentId === seg.id ? (
+                                    <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                  ) : (
+                                    <span className="h-3.5 w-3.5 flex-shrink-0" />
+                                  )}
+                                  <span className="font-medium truncate">
+                                    {seg.name}
+                                  </span>
                                 </div>
-                                <span className="text-muted-foreground text-xs ml-4 whitespace-nowrap">{seg.contactCount.toLocaleString()} contacts</span>
+                                <span className="text-muted-foreground text-xs ml-4 whitespace-nowrap">
+                                  {seg.contactCount.toLocaleString()} contacts
+                                </span>
                               </li>
                             ))
                           )}
@@ -730,7 +1000,11 @@ export function WorkflowBuilder() {
 
               {/* Actions */}
               <div className="flex justify-end pt-2">
-                <Button onClick={handleNextStep} size="default" className="gap-1.5">
+                <Button
+                  onClick={handleNextStep}
+                  size="default"
+                  className="gap-1.5"
+                >
                   Next — Configure Steps <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -747,16 +1021,24 @@ export function WorkflowBuilder() {
               {selectedSegment && (
                 <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm font-medium text-foreground">{selectedSegment.name}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">{selectedSegment.contactCount.toLocaleString()} contacts</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedSegment.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {selectedSegment.contactCount.toLocaleString()} contacts
+                  </span>
                 </div>
               )}
               {/* Steps timeline */}
               {steps.filter((s) => s.actionType !== "delay").length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-border p-12 text-center text-muted-foreground">
                   <Mail className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm font-medium text-foreground mb-1">No steps yet</p>
-                  <p className="text-sm">Add a step from the panel on the right to get started.</p>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    No steps yet
+                  </p>
+                  <p className="text-sm">
+                    Add a step from the panel on the right to get started.
+                  </p>
                 </div>
               ) : (
                 <DndProvider backend={HTML5Backend}>
@@ -767,28 +1049,34 @@ export function WorkflowBuilder() {
                           <DelayRow
                             key={step.id}
                             step={step}
-                            onChangeDays={(days, hours, minutes, untilDate, untilTime) => handleDelayDaysChange(i, days, hours, minutes, untilDate, untilTime)}
+                            isOpen={openIndex === i}
+                            onOpen={() => tryOpen(i)}
+                            onClose={() => { setOpenIndex(null); setIsDirty(false); }}
+                            onChangeDays={(days, hours, minutes) =>
+                              handleDelayDaysChange(i, days, hours, minutes)
+                            }
                             onRemove={() => handleRemoveStep(i)}
+                            onDirty={() => setIsDirty(true)}
                           />
                         );
                       }
                       const isLastStep = i === steps.length - 1;
-                      const nextIsDelay = !isLastStep && steps[i + 1]?.actionType === "delay";
+                      const nextIsDelay =
+                        !isLastStep && steps[i + 1]?.actionType === "delay";
                       return (
                         <div key={step.id}>
                           <StepRow
                             step={step}
                             index={i}
                             totalSteps={steps.length}
-                            isEditing={editingIndex === i}
-                            onEdit={() => setEditingIndex(i)}
+                            isEditing={openIndex === i}
+                            onEdit={() => tryOpen(i)}
                             onSave={(updated) => handleStepSave(i, updated)}
-                            onCancel={() => setEditingIndex(null)}
+                            onCancel={() => { setOpenIndex(null); setIsDirty(false); }}
                             onRemove={() => handleRemoveStep(i)}
-                            onMoveUp={() => handleMoveUp(i)}
-                            onMoveDown={() => handleMoveDown(i)}
                             onReorder={handleReorder}
                             showConnector={!isLastStep && !nextIsDelay}
+                            onDirty={() => setIsDirty(true)}
                           />
                           {!isLastStep && !nextIsDelay && (
                             <button
@@ -808,8 +1096,6 @@ export function WorkflowBuilder() {
                   </div>
                 </DndProvider>
               )}
-
-
             </div>
 
             {/* ── Right sidebar ── */}
@@ -824,10 +1110,14 @@ export function WorkflowBuilder() {
                       onClick={() => handleAddStep(opt.value)}
                       className={`flex flex-col items-center justify-center gap-2 px-2 py-3 rounded-lg border border-border bg-background transition-all duration-150 group ${TYPE_HOVER_STYLE[opt.value]}`}
                     >
-                      <span className={`w-9 h-9 rounded-lg flex items-center justify-center ${TYPE_ICON_BG[opt.value]}`}>
+                      <span
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center ${TYPE_ICON_BG[opt.value]}`}
+                      >
                         <StepTypeIcon type={opt.value} />
                       </span>
-                      <span className="text-xs font-medium text-foreground leading-tight text-center">{opt.label}</span>
+                      <span className="text-xs font-medium text-foreground leading-tight text-center">
+                        {opt.label}
+                      </span>
                     </button>
                   ))}
                   <button
@@ -838,7 +1128,9 @@ export function WorkflowBuilder() {
                     <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
                       <Clock className="h-4 w-4" />
                     </span>
-                    <span className="text-xs font-medium text-foreground leading-tight text-center">Add Delay</span>
+                    <span className="text-xs font-medium text-foreground leading-tight text-center">
+                      Add Delay
+                    </span>
                   </button>
                 </div>
               </div>
@@ -851,17 +1143,25 @@ export function WorkflowBuilder() {
                     <button
                       key={tpl.id}
                       type="button"
-                      onClick={() => setSelectedTemplateId(tpl.id === selectedTemplateId ? "" : tpl.id)}
+                      onClick={() =>
+                        setSelectedTemplateId(
+                          tpl.id === selectedTemplateId ? "" : tpl.id,
+                        )
+                      }
                       className={`w-full text-left px-3 py-2.5 rounded-lg border-2 transition-all ${
                         selectedTemplateId === tpl.id
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
-                      <p className={`text-sm font-semibold leading-tight ${selectedTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
+                      <p
+                        className={`text-sm font-semibold leading-tight ${selectedTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}
+                      >
                         {tpl.name}
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{tpl.description}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        {tpl.description}
+                      </p>
                     </button>
                   ))}
                   <Button
@@ -869,7 +1169,9 @@ export function WorkflowBuilder() {
                     variant={selectedTemplateId ? "default" : "outline"}
                     disabled={!selectedTemplateId}
                     onClick={() => {
-                      const tpl = STEP_TEMPLATES.find((t) => t.id === selectedTemplateId);
+                      const tpl = STEP_TEMPLATES.find(
+                        (t) => t.id === selectedTemplateId,
+                      );
                       if (tpl) handleLoadTemplate(tpl);
                     }}
                     className="w-full"
@@ -878,13 +1180,56 @@ export function WorkflowBuilder() {
                   </Button>
                 </div>
               </div>
-
-
             </div>
           </div>
         )}
       </div>
 
+      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes in the current step. Discard them and open the other step?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-background text-foreground border border-border hover:bg-muted"
+              onClick={cancelDiscard}
+            >
+              Keep editing
+            </AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDiscard}
+            >
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={incompleteModalOpen}
+        onOpenChange={setIncompleteModalOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Some steps need attention</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please complete all steps before saving. Look for the{" "}
+              <AlertCircle className="inline h-3 w-3 text-destructive align-middle" />{" "}
+              indicator to find steps that still need to be set up.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIncompleteModalOpen(false)}>
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

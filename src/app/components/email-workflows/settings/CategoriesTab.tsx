@@ -5,25 +5,10 @@ import { useAppData } from "../../../contexts/AppDataContext";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 
-const BUILTIN_EMAIL = [
-  "Initial Outreach",
-  "Follow-up",
-  "Nurture",
-  "Re-engagement",
-  "Custom",
-];
-const BUILTIN_SMS = ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"];
-const BUILTIN_VOICEMAIL = [
-  "Initial Outreach",
-  "Follow-up",
-  "Re-engagement",
-  "Custom",
-];
 
 interface CategorySectionProps {
   title: string;
   categories: string[];
-  builtins: string[];
   onAdd: (name: string) => void;
   onDelete: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
@@ -32,7 +17,6 @@ interface CategorySectionProps {
 function CategorySection({
   title,
   categories,
-  builtins,
   onAdd,
   onDelete,
   onRename,
@@ -236,7 +220,6 @@ export function CategoriesTab() {
       <CategorySection
         title="Email Template Categories"
         categories={emailCategories}
-        builtins={BUILTIN_EMAIL}
         onAdd={handleAddEmailCategory}
         onDelete={handleDeleteEmailCategory}
         onRename={handleRenameEmailCategory}
@@ -244,7 +227,6 @@ export function CategoriesTab() {
       <CategorySection
         title="SMS Template Categories"
         categories={smsCategories}
-        builtins={BUILTIN_SMS}
         onAdd={handleAddSmsCategory}
         onDelete={handleDeleteSmsCategory}
         onRename={handleRenameSmsCategory}
@@ -252,7 +234,6 @@ export function CategoriesTab() {
       <CategorySection
         title="Voicemail Record Categories"
         categories={voicemailCategories}
-        builtins={BUILTIN_VOICEMAIL}
         onAdd={handleAddVoicemailCategory}
         onDelete={handleDeleteVoicemailCategory}
         onRename={handleRenameVoicemailCategory}

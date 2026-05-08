@@ -1,4 +1,5 @@
-import { Mail, MessageSquare, Phone, Clock } from "lucide-react";
+/* eslint-disable react-refresh/only-export-components */
+import { Mail, MessageSquare, Phone, Clock, Voicemail } from "lucide-react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -6,7 +7,7 @@ import { useAppData } from "../../contexts/AppDataContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ActionType = "email" | "sms" | "call-reminder";
+export type ActionType = "email" | "sms" | "call-reminder" | "voicemail-reminder";
 
 export interface StepDraft {
   name: string;
@@ -29,6 +30,7 @@ export const STEP_DEFAULTS: Record<ActionType | "delay", string> = {
   email: "Send Email Step",
   sms: "Send SMS Step",
   "call-reminder": "Call Reminder Step",
+  "voicemail-reminder": "Voicemail Reminder Step",
   delay: "Wait",
 };
 
@@ -42,6 +44,7 @@ export const TYPE_ICON_STYLE: Record<ActionType | "delay", string> = {
   email: "border-blue-400 text-blue-600",
   sms: "border-violet-400 text-violet-600",
   "call-reminder": "border-amber-400 text-amber-600",
+  "voicemail-reminder": "border-teal-400 text-teal-600",
   delay: "border-border text-muted-foreground",
 };
 
@@ -49,6 +52,7 @@ export const TYPE_ICON_BG: Record<ActionType | "delay", string> = {
   email: "bg-blue-100 text-blue-600",
   sms: "bg-violet-100 text-violet-600",
   "call-reminder": "bg-amber-100 text-amber-600",
+  "voicemail-reminder": "bg-teal-100 text-teal-600",
   delay: "bg-muted text-muted-foreground",
 };
 
@@ -56,6 +60,7 @@ export const TYPE_HOVER_STYLE: Record<ActionType | "delay", string> = {
   email: "hover:border-blue-300 hover:bg-blue-50/40",
   sms: "hover:border-violet-300 hover:bg-violet-50/40",
   "call-reminder": "hover:border-amber-300 hover:bg-amber-50/40",
+  "voicemail-reminder": "hover:border-teal-300 hover:bg-teal-50/40",
   delay: "hover:border-border hover:bg-muted/40",
 };
 
@@ -63,6 +68,7 @@ export const TYPE_BADGE_STYLE: Record<ActionType | "delay", string> = {
   email: "bg-blue-50 text-blue-700 border border-blue-200",
   sms: "bg-violet-50 text-violet-700 border border-violet-200",
   "call-reminder": "bg-amber-50 text-amber-700 border border-amber-200",
+  "voicemail-reminder": "bg-teal-50 text-teal-700 border border-teal-200",
   delay: "bg-muted text-muted-foreground border border-border",
 };
 
@@ -73,6 +79,7 @@ export function StepTypeIcon({ type, size = "md" }: { type: ActionType | "delay"
   if (type === "email") return <Mail className={cls} />;
   if (type === "sms") return <MessageSquare className={cls} />;
   if (type === "delay") return <Clock className={cls} />;
+  if (type === "voicemail-reminder") return <Voicemail className={cls} />;
   return <Phone className={cls} />;
 }
 

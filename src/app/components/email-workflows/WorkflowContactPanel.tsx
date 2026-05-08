@@ -1,7 +1,7 @@
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
-import { Mail, MessageCircle, Phone, CheckCircle2, Clock, X, Pause, Play, SkipForward, ChevronDown, ChevronRight, User, MapPin, Ban, Check, Plus, Trash2, Pencil } from "lucide-react";
+import { Mail, MessageCircle, Phone, CheckCircle2, Clock, X, Pause, Play, SkipForward, ChevronDown, ChevronRight, User, MapPin, Ban, Check, Plus, Trash2, Pencil, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
@@ -201,17 +201,10 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
   const enrollment = enrollmentId ? workflowEnrollments.find((e) => e.id === enrollmentId) : null;
   const workflow = workflows.find((w) => w.id === workflowId);
 
-  const sortedSteps = useMemo(
-    () => mergeSteps(workflow?.steps ?? [], enrollment?.customSteps),
-    [workflow, enrollment?.customSteps],
-  );
+  const sortedSteps = mergeSteps(workflow?.steps ?? [], enrollment?.customSteps);
+  const actionSteps = sortedSteps.filter((s) => s.actionType !== "delay");
 
-  const actionSteps = useMemo(
-    () => sortedSteps.filter((s) => s.actionType !== "delay"),
-    [sortedSteps],
-  );
-
-  const flowActivity = useMemo(() => {
+  const flowActivity = (() => {
     if (!contactId || !workflow) return [];
     return [...contactActivity]
       .filter(
@@ -221,7 +214,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
           a.source === workflow.name,
       )
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [contactActivity, contactId, workflow]);
+  })();
 
   if (!open || !contact || !enrollment || !workflow) return null;
 
@@ -274,41 +267,13 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
         {/* Header — full width */}
         <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-base font-semibold">Contact in Flow</DialogTitle>
-              {isEditing && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-                  Editing Journey
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {!isCompleted && (
-                isEditing ? (
-                  <button
-                    onClick={exitEditMode}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors"
-                  >
-                    <Check className="h-3 w-3" />
-                    Done Editing
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <Pencil className="h-3 w-3" />
-                    Edit Journey
-                  </button>
-                )
-              )}
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <DialogTitle className="text-base font-semibold">Contact in Flow</DialogTitle>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </DialogHeader>
 
@@ -346,6 +311,38 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
               {/* Step Progress tab */}
               {activeTab === "steps" && (
                 <div className="space-y-2">
+                  {/* Edit Journey banner */}
+                  {!isCompleted && (
+                    isEditing ? (
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-green-50 border border-green-200 mb-1">
+                        <div className="flex items-center gap-2">
+                          <Pencil className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                          <span className="text-xs text-green-800 font-medium">You're editing the journey. Changes will be saved when you click Done Editing.</span>
+                        </div>
+                        <button
+                          onClick={exitEditMode}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors shrink-0"
+                        >
+                          <Check className="h-3 w-3" />
+                          Done Editing
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-100 border border-gray-200 mb-1">
+                        <div className="flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+                          <span className="text-xs text-gray-700 font-medium">Read-only — click Edit Journey to skip or modify steps.</span>
+                        </div>
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-gray-700 text-white hover:bg-gray-800 transition-colors shrink-0"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Edit Journey
+                        </button>
+                      </div>
+                    )
+                  )}
                   {/* Bulk skip toolbar */}
                   {selectedStepIds.size > 0 && (
                     <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/60 border border-border mb-3">
@@ -542,7 +539,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       const isDone = status === "done";
                       const isPending = status === "pending";
                       const isFuture = isPending && idx > firstPendingIdx;
-                      const canSkip = isPending && !isCompleted && step.actionType !== "delay";
+                      const canSkip = isPending && !isCompleted;
                       const isExpanded = expandedSteps.has(step.id);
                       const isSelected = selectedStepIds.has(step.id);
 
@@ -592,7 +589,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                               : "border-border bg-card"
                           }`}>
                             <div className="flex items-center gap-2 px-3 py-2.5">
-                              {canSkip ? (
+                              {isEditing && (canSkip ? (
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
@@ -601,7 +598,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                 />
                               ) : (
                                 <div className="w-3.5 shrink-0" />
-                              )}
+                              ))}
 
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                                 isSkipped ? "bg-gray-100 text-gray-300" : isCustom ? "bg-violet-100 text-violet-600" : STEP_ICON_BG[step.actionType] ?? "bg-muted text-muted-foreground"
@@ -673,7 +670,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                   </span>
                                 )}
 
-                                {canSkip && !isSelected && (
+                                {isEditing && canSkip && !isSelected && (
                                   <button
                                     onClick={() => askConfirm(
                                       `Skip "${step.name}"?`,
@@ -691,7 +688,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                   </button>
                                 )}
 
-                                {isSkipped && (
+                                {isEditing && isSkipped && (
                                   <button
                                     onClick={() => askConfirm(
                                       `Restore "${step.name}"?`,

@@ -28,7 +28,7 @@ interface DialerPanelProps {
   offsetRight?: number;
 }
 
-export function DialerPanel({ onClose, initialNumber, offsetRight = 24 }: DialerPanelProps) {
+export function DialerPanel({ onClose, initialNumber, offsetRight: _offsetRight = 24 }: DialerPanelProps) {
   const { session, handleCallStarted, handleCallEnded, closeDialer } = useDialer();
   const { voicemailScripts } = useAppData();
 

@@ -16,7 +16,7 @@ interface CategoryManagerModalProps {
   onRename: (oldName: string, newName: string) => void;
 }
 
-export function CategoryManagerModal({ open, title, categories, builtins, onOpenChange, onAdd, onDelete, onRename }: CategoryManagerModalProps) {
+export function CategoryManagerModal({ open, title, categories, builtins: _builtins, onOpenChange, onAdd, onDelete, onRename }: CategoryManagerModalProps) {
   const [inputValue, setInputValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editingCat, setEditingCat] = useState<string | null>(null);
@@ -89,7 +89,6 @@ export function CategoryManagerModal({ open, title, categories, builtins, onOpen
 
         <div className="overflow-y-auto max-h-72 py-1">
           {categories.map((cat) => {
-            const isBuiltin = builtins.includes(cat);
             const isConfirming = confirmDelete === cat;
             const isEditing = editingCat === cat;
 

@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, ClipboardPlus, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
 import type { Contact, WorkflowEnrollment, WorkflowStep } from "../../types";
 import { CURRENT_USER } from "../../config/featureFlags";
@@ -222,7 +223,7 @@ function ContactCard({
   columnId,
   currentStep,
   scheduledDate,
-  onCreateTask,
+  enrollmentStatus,
   onCardClick,
 }: {
   contact: Contact;
@@ -230,7 +231,7 @@ function ContactCard({
   columnId: string;
   currentStep: WorkflowStep | null;
   scheduledDate: Date | null;
-  onCreateTask: () => void;
+  enrollmentStatus: string;
   onCardClick: () => void;
 }) {
   const avatarClass = USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700";
@@ -288,48 +289,41 @@ function ContactCard({
         </div>
       </div>
 
-      {/* Footer: due date chip + action */}
-      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          {/* Due date chip */}
-          {dueStr && (
-            <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-              Due {dueStr}
-            </span>
-          )}
-          {isCompleted && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-600">
-              <Check className="h-2.5 w-2.5" /> Done
-            </span>
-          )}
-          {isCallReminder && !isCompleted && (
-            <span className="text-[10px] text-muted-foreground truncate">
-              {CURRENT_USER}
-            </span>
-          )}
-          {/* Auto status chips */}
-          {isAutoStep && cantSend && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
-              <AlertTriangle className="h-2.5 w-2.5" />
-              Can't Send
-            </span>
-          )}
-          {isAutoStep && !cantSend && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100">
-              <Clock className="h-2.5 w-2.5" />
-              Scheduled
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={(e) => { e.stopPropagation(); onCreateTask(); }}
-            title="Create task"
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-          >
-            <ClipboardPlus className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      {/* Footer: chips */}
+      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center gap-1.5 min-w-0 flex-wrap">
+        {dueStr && (
+          <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            Due {dueStr}
+          </span>
+        )}
+        {isCompleted && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+            <Check className="h-2.5 w-2.5" /> Done
+          </span>
+        )}
+        {isCallReminder && !isCompleted && (
+          <span className="text-[10px] text-muted-foreground truncate">
+            {CURRENT_USER}
+          </span>
+        )}
+        {enrollmentStatus === "paused" && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
+            <PauseCircle className="h-2.5 w-2.5" />
+            Paused
+          </span>
+        )}
+        {isAutoStep && cantSend && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
+            <AlertTriangle className="h-2.5 w-2.5" />
+            Can't Send
+          </span>
+        )}
+        {isAutoStep && !cantSend && enrollmentStatus !== "paused" && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100">
+            <Clock className="h-2.5 w-2.5" />
+            Scheduled
+          </span>
+        )}
       </div>
     </div>
   );
@@ -344,7 +338,6 @@ function KanbanColumn({
   contacts,
   currentStep,
   handleDrop,
-  handleCreateTask,
   handleCardClick,
 }: {
   colId: string;
@@ -353,7 +346,6 @@ function KanbanColumn({
   contacts: Contact[];
   currentStep: WorkflowStep | null;
   handleDrop: (enrollmentId: string, targetStepId: string) => void;
-  handleCreateTask: (contactId: string, contactName: string) => void;
   handleCardClick: (contactId: string, enrollmentId: string) => void;
 }) {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragItem, unknown, { isOver: boolean; canDrop: boolean }>({
@@ -403,7 +395,7 @@ function KanbanColumn({
               columnId={colId}
               currentStep={currentStep}
               scheduledDate={scheduledDate}
-              onCreateTask={() => handleCreateTask(contact.id, `${contact.firstName} ${contact.lastName}`)}
+              enrollmentStatus={enrollment.status}
               onCardClick={() => handleCardClick(contact.id, enrollment.id)}
             />
           );
@@ -426,7 +418,7 @@ export function WorkflowBoard() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleCreateTask, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
+  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
 
   const navState = location.state as { openContactId?: string; openEnrollmentId?: string } | null;
 
@@ -442,8 +434,15 @@ export function WorkflowBoard() {
   const [search, setSearch] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
 
-  // List-only filter
-  const [listStatusFilter, setListStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const [boardTab, setBoardTab] = useState<"enrollment" | "settings">("enrollment");
+
+  const [pauseConfirm, setPauseConfirm] = useState<{
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const workflow = workflows.find((wf) => wf.id === id);
   const myEnrollments = workflowEnrollments.filter((e) => e.workflowId === id);
@@ -493,16 +492,6 @@ export function WorkflowBoard() {
     toast.success("Contact moved");
   };
 
-  const handleTask = (contactId: string, contactName: string) => {
-    handleCreateTask({
-      contactId,
-      contactName,
-      taskType: "Follow-up",
-      dueDate: new Date(),
-      objective: "",
-    });
-    toast.success(`Task created for ${contactName}`);
-  };
 
   // ── List view data (must be before any conditional returns) ────────────
   const listRows = useMemo(() => {
@@ -524,10 +513,10 @@ export function WorkflowBoard() {
           if (!name.includes(q) && !email.includes(q)) return false;
         }
         if (stepFilter !== "all" && colStepId !== stepFilter) return false;
-        if (listStatusFilter !== "all" && enrollment.status !== listStatusFilter) return false;
+        if (statusFilter !== "all" && enrollment.status !== statusFilter) return false;
         return true;
       });
-  }, [myEnrollments, contacts, actionSteps, search, stepFilter, listStatusFilter]);
+  }, [myEnrollments, contacts, actionSteps, search, stepFilter, statusFilter]);
 
   const completedRows = useMemo(() => {
     return myEnrollments
@@ -578,7 +567,6 @@ export function WorkflowBoard() {
     );
   }
 
-  const emptyState = myEnrollments.length === 0;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -733,9 +721,15 @@ export function WorkflowBoard() {
                               .filter(({ enrollment, step }) => selectedAutomationKeys.has(`${enrollment.id}::${step.id}`))
                               .map(({ enrollment }) => enrollment.id),
                           )];
-                          handleBulkSetEnrollmentStatus(enrollmentIds, "paused");
-                          setSelectedAutomationKeys(new Set());
-                          toast.success(`Paused ${enrollmentIds.length} enrollment${enrollmentIds.length !== 1 ? "s" : ""}`);
+                          setPauseConfirm({
+                            title: `Pause ${enrollmentIds.length} enrollment${enrollmentIds.length !== 1 ? "s" : ""}?`,
+                            description: `These contacts will stop receiving automated steps immediately. No emails or SMS will be sent until the enrollment is manually resumed. This does not remove contacts from the flow.`,
+                            onConfirm: () => {
+                              handleBulkSetEnrollmentStatus(enrollmentIds, "paused");
+                              setSelectedAutomationKeys(new Set());
+                              toast.success(`Paused ${enrollmentIds.length} enrollment${enrollmentIds.length !== 1 ? "s" : ""}`);
+                            },
+                          });
                         }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-background hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors text-muted-foreground"
                       >
@@ -857,8 +851,15 @@ export function WorkflowBoard() {
                                         </button>
                                         <button
                                           onClick={() => {
-                                            handleSetEnrollmentStatus(enrollment.id, "paused");
-                                            toast.success(`Enrollment paused for ${contact?.firstName ?? "contact"}`);
+                                            const name = contact ? `${contact.firstName} ${contact.lastName}` : "this contact";
+                                            setPauseConfirm({
+                                              title: `Pause enrollment for ${name}?`,
+                                              description: `${name} will stop receiving automated steps immediately. No emails or SMS will be sent until the enrollment is manually resumed. Their progress is saved and they can be reactivated at any time.`,
+                                              onConfirm: () => {
+                                                handleSetEnrollmentStatus(enrollment.id, "paused");
+                                                toast.success(`Enrollment paused for ${contact?.firstName ?? "contact"}`);
+                                              },
+                                            });
                                           }}
                                           className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-border hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors text-muted-foreground"
                                           title="Pause entire enrollment"
@@ -892,64 +893,66 @@ export function WorkflowBoard() {
         onClose={() => { setSelectedContactId(null); setSelectedEnrollmentId(null); }}
       />
       {/* Sticky header */}
-      <div className="border-b border-border bg-card px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/email-workflows/flows")}
-            className="p-1.5 rounded hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <div className="flex flex-col">
+      <div className="border-b border-border bg-card px-8 py-4 flex items-center gap-3 sticky top-0 z-10">
+        <button
+          onClick={() => navigate("/email-workflows/flows")}
+          className="p-1.5 rounded hover:bg-muted transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <div className="flex items-center justify-between flex-1 gap-4">
+          <div className="flex flex-col gap-0.5">
             <h2 className="text-xl font-semibold text-foreground">{workflow.name}</h2>
+            <span className="text-xs text-muted-foreground">
+              {workflow.description || "No description"}
+            </span>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span
+              className={`px-3 py-0.5 rounded-full text-xs ${
+                workflow.status === "active"
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-gray-100 text-gray-700 border border-gray-200"
+              }`}
+            >
+              {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
+            </span>
             {segment && (
-              <span className="text-xs text-muted-foreground hidden sm:block">
-                Segment: <span className="font-medium">{segment.name}</span>
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Applied segment:</span>
+                <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
+                  {segment.name}
+                </span>
+              </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              if (workflow.status !== "active") {
-                handleActivateWorkflow(workflow.id);
-                toast.success("Flow activated — contacts enrolled");
-              } else {
-                handleUpdateWorkflow(workflow.id, { status: "paused" });
-                toast.success("Flow paused");
-              }
-            }}
-            title={workflow.status === "active" ? "Deactivate flow" : "Activate flow"}
-            className="flex items-center gap-2"
-          >
-            <div className="relative rounded-full transition-colors duration-200 bg-transparent"
-              style={{ height: "18px", width: "32px" }}
-            >
-              <div className={`absolute inset-0 rounded-full transition-colors duration-200 ${workflow.status === "active" ? "bg-green-500" : "bg-gray-300"}`} />
-              <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all duration-200 ${workflow.status === "active" ? "left-[14px]" : "left-0.5"}`} />
-            </div>
-            <span className={`text-xs font-medium ${workflow.status === "active" ? "text-green-700" : "text-muted-foreground"}`}>
-              {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
-            </span>
-          </button>
-          <Button variant="secondary" size="sm" onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Flow
-          </Button>
-        </div>
       </div>
 
-      {/* Steps timeline */}
-      <StepsTimeline steps={sortedSteps} enrollmentStats={enrollmentStats} />
+      {/* Tab bar */}
+      <div className="border-b border-border bg-card px-8 flex gap-1">
+        {(["enrollment", "settings"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setBoardTab(tab)}
+            className={`relative px-4 py-3 text-sm transition-colors capitalize ${
+              boardTab === tab
+                ? "font-semibold text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab}
+            {boardTab === tab && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+        ))}
+      </div>
 
-      {/* Body */}
-      {emptyState ? (
-        <div className="flex flex-col items-center justify-center flex-1 gap-3 text-muted-foreground">
-          <p className="text-lg font-medium text-foreground">No contacts enrolled yet</p>
-          <p className="text-sm">Contacts matching this flow's segment will appear here once enrolled.</p>
-        </div>
-      ) : viewMode === "kanban" ? (
+      {boardTab === "enrollment" && (
+        <>
+          <StepsTimeline steps={sortedSteps} enrollmentStats={enrollmentStats} />
+          {viewMode === "kanban" ? (
         /* ── Kanban view ─────────────────────────────────────────────────── */
         <DndProvider backend={HTML5Backend}>
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -983,6 +986,16 @@ export function WorkflowBoard() {
                   className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
+              {/* Status filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="all">All enrollment statuses</option>
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+              </select>
               <div className="ml-auto flex items-center gap-2">
                 <button
                   onClick={() => setShowAutomationsModal(true)}
@@ -1009,6 +1022,7 @@ export function WorkflowBoard() {
               .map(({ id: colId, label, step }) => {
                   const colEnrollments = myEnrollments.filter((e) => {
                     if (getContactColumn(e) !== colId) return false;
+                    if (statusFilter !== "all" && e.status !== statusFilter) return false;
                     if (search) {
                       const contact = contacts.find((c) => c.id === e.contactId);
                       if (!contact) return false;
@@ -1027,7 +1041,6 @@ export function WorkflowBoard() {
                       contacts={contacts}
                       currentStep={step}
                       handleDrop={handleDrop}
-                      handleCreateTask={handleTask}
                       handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
                     />
                   );
@@ -1082,11 +1095,11 @@ export function WorkflowBoard() {
               ))}
             </select>
             <select
-              value={listStatusFilter}
-              onChange={(e) => setListStatusFilter(e.target.value)}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
               className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">All enrollment statuses</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
               <option value="paused">Paused</option>
@@ -1126,7 +1139,9 @@ export function WorkflowBoard() {
                   {listRows.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground text-sm">
-                        No contacts match the current filters.
+                        {myEnrollments.length === 0
+                          ? "No contacts enrolled yet. Contacts matching this flow's segment will appear here once enrolled."
+                          : "No contacts match the current filters."}
                       </td>
                     </tr>
                   ) : (
@@ -1207,6 +1222,99 @@ export function WorkflowBoard() {
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {boardTab === "settings" && (
+        <div className="flex-1 overflow-auto px-8 py-6">
+          <div className="max-w-2xl mx-auto space-y-6">
+
+            {/* Status */}
+            <div className="bg-card border border-border rounded-xl px-6 py-5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                Status
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className={`text-sm font-semibold ${workflow.status === "active" ? "text-green-700" : "text-muted-foreground"}`}>
+                    {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {workflow.status === "active"
+                      ? "This flow is live and contacts will be enrolled automatically."
+                      : "This flow is paused and will not enroll new contacts."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (workflow.status !== "active") {
+                      handleActivateWorkflow(workflow.id);
+                      toast.success("Flow activated — contacts enrolled");
+                    } else {
+                      setPauseConfirm({
+                        title: "Pause this flow?",
+                        description: "All active enrollments will stop progressing immediately. No emails, SMS, or call reminders will be sent until the flow is reactivated. Contacts remain enrolled and will resume from where they left off once the flow is turned back on.",
+                        onConfirm: () => {
+                          handleUpdateWorkflow(workflow.id, { status: "paused" });
+                          toast.success("Flow paused");
+                        },
+                      });
+                    }
+                  }}
+                  title={workflow.status === "active" ? "Deactivate flow" : "Activate flow"}
+                  className="flex items-center gap-2 flex-shrink-0"
+                >
+                  <div className="relative rounded-full bg-transparent" style={{ height: "18px", width: "32px" }}>
+                    <div className={`absolute inset-0 rounded-full transition-colors duration-200 ${workflow.status === "active" ? "bg-green-500" : "bg-gray-300"}`} />
+                    <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all duration-200 ${workflow.status === "active" ? "left-[14px]" : "left-0.5"}`} />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Flow configuration */}
+            <div className="bg-card border border-border rounded-xl px-6 py-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Flow Configuration
+                </p>
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Flow
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Modify steps, timing, and templates for this flow.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Pause confirm modal */}
+      <AlertDialog open={pauseConfirm !== null} onOpenChange={(open) => { if (!open) setPauseConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <PauseCircle className="h-5 w-5 text-amber-500" />
+              {pauseConfirm?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pauseConfirm?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { pauseConfirm?.onConfirm(); setPauseConfirm(null); }}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              Pause
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

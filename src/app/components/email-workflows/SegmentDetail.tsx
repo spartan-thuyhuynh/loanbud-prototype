@@ -112,38 +112,34 @@ export function SegmentDetail() {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card px-8 py-6">
-        <button
-          onClick={() => navigate("/email-workflows/user-segments")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back to Segments</span>
-        </button>
+      <div className="border-b border-border bg-card px-8 sticky top-0 z-10">
+        <div className="py-4 flex items-center gap-3">
+          <button
+            onClick={() => navigate("/email-workflows/user-segments")}
+            className="p-1.5 rounded hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+          </button>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="w-5 h-5 text-primary" />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-foreground">{segment.name}</h2>
+              <span
+                className={`px-3 py-0.5 rounded-full text-xs ${
+                  segment.status === "Active"
+                    ? "bg-green-100 text-green-700 border border-green-200"
+                    : "bg-gray-100 text-gray-700 border border-gray-200"
+                }`}
+              >
+                {segment.status}
+              </span>
             </div>
-            <h1
-              className="text-3xl"
-              style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-            >
-              {segment.name}
-            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {segment.description ?? "No description"}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-3 py-0.5 rounded-full text-xs ${
-                segment.status === "Active"
-                  ? "bg-green-100 text-green-700 border border-green-200"
-                  : "bg-gray-100 text-gray-700 border border-gray-200"
-              }`}
-            >
-              {segment.status}
-            </span>
+          <div className="ml-auto">
             <button
               onClick={() => navigate("/email-workflows/flows/new", { state: { segmentId: segment.id } })}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all"
@@ -153,13 +149,14 @@ export function SegmentDetail() {
             </button>
           </div>
         </div>
+        <div className="-mx-8 border-t border-border" />
 
         {/* Rules summary */}
         {(segment.filters.length > 0 ||
           (segment.excludeFilters?.length ?? 0) > 0 ||
           (segment.includedContactIds?.length ?? 0) > 0 ||
           (segment.excludedContactIds?.length ?? 0) > 0) && (
-          <div className="mt-5 space-y-2">
+          <div className="mt-3 space-y-2">
             {/* Include filters */}
             {segment.filters.length > 0 && (
               <div className="flex items-start gap-3 flex-wrap">
@@ -234,7 +231,7 @@ export function SegmentDetail() {
             ...(excludedCount > 0 ? [{ icon: <Ban className="w-4.5 h-4.5 text-red-400" />, label: "Excluded", value: `${excludedCount} contact${excludedCount !== 1 ? "s" : ""}` }] : []),
           ];
           return (
-            <div className="mt-4 flex items-stretch gap-3">
+            <div className="mt-3 pb-5 flex items-stretch gap-3">
               {stats.map((s) => (
                 <div key={s.label} className="flex items-center gap-2 px-3 py-3 rounded-lg bg-white border border-gray-200 min-w-0 flex-1">
                   {s.icon}
