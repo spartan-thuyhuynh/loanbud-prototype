@@ -19,13 +19,6 @@ import {
 
 const EMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Initial Outreach": "bg-blue-50 text-blue-700 border-blue-100",
-  "Follow-up":        "bg-amber-50 text-amber-700 border-amber-100",
-  "Nurture":          "bg-green-50 text-green-700 border-green-100",
-  "Re-engagement":    "bg-purple-50 text-purple-700 border-purple-100",
-  "Custom":           "bg-gray-100 text-gray-600 border-gray-200",
-};
 
 const emptyForm = {
   name: "",
@@ -202,7 +195,7 @@ export function EmailTemplatesTab() {
               >
                 <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{t.name}</p>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${CATEGORY_COLORS[t.category] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>{t.category}</span>
+                  <span className={"text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border"}>{t.category}</span>
                   <span className="text-[10px] text-muted-foreground capitalize">{t.senderType.replace("-", " ")}</span>
                 </div>
               </button>
@@ -211,46 +204,38 @@ export function EmailTemplatesTab() {
         </TemplateSidebarShell>
 
         {selected ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <TemplateDetailHeader
-              name={selected.name}
-              subtitle={`${selected.category} · ${selected.senderType.replace("-", " ")}`}
-              itemId={selected.id}
-              confirmDeleteId={confirmDeleteId}
-              onEdit={openEdit}
-              onDelete={() => handleDelete(selected.id)}
-              onRequestDelete={setConfirmDeleteId}
-              onCancelDelete={() => setConfirmDeleteId(null)}
-            />
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              <DetailSection label="Subject Line" contentClassName="px-4 py-3">
-                <p className="text-sm text-foreground">{selected.subject}</p>
-              </DetailSection>
-              <DetailSection label="Body">
-                <div className="space-y-3">
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.body}</p>
-                  {viewVariables.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-border">
-                      <p className="text-[10px] uppercase tracking-widest font-medium text-muted-foreground">Variables</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {viewVariables.map((v) => <Badge key={v} variant="secondary" className="text-xs font-mono px-2 py-0.5">{`{{${v}}}`}</Badge>)}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div className="rounded-xl border border-border bg-card">
+              <TemplateDetailHeader
+                name={selected.name}
+                subtitle={<><span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">{selected.category}</span><span className="text-xs text-muted-foreground capitalize">{selected.senderType.replace("-", " ")}</span></>}
+                itemId={selected.id}
+                confirmDeleteId={confirmDeleteId}
+                onEdit={openEdit}
+                onDelete={() => handleDelete(selected.id)}
+                onRequestDelete={setConfirmDeleteId}
+                onCancelDelete={() => setConfirmDeleteId(null)}
+              />
+            </div>
+            <div>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+                <DetailSection label="Subject Line" contentClassName="px-4 py-3">
+                  <p className="text-sm text-foreground">{selected.subject}</p>
+                </DetailSection>
+                <DetailSection label="Body">
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.body}</p>
+                    {viewVariables.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-border">
+                        <p className="text-[10px] uppercase tracking-widest font-medium text-muted-foreground">Variables</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {viewVariables.map((v) => <Badge key={v} variant="secondary" className="text-xs font-mono px-2 py-0.5">{`{{${v}}}`}</Badge>)}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </DetailSection>
-              <DetailSection label="Details" contentClassName="px-4 py-3">
-                <div className="flex gap-6">
-                  <div>
-                    <FieldLabel>Category</FieldLabel>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded border ${CATEGORY_COLORS[selected.category] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>{selected.category}</span>
+                    )}
                   </div>
-                  <div>
-                    <FieldLabel>Sender Type</FieldLabel>
-                    <p className="text-sm text-foreground capitalize">{selected.senderType.replace("-", " ")}</p>
-                  </div>
-                </div>
-              </DetailSection>
+                </DetailSection>
+              </div>
             </div>
           </div>
         ) : (

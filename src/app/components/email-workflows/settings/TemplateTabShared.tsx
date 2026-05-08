@@ -111,7 +111,7 @@ export function TemplateEmptyState({
 
 interface TemplateDetailHeaderProps {
   name: string;
-  subtitle: string;
+  subtitle: React.ReactNode;
   itemId: string;
   confirmDeleteId: string | null;
   onEdit: () => void;
@@ -131,10 +131,10 @@ export function TemplateDetailHeader({
   onCancelDelete,
 }: TemplateDetailHeaderProps) {
   return (
-    <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between shrink-0">
+    <div className="px-6 py-4 flex items-center justify-between shrink-0">
       <div>
         <h2 className="text-base font-semibold text-foreground">{name}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">{subtitle}</div>
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={onEdit}>

@@ -21,12 +21,6 @@ import {
 
 const VOICEMAIL_CATEGORY_BUILTINS = ["Initial Outreach", "Follow-up", "Re-engagement", "Custom"];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Initial Outreach": "bg-blue-50 text-blue-700 border-blue-100",
-  "Follow-up":        "bg-amber-50 text-amber-700 border-amber-100",
-  "Re-engagement":    "bg-purple-50 text-purple-700 border-purple-100",
-  "Custom":           "bg-gray-100 text-gray-600 border-gray-200",
-};
 
 const emptyForm = {
   name: "",
@@ -294,8 +288,8 @@ export function VoicemailScriptsTab() {
                   {s.audioUrl && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" title="Has recording" />}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${CATEGORY_COLORS[s.category] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>{s.category}</span>
-                  <span className="text-[10px] text-muted-foreground">{formatDuration(s.estimatedDurationSeconds)}</span>
+                  <span className={"text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border"}>{s.category}</span>
+                  {activeType === "record" && <span className="text-[10px] text-muted-foreground">{formatDuration(s.estimatedDurationSeconds)}</span>}
                 </div>
               </button>
             );
@@ -303,58 +297,64 @@ export function VoicemailScriptsTab() {
         </TemplateSidebarShell>
 
         {selected ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <TemplateDetailHeader
-              name={selected.name}
-              subtitle={`${selected.category} · ${formatDuration(selected.estimatedDurationSeconds)}${selected.audioUrl ? " · Recording attached" : ""}`}
-              itemId={selected.id}
-              confirmDeleteId={confirmDeleteId}
-              onEdit={openEdit}
-              onDelete={() => handleDelete(selected.id)}
-              onRequestDelete={setConfirmDeleteId}
-              onCancelDelete={() => setConfirmDeleteId(null)}
-            />
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              {selected.type === "record" && (
-                <DetailSection label="Recording" contentClassName="p-4">
-                  {selected.audioUrl ? (
-                    <div className="border border-border rounded-lg overflow-hidden">
-                      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/60 bg-muted/20">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <Mic className="w-3 h-3 text-primary" />
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div className="rounded-xl border border-border bg-card">
+              <TemplateDetailHeader
+                name={selected.name}
+                subtitle={selected.type === "record"
+                  ? <><span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">{selected.category}</span><span className="text-xs text-muted-foreground">{formatDuration(selected.estimatedDurationSeconds)}{selected.audioUrl ? " · Recording attached" : ""}</span></>
+                  : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">{selected.category}</span>}
+                itemId={selected.id}
+                confirmDeleteId={confirmDeleteId}
+                onEdit={openEdit}
+                onDelete={() => handleDelete(selected.id)}
+                onRequestDelete={setConfirmDeleteId}
+                onCancelDelete={() => setConfirmDeleteId(null)}
+              />
+            </div>
+            <div>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+                {selected.type === "record" && (
+                  <DetailSection label="Recording" contentClassName="p-4">
+                    {selected.audioUrl ? (
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/60 bg-muted/20">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Mic className="w-3 h-3 text-primary" />
+                          </div>
+                          <p className="text-xs font-medium text-foreground truncate">
+                            {selected.audioUrl.startsWith("data:") ? "Uploaded recording" : selected.audioUrl.split("/").pop()}
+                          </p>
                         </div>
-                        <p className="text-xs font-medium text-foreground truncate">
-                          {selected.audioUrl.startsWith("data:") ? "Uploaded recording" : selected.audioUrl.split("/").pop()}
-                        </p>
+                        <div className="px-4 py-3">
+                          <AudioPlayer src={selected.audioUrl} />
+                        </div>
                       </div>
-                      <div className="px-4 py-3">
-                        <AudioPlayer src={selected.audioUrl} />
+                    ) : (
+                      <div className="flex items-center gap-2 py-4 px-4 rounded-lg border border-dashed border-border text-muted-foreground">
+                        <Mic className="w-4 h-4 opacity-40" />
+                        <p className="text-sm">No recording attached.</p>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 py-4 px-4 rounded-lg border border-dashed border-border text-muted-foreground">
-                      <Mic className="w-4 h-4 opacity-40" />
-                      <p className="text-sm">No recording attached.</p>
-                    </div>
-                  )}
+                    )}
+                  </DetailSection>
+                )}
+                <DetailSection label={selected.type === "record" ? "Transcript" : "Script"} contentClassName="p-4">
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      {selected.type === "record" ? "Word-for-word text of the recording." : "Read this script aloud when leaving a voicemail."}
+                    </p>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.scriptText}</p>
+                    {variables.length > 0 && (
+                      <div className="space-y-1.5 pt-1 border-t border-border">
+                        <p className="text-[10px] uppercase tracking-widest font-medium text-muted-foreground pt-2">Variables</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {variables.map((v) => <Badge key={v} variant="secondary" className="text-xs font-mono px-2 py-0.5">{`{{${v}}}`}</Badge>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </DetailSection>
-              )}
-              <DetailSection label={selected.type === "record" ? "Transcript" : "Script"} contentClassName="p-4">
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground -mt-1">
-                    {selected.type === "record" ? "Word-for-word text of the recording." : "Read this script aloud when leaving a voicemail."}
-                  </p>
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.scriptText}</p>
-                  {variables.length > 0 && (
-                    <div className="space-y-1.5 pt-1 border-t border-border">
-                      <p className="text-[10px] uppercase tracking-widest font-medium text-muted-foreground pt-2">Variables</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {variables.map((v) => <Badge key={v} variant="secondary" className="text-xs font-mono px-2 py-0.5">{`{{${v}}}`}</Badge>)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </DetailSection>
+              </div>
             </div>
           </div>
         ) : (
