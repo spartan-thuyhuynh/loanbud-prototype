@@ -121,22 +121,22 @@ export function SegmentDetail() {
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
           </button>
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between flex-1 gap-4">
+            <div className="flex flex-col gap-0.5">
               <h2 className="text-xl font-semibold text-foreground">{segment.name}</h2>
-              <span
-                className={`px-3 py-0.5 rounded-full text-xs ${
-                  segment.status === "Active"
-                    ? "bg-green-100 text-green-700 border border-green-200"
-                    : "bg-gray-100 text-gray-700 border border-gray-200"
-                }`}
-              >
-                {segment.status}
-              </span>
+              <p className="text-xs text-muted-foreground">
+                {segment.description || "No description"}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {segment.description ?? "No description"}
-            </p>
+            <span
+              className={`px-3 py-0.5 rounded-full text-xs shrink-0 ${
+                segment.status === "Active"
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-gray-100 text-gray-700 border border-gray-200"
+              }`}
+            >
+              {segment.status}
+            </span>
           </div>
 
           <div className="ml-auto">
