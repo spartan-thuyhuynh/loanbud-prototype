@@ -23,6 +23,7 @@ import { getTaskTypeConfig } from "@/app/lib/taskTypeRegistry";
 import { useDialer } from "@/app/contexts/DialerContext";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { OutcomeCapturePanel } from "./OutcomeCapturePanel";
+import { CreateTaskModal } from "./CreateTaskModal";
 import { QuickEmailModal } from "./QuickEmailModal";
 
 const TEAM_MEMBERS = ["John Doe", "Mike Johnson", "Sarah Chen"];
@@ -188,6 +189,7 @@ export function TaskDetailPanel({
   const [showVmScript, setShowVmScript] = useState(false);
   const [showOutcomeCapture, setShowOutcomeCapture] = useState(false);
   const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<EditingField>(null);
@@ -209,7 +211,7 @@ export function TaskDetailPanel({
 
   const dialerOutcomePending =
     session?.taskId === task.id && session.status === "outcome-pending";
-  const shouldShowCapture = showOutcomeCapture || dialerOutcomePending;
+  const shouldShowCapture = showOutcomeCapture;
   const isActionable = task.status === "pending" || task.status === "overdue";
 
   const startEdit = (field: EditingField) => {
@@ -542,8 +544,98 @@ export function TaskDetailPanel({
               </div>
             )}
 
-            {/* ── Action button ──────────────────────────────────────────── */}
-            {isActionable && !shouldShowCapture && (
+            {/* ── Dialer showing disposition form ─────────────────────── */}
+            {isActionable && dialerOutcomePending && (
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                <Phone className="w-4 h-4 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-700 font-semibold">
+                  Call ended — select disposition in the dialer panel.
+                </p>
+              </div>
+            )}
+
+            {/* ── Disposition logged, pending confirmation ─────────────── */}
+            {isActionable && task.disposition && !dialerOutcomePending && !shouldShowCapture && (
+              <div className="space-y-2 mt-2">
+                {/* Call log card */}
+                <div className="border border-border rounded-xl overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border">
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">Call Log</span>
+                  </div>
+
+                  {/* Body */}
+                  <div className="px-3 py-3 space-y-2.5">
+                    {/* Call date/time */}
+                    {task.callStartedAt && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-muted-foreground">Date &amp; Time</span>
+                        <span className="text-xs font-medium text-foreground">{formatDateTime(task.callStartedAt)}</span>
+                      </div>
+                    )}
+
+                    {/* Disposition row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Disposition</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        task.disposition === "Answered"
+                          ? "bg-green-100 text-green-700"
+                          : task.disposition === "Left Voicemail" || task.disposition === "Drop Voicemail"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-700"
+                      }`}>
+                        {task.disposition}
+                      </span>
+                    </div>
+
+                    {/* Voicemail template (Drop Voicemail only) */}
+                    {task.disposition === "Drop Voicemail" && task.droppedVoicemailName && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-muted-foreground">Voicemail used</span>
+                        <span className="text-xs font-medium text-foreground">{task.droppedVoicemailName}</span>
+                      </div>
+                    )}
+
+                    {/* Assignee row */}
+                    {task.assignee && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-muted-foreground">Logged by</span>
+                        <span className="text-xs font-medium text-foreground">{task.assignee}</span>
+                      </div>
+                    )}
+
+                    {/* Note */}
+                    {task.outcome && (
+                      <div className="pt-1 border-t border-border/60">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Note</p>
+                        <p className="text-xs text-foreground leading-relaxed">{task.outcome}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    handleCompleteTaskWithOutcome(task.id, task.disposition!, task.outcome);
+                    onClose();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold tracking-wide bg-green-500 text-white hover:bg-green-600 active:scale-[0.99] shadow-sm transition-all"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Mark as Done
+                </button>
+                <button
+                  onClick={() => setShowFollowUpModal(true)}
+                  className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+                >
+                  Create follow-up task →
+                </button>
+              </div>
+            )}
+
+            {/* ── Action button (no disposition logged yet) ────────────── */}
+            {isActionable && !task.disposition && !dialerOutcomePending && !shouldShowCapture && (
               <div className="space-y-2 mt-2">
                 <button
                   onClick={handleAction}
@@ -558,7 +650,7 @@ export function TaskDetailPanel({
                   {actionLabel}
                 </button>
 
-                {config.primaryAction.handler === "dialer" && !dialerOutcomePending && (
+                {config.primaryAction.handler === "dialer" && (
                   <button
                     onClick={() => setShowOutcomeCapture(true)}
                     className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
@@ -577,17 +669,9 @@ export function TaskDetailPanel({
               </div>
             )}
 
-            {/* ── Outcome capture ────────────────────────────────────────── */}
+            {/* ── Outcome capture (manual only) ────────────────────────── */}
             {isActionable && shouldShowCapture && (
               <div className="space-y-3 mt-2">
-                {dialerOutcomePending && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-                    <span className="text-base">📞</span>
-                    <p className="text-xs text-amber-700 font-semibold">
-                      Call ended — how did it go?
-                    </p>
-                  </div>
-                )}
                 <OutcomeCapturePanel
                   taskType={task.taskType}
                   onSubmit={handleOutcomeSubmit}
@@ -612,6 +696,12 @@ export function TaskDetailPanel({
           onClose={() => setShowEmailComposer(false)}
         />
       )}
+
+      <CreateTaskModal
+        isOpen={showFollowUpModal}
+        onClose={() => setShowFollowUpModal(false)}
+        preselectedContactId={task.contactId}
+      />
     </>
   );
 }

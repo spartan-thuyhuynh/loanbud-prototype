@@ -68,9 +68,10 @@ export function TaskQueue({
   const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Detail panel state
-  const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
+  // Detail panel state — store ID only so it always reflects live taskItems
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const detailTask = detailTaskId ? (allTasks.find((t) => t.id === detailTaskId) ?? null) : null;
 
   // Assignee filter — only active when tasks prop is NOT passed (full Tasks page)
   const showAssigneeFilter = !tasksProp;
@@ -109,7 +110,7 @@ export function TaskQueue({
   ];
 
   const openDetailPanel = (task: TaskItem) => {
-    setDetailTask(task);
+    setDetailTaskId(task.id);
     setDetailOpen(true);
   };
 
@@ -515,7 +516,7 @@ export function TaskQueue({
         isOpen={detailOpen}
         onClose={() => {
           setDetailOpen(false);
-          setDetailTask(null);
+          setDetailTaskId(null);
         }}
         contactPhone={
           detailTask ? (contactById.get(detailTask.contactId)?.phone ?? undefined) : undefined

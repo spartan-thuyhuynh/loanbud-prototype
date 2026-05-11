@@ -541,7 +541,7 @@ export function WorkflowBuilder() {
   const [step1Error, setStep1Error] = useState("");
   const [saveError, setSaveError] = useState("");
   const [incompleteModalOpen, setIncompleteModalOpen] = useState(false);
-  const [incompleteCount, setIncompleteCount] = useState(0);
+  const [_incompleteCount, _setIncompleteCount] = useState(0);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const hasSeeded = useRef(false);
 

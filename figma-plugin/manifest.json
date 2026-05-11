@@ -1,0 +1,10 @@
+{
+  "name": "LoanBud CRM — Build Design File",
+  "id": "loanbud-crm-build-design",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

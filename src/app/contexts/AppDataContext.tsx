@@ -32,6 +32,7 @@ interface AppDataContextValue {
   applications: Application[];
   businessAcquisitions: BusinessAcquisitionRecord[];
   // Task handlers
+  handleLogCallDisposition: (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => void;
   handleCompleteTask: (taskId: string, disposition: string, note?: string) => void;
   /**
    * Complete a task AND apply outcome rules to advance/retry/skip the linked workflow step.
@@ -167,6 +168,43 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const updated = notifications.filter((n) => n.id !== id);
     setNotifications(updated);
     store.notifications.write(updated);
+  };
+
+  const handleLogCallDisposition = (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => {
+    const now = new Date();
+    const task = taskItems.find((ti) => ti.id === taskId);
+    const updatedItems = taskItems.map((ti) =>
+      ti.id === taskId
+        ? {
+            ...ti,
+            disposition,
+            dispositionLoggedAt: now,
+            ...(callStartedAt ? { callStartedAt } : {}),
+            ...(droppedVoicemailName ? { droppedVoicemailName } : {}),
+            ...(note ? { outcome: note } : {}),
+          }
+        : ti,
+    );
+    const newActivity: ContactActivityRecord = {
+      id: `activity-${Date.now()}`,
+      contactId: task?.contactId ?? "",
+      type: "call_outcome_captured",
+      taskType: task?.taskType,
+      disposition,
+      note: note || undefined,
+      source: task?.source,
+      sourceType: task?.sourceType,
+      stepName: task?.ruleName,
+      assignee: task?.assignee,
+      timestamp: now,
+    };
+    setTaskItems(updatedItems);
+    store.taskItems.write(updatedItems);
+    if (task) {
+      const updatedActivity = [...contactActivity, newActivity];
+      setContactActivity(updatedActivity);
+      store.contactActivity.write(updatedActivity);
+    }
   };
 
   const handleCompleteTask = (taskId: string, disposition: string, note?: string) => {
@@ -1627,6 +1665,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         segments,
         applications,
         businessAcquisitions,
+        handleLogCallDisposition,
         handleCompleteTask,
         handleCompleteTaskWithOutcome,
         handleRescheduleTask,

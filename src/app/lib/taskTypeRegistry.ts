@@ -51,9 +51,9 @@ export type DispositionSetId =
 export const DISPOSITION_SETS: Record<DispositionSetId, string[]> = {
   "call-dispositions": [
     "Answered",
-    "Voicemail Left",
-    "No Answer — Voicemail Drop",
-    "Not Needed",
+    "Left Voicemail",
+    "Drop Voicemail",
+    "No Answer",
   ],
   "voicemail-dispositions": [
     "Voicemail Dropped",
@@ -137,22 +137,9 @@ export interface TaskTypeConfig {
 
 export const DEFAULT_CALL_OUTCOME_RULES: OutcomeRule[] = [
   { disposition: "Answered", action: "advance" },
-  {
-    disposition: "Voicemail Left",
-    action: "advance-and-insert-followup",
-    followup: {
-      taskType: "Email",
-      delayDays: 1,
-      objective: "Follow up after voicemail — confirm receipt and offer to help",
-    },
-  },
-  {
-    disposition: "No Answer — Voicemail Drop",
-    action: "retry",
-    retryAfterDays: 2,
-    maxRetries: 3,
-  },
-  { disposition: "Not Needed", action: "skip-remaining" },
+  { disposition: "Left Voicemail", action: "advance" },
+  { disposition: "Drop Voicemail", action: "advance" },
+  { disposition: "No Answer", action: "advance" },
 ];
 
 export const DEFAULT_VOICEMAIL_OUTCOME_RULES: OutcomeRule[] = [
@@ -174,7 +161,7 @@ export const TASK_TYPE_REGISTRY: Record<TaskTypeId, TaskTypeConfig> = {
     completionFields: [
       {
         key: "disposition",
-        label: "Call Outcome",
+        label: "Call Disposition",
         type: "disposition-picker",
         required: true,
         dispositionSetId: "call-dispositions",

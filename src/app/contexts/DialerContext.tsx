@@ -48,11 +48,13 @@ interface DialerContextValue {
   /** Agent ended the call — transitions to outcome-pending */
   handleCallEnded: () => void;
 
-  /** Called from OutcomeCapturePanel inside TaskDetailPanel */
+  /** Called from DialerPanel after agent picks a call disposition */
   handleOutcomeSubmitted: (
     disposition: string,
     note: string | undefined,
-    onComplete: (taskId: string, disposition: string, note?: string) => void,
+    onLogDisposition: (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => void,
+    callStartedAt?: Date,
+    droppedVoicemailName?: string,
   ) => void;
 
   /** Close the dialer (free-dial or after outcome captured) */
@@ -118,11 +120,13 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     (
       disposition: string,
       note: string | undefined,
-      onComplete: (taskId: string, disposition: string, note?: string) => void,
+      onLogDisposition: (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => void,
+      callStartedAt?: Date,
+      droppedVoicemailName?: string,
     ) => {
       const taskId = session?.taskId;
       if (taskId) {
-        onComplete(taskId, disposition, note);
+        onLogDisposition(taskId, disposition, note, callStartedAt, droppedVoicemailName);
       }
       setSession((prev) =>
         prev ? { ...prev, status: "completed" } : prev,

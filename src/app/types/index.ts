@@ -173,6 +173,9 @@ export interface TaskItem {
   assignee?: string;
   status: "pending" | "completed" | "overdue" | "suspended";
   disposition?: string;
+  dispositionLoggedAt?: Date;
+  callStartedAt?: Date;
+  droppedVoicemailName?: string;
   ruleId?: string;
   ruleName?: string;
   triggerContext?: string;
