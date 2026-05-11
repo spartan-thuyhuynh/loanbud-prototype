@@ -22,7 +22,6 @@ interface SegmentBuilderProps {
 }
 
 type PinnedContact = { contactId: string; mode: "include" | "exclude" };
-type ActiveTab = "include" | "exclude";
 
 function makeGroup(): FilterGroup {
   return { id: `group-${Date.now()}-${Math.random()}`, filters: [], connectorAfter: "or" };
@@ -168,7 +167,6 @@ export function SegmentBuilder({
   const [segName, setSegName] = useState(initialName ?? "New segment");
   const [segDescription, setSegDescription] = useState(initialDescription ?? "");
   const [editingName, setEditingName] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("include");
   const [specificContacts, setSpecificContacts] = useState<PinnedContact[]>(() => {
     const inc = (initialSegment?.includedContactIds ?? []).map((id) => ({
       contactId: id,
@@ -267,7 +265,7 @@ export function SegmentBuilder({
   const handleRemovePinned = (contactId: string) =>
     setSpecificContacts((prev) => prev.filter((p) => p.contactId !== contactId));
 
-  const activeGroups = activeTab === "include" ? include : exclude;
+  const activeGroups = include;
 
   return (
     <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
@@ -332,58 +330,11 @@ export function SegmentBuilder({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {/* Tabs */}
           <div className="border border-border rounded-lg bg-card">
-            {/* Tab bar */}
-            <div className="flex border-b border-border rounded-t-lg overflow-hidden">
-              {(["include", "exclude"] as const).map((tab) => {
-                const isActive = activeTab === tab;
-                const filterCount =
-                  tab === "include"
-                    ? include.groups.flatMap((g) => g.filters).length +
-                      specificContacts.filter((p) => p.mode === "include").length
-                    : exclude.groups.flatMap((g) => g.filters).length +
-                      specificContacts.filter((p) => p.mode === "exclude").length;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm transition-colors relative ${
-                      isActive
-                        ? "font-semibold text-foreground"
-                        : "font-normal text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                    }`}
-                  >
-                    {tab === "include" ? "Include" : "Exclude"}
-                    {filterCount > 0 && (
-                      <span
-                        className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-full ${
-                          tab === "include"
-                            ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
-                            : "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400"
-                        }`}
-                      >
-                        {filterCount}
-                      </span>
-                    )}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Tab content */}
+            {/* Filter content */}
             <div className="px-5 py-4 space-y-3">
-              {activeTab === "include" && (
-                <p className="text-xs text-muted-foreground">
-                  Contacts matching these filters will be added to the segment.
-                </p>
-              )}
-              {activeTab === "exclude" && (
-                <p className="text-xs text-muted-foreground">
-                  Contacts matching these filters will be removed from the segment.
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Contacts matching these filters will be added to the segment.
+              </p>
 
               {/* Filter groups */}
               {activeGroups.groups.map((group, groupIdx) => (
@@ -414,14 +365,14 @@ export function SegmentBuilder({
               {/* Pinned contacts section */}
               <div className="flex items-center gap-3 pt-1">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground whitespace-nowrap">
-                  {activeTab === "include" ? "Always include" : "Always exclude"}
+                  Always include
                 </span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               <SpecificContactPicker
                 contacts={contacts}
                 pinned={specificContacts}
-                filterMode={activeTab}
+                filterMode="include"
                 onAdd={handleAddPinned}
                 onToggleMode={handleTogglePinnedMode}
                 onRemove={handleRemovePinned}

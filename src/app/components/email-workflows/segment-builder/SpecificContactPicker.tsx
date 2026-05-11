@@ -23,7 +23,7 @@ export function SpecificContactPicker({
   pinned,
   filterMode,
   onAdd,
-  onToggleMode,
+  onToggleMode: _onToggleMode,
   onRemove,
 }: SpecificContactPickerProps) {
   const [query, setQuery] = useState("");
@@ -110,7 +110,7 @@ export function SpecificContactPicker({
       </div>
 
       {/* Pinned contact cards */}
-      {pinnedContacts.map(({ contact, mode }) => (
+      {pinnedContacts.map(({ contact }) => (
         <div
           key={contact.id}
           className="flex items-center gap-3 px-4 py-3 bg-card border border-border rounded-lg"
@@ -126,18 +126,7 @@ export function SpecificContactPicker({
             </p>
             <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
           </div>
-          {/* Mode toggle pill */}
-          <button
-            onClick={() => onToggleMode(contact.id)}
-            className={`flex-shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${
-              mode === "include"
-                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800"
-                : "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20"
-            }`}
-          >
-            {mode === "include" ? "Include" : "Exclude"}
-          </button>
-          <button
+<button
             onClick={() => onRemove(contact.id)}
             className="flex-shrink-0 p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
           >
