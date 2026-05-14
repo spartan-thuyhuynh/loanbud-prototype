@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Lock, TriangleAlert } from "lucide-react";
 import type { Contact } from "@/app/types";
 import { getAvatarColor, getInitials } from "./segment-utils";
 
@@ -7,6 +7,8 @@ interface SegmentPreviewPanelProps {
   totalContacts: number;
   hasNoFilters: boolean;
   pinnedIncludeIds?: string[];
+  segmentType?: "dynamic" | "static";
+  onSegmentTypeChange?: (v: "dynamic" | "static") => void;
 }
 
 export function SegmentPreviewPanel({
@@ -14,6 +16,8 @@ export function SegmentPreviewPanel({
   totalContacts,
   hasNoFilters,
   pinnedIncludeIds,
+  segmentType,
+  onSegmentTypeChange,
 }: SegmentPreviewPanelProps) {
   const pinnedSet = new Set(pinnedIncludeIds ?? []);
   const previewContacts = matchingContacts.slice(0, 25);
@@ -31,6 +35,35 @@ export function SegmentPreviewPanel({
             Matching contacts
           </h3>
         </div>
+        {/* Static toggle */}
+        {onSegmentTypeChange && (
+          <div className="flex items-start justify-between gap-3 mb-3 p-2.5 rounded-lg bg-muted/40 border border-border">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground leading-none mb-1 flex items-center gap-1.5">
+                <Lock className="w-3 h-3 flex-shrink-0" />
+                Set as static segment
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Locks contacts at save time. Won't auto-add or auto-remove.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={segmentType === "static"}
+              onClick={() => onSegmentTypeChange(segmentType === "static" ? "dynamic" : "static")}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none mt-0.5 ${
+                segmentType === "static" ? "bg-primary" : "bg-muted-foreground/30"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                  segmentType === "static" ? "translate-x-4" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        )}
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-muted/40 rounded-lg px-3 py-2">

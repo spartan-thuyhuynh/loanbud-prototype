@@ -1,4 +1,4 @@
-import { Mail, CheckCircle2, Eye, Send, Clock, MessageSquare } from 'lucide-react';
+import { Mail, CheckCircle2, Eye, Send, Clock, MessageSquare, XCircle, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAppData } from '@/app/contexts/AppDataContext';
 import type { EmailRecord } from '@/app/types';
@@ -27,6 +27,34 @@ const statusConfig: Record<
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     label: 'Opened',
+  },
+  Failed: {
+    icon: XCircle,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    label: 'Failed',
+  },
+  Bounced: {
+    icon: XCircle,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    label: 'Bounced',
+  },
+  Undelivered: {
+    icon: AlertTriangle,
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+    label: 'Undelivered',
+  },
+  Received: {
+    icon: Mail,
+    color: 'text-teal-600',
+    bgColor: 'bg-teal-50',
+    borderColor: 'border-teal-200',
+    label: 'Received',
   },
 };
 

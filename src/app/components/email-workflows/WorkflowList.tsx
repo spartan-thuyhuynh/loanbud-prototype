@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Plus, LayoutList, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "../../contexts/AppDataContext";
+import { useVersion } from "../../contexts/VersionContext";
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   email: "Email",
@@ -16,7 +17,8 @@ function formatDate(d: Date): string {
 
 export function WorkflowList() {
   const navigate = useNavigate();
-  const { workflows } = useAppData();
+  const { workflows, workflowEnrollments, emailHistory } = useAppData();
+  const { version } = useVersion();
   const [search, setSearch] = useState("");
 
   const handleRowClick = (id: string) => {
@@ -74,7 +76,7 @@ export function WorkflowList() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border">
                 <tr>
-                  {["Name", "Segment", "Status", "Steps", "Activated"].map((col) => (
+                  {["Name", "Segment", "Status", ...(version === "v2" ? ["Replies"] : []), "Steps", "Activated"].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {col}
                     </th>
@@ -104,6 +106,23 @@ export function WorkflowList() {
                         {wf.status.charAt(0).toUpperCase() + wf.status.slice(1)}
                       </span>
                     </td>
+                    {version === "v2" && (() => {
+                      const unread = emailHistory.filter(
+                        (e) => e.direction === "inbound" && !e.read &&
+                          workflowEnrollments.some((en) => en.workflowId === wf.id && en.contactId === e.contactId),
+                      ).length;
+                      return (
+                        <td className="px-5 py-4">
+                          {unread > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/25">
+                              {unread} new
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      );
+                    })()}
                     <td className="px-5 py-4 text-muted-foreground">
                       <div className="flex flex-wrap gap-1">
                         {wf.steps.slice(0, 3).map((s) => (

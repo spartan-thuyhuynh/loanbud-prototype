@@ -113,7 +113,7 @@ interface WorkflowContactPanelProps {
 type TabId = "steps" | "history";
 
 export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId, onClose }: WorkflowContactPanelProps) {
-  const { contacts, workflowEnrollments, workflows, contactActivity, handleSetEnrollmentStatus, handleSkipStep, handleUnskipStep, handleCustomizeDelay, handleMoveToStep, handleAddCustomStep, handleRemoveCustomStep } = useAppData();
+  const { contacts, workflowEnrollments, workflows, contactActivity, emailHistory, handleSetEnrollmentStatus, handleSkipStep, handleUnskipStep, handleCustomizeDelay, handleMoveToStep, handleAddCustomStep, handleRemoveCustomStep } = useAppData();
   const [activeTab, setActiveTab] = useState<TabId>("steps");
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [selectedStepIds, setSelectedStepIds] = useState<Set<string>>(new Set());
@@ -200,6 +200,10 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
   const contact = contactId ? contacts.find((c) => c.id === contactId) : null;
   const enrollment = enrollmentId ? workflowEnrollments.find((e) => e.id === enrollmentId) : null;
   const workflow = workflows.find((w) => w.id === workflowId);
+
+  const unreadReplies = contactId
+    ? emailHistory.filter((e) => e.contactId === contactId && e.direction === "inbound" && !e.read).length
+    : 0;
 
   const sortedSteps = mergeSteps(workflow?.steps ?? [], enrollment?.customSteps);
   const actionSteps = sortedSteps.filter((s) => s.actionType !== "delay");
@@ -934,6 +938,26 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
               </span>
               <p className="text-xs text-muted-foreground">Enrolled {formatDate(enrollment.startDate)}</p>
             </div>
+
+            {/* Unread reply callout */}
+            {unreadReplies > 0 && (
+              <Link
+                to={`/crm/contacts/${contact.id}`}
+                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/25 hover:bg-primary/15 transition-colors text-left"
+              >
+                <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <Mail className="h-2.5 w-2.5 text-primary-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-primary">
+                    {unreadReplies} unread repl{unreadReplies === 1 ? "y" : "ies"}
+                  </p>
+                  <p className="text-[10px] text-primary/70 mt-0.5">
+                    View in contact timeline →
+                  </p>
+                </div>
+              </Link>
+            )}
 
             {/* Pause / Resume */}
             {!isCompleted && (

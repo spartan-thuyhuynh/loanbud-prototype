@@ -17,13 +17,20 @@ import {
 } from "./components/email-workflows";
 import { SegmentDetail } from "./components/email-workflows/SegmentDetail";
 import { PlaceholderView } from "./components/ui/PlaceholderView";
+import { VersionRoute } from "./components/ui/VersionRoute";
+// V2 components
+import { WorkflowBoardV2 } from "./components/email-workflows/v2/WorkflowBoardV2";
+import { WorkflowBuilderV2 } from "./components/email-workflows/v2/WorkflowBuilderV2";
+import { UserSegmentsV2 } from "./components/email-workflows/v2/UserSegmentsV2";
+import { SegmentBuilderV2 } from "./components/email-workflows/v2/SegmentBuilderV2";
+import { AnalyticsDashboard } from "./components/email-workflows/v2/AnalyticsDashboard";
 import {
-  FileText,
   Briefcase,
   User,
   Zap,
   ClipboardList,
   Sliders,
+  BarChart2,
 } from "lucide-react";
 
 export const router = createBrowserRouter(
@@ -49,10 +56,60 @@ export const router = createBrowserRouter(
           { path: "contacts", element: <ContactList /> },
           { path: "contacts/:id", element: <ContactDetail /> },
           { path: "companies", element: <PlaceholderView icon={Briefcase} title="Companies" /> },
-          { path: "inbox", element: <PlaceholderView icon={FileText} title="Inbox" /> },
-          { path: "calls", element: <PlaceholderView icon={FileText} title="Calls" /> },
-          { path: "meetings", element: <PlaceholderView icon={FileText} title="Meetings" /> },
           { path: "tasks", element: <TaskQueue /> },
+          // Segments (moved from email-workflows)
+          {
+            path: "segments",
+            element: (
+              <VersionRoute
+                v1={<UserSegments />}
+                v2={<UserSegmentsV2 />}
+              />
+            ),
+          },
+          { path: "segments/:id", element: <SegmentDetail /> },
+          {
+            path: "segments/builder",
+            element: (
+              <VersionRoute
+                v1={<SegmentsView />}
+                v2={<SegmentBuilderV2 />}
+              />
+            ),
+          },
+          // Workflows (moved from email-workflows)
+          { path: "workflows", element: <WorkflowList /> },
+          {
+            path: "workflows/new",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBuilder />}
+                v2={<WorkflowBuilderV2 />}
+              />
+            ),
+          },
+          {
+            path: "workflows/:id/edit",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBuilder />}
+                v2={<WorkflowBuilderV2 />}
+              />
+            ),
+          },
+          {
+            path: "workflows/:id/board",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBoard />}
+                v2={<WorkflowBoardV2 />}
+              />
+            ),
+          },
+          // Inbox (communication history)
+          { path: "inbox", element: <EmailHistory /> },
+          // Settings (combined CRM + workflow config)
+          { path: "settings", element: <TemplatesView /> },
         ],
       },
 
@@ -63,16 +120,66 @@ export const router = createBrowserRouter(
         children: [
           { index: true, element: <Navigate to="/email-workflows/flows" replace /> },
           { path: "flows", element: <WorkflowList /> },
-          { path: "flows/new", element: <WorkflowBuilder /> },
-          { path: "flows/:id/edit", element: <WorkflowBuilder /> },
-          { path: "flows/:id/board", element: <WorkflowBoard /> },
+          {
+            path: "flows/new",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBuilder />}
+                v2={<WorkflowBuilderV2 />}
+              />
+            ),
+          },
+          {
+            path: "flows/:id/edit",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBuilder />}
+                v2={<WorkflowBuilderV2 />}
+              />
+            ),
+          },
+          {
+            path: "flows/:id/board",
+            element: (
+              <VersionRoute
+                v1={<WorkflowBoard />}
+                v2={<WorkflowBoardV2 />}
+              />
+            ),
+          },
           { path: "flow-builder", element: <FlowBuilder /> },
-          { path: "user-segments", element: <UserSegments /> },
+          {
+            path: "user-segments",
+            element: (
+              <VersionRoute
+                v1={<UserSegments />}
+                v2={<UserSegmentsV2 />}
+              />
+            ),
+          },
           { path: "user-segments/:id", element: <SegmentDetail /> },
-          { path: "user-segments/builder", element: <SegmentsView /> },
+          {
+            path: "user-segments/builder",
+            element: (
+              <VersionRoute
+                v1={<SegmentsView />}
+                v2={<SegmentBuilderV2 />}
+              />
+            ),
+          },
           { path: "templates", element: <TemplatesView /> },
           { path: "history", element: <EmailHistory /> },
           { path: "tasks", element: <TaskQueue /> },
+          // V2-only routes
+          {
+            path: "analytics",
+            element: (
+              <VersionRoute
+                v1={<PlaceholderView icon={BarChart2} title="Analytics" badge="Available in V2" />}
+                v2={<AnalyticsDashboard />}
+              />
+            ),
+          },
         ],
       },
     ],

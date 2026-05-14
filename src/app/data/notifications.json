@@ -2,7 +2,7 @@
   {
     "id": "notif-001",
     "type": "task_overdue",
-    "title": "Overdue Call — Maria Santos",
+    "title": "Overdue Call \u2014 Maria Santos",
     "message": "A call task for Maria Santos was due 2 days ago and has not been completed.",
     "read": false,
     "createdAt": "2026-05-05T09:15:00.000Z"
@@ -10,7 +10,7 @@
   {
     "id": "notif-002",
     "type": "task_due",
-    "title": "Task Due Today — James Whitfield",
+    "title": "Task Due Today \u2014 James Whitfield",
     "message": "You have a follow-up call with James Whitfield scheduled for today.",
     "read": false,
     "createdAt": "2026-05-07T08:00:00.000Z"
@@ -18,7 +18,7 @@
   {
     "id": "notif-003",
     "type": "workflow_update",
-    "title": "Workflow Activated — Q2 Broker Outreach",
+    "title": "Workflow Activated \u2014 Q2 Broker Outreach",
     "message": "The workflow \"Q2 Broker Outreach\" was activated and enrolled 8 contacts.",
     "read": false,
     "createdAt": "2026-05-06T14:30:00.000Z"
@@ -34,9 +34,85 @@
   {
     "id": "notif-005",
     "type": "workflow_update",
-    "title": "Enrollment Completed — David Kim",
+    "title": "Enrollment Completed \u2014 David Kim",
     "message": "David Kim has completed all steps in the \"Initial Lender Sequence\" workflow.",
     "read": true,
     "createdAt": "2026-05-03T16:45:00.000Z"
+  },
+  {
+    "id": "notif-006",
+    "type": "inbound_reply",
+    "title": "Reply from James Lee",
+    "message": "James Lee replied to \"Q2 Funding Opportunities for Brokers\" \u2014 they're interested and want to schedule a call.",
+    "read": false,
+    "createdAt": "2026-05-03T10:22:00.000Z",
+    "workflowId": "wf-1",
+    "contactId": "1"
+  },
+  {
+    "id": "notif-007",
+    "type": "enrollment_completed",
+    "title": "Enrollment Completed \u2014 Emily Thompson",
+    "message": "Emily Thompson has completed all steps in the \"Q2 Broker Outreach\" workflow.",
+    "read": false,
+    "createdAt": "2026-05-06T08:30:00.000Z",
+    "workflowId": "wf-1",
+    "contactId": "4"
+  },
+  {
+    "id": "notif-008",
+    "type": "enrollment_paused",
+    "title": "Enrollment Paused \u2014 David Patel",
+    "message": "David Patel's enrollment in \"Re-Engagement Sequence\" was paused. Their last step was Day 3 follow-up.",
+    "read": false,
+    "createdAt": "2026-05-05T15:10:00.000Z",
+    "workflowId": "wf-3",
+    "contactId": "5"
+  },
+  {
+    "id": "notif-009",
+    "type": "inbound_reply",
+    "title": "Reply from Sarah Chen",
+    "message": "Sarah Chen replied asking about documents required for equipment financing applications over $500K.",
+    "read": true,
+    "createdAt": "2026-05-05T14:45:00.000Z",
+    "workflowId": "wf-1",
+    "contactId": "2"
+  },
+  {
+    "id": "notif-010",
+    "type": "step_bounced",
+    "title": "Email Bounced \u2014 2 contacts",
+    "message": "The Day 7 email in \"Q2 Broker Outreach\" bounced for 2 contacts. Review and update their contact information.",
+    "read": false,
+    "createdAt": "2026-05-07T09:00:00.000Z",
+    "workflowId": "wf-1"
+  },
+  {
+    "id": "notif-011",
+    "type": "workflow_completed_all",
+    "title": "Workflow Complete \u2014 All Contacts Finished",
+    "message": "All enrolled contacts in \"Initial Lender Sequence\" have completed or exited the workflow.",
+    "read": true,
+    "createdAt": "2026-05-04T17:00:00.000Z",
+    "workflowId": "wf-2"
+  },
+  {
+    "id": "notif-012",
+    "type": "inbound_reply",
+    "title": "Reply from Michael Rodriguez",
+    "message": "Michael Rodriguez is interested in $750K\u2013$1.2M deals for two clients and wants to connect.",
+    "read": false,
+    "createdAt": "2026-05-07T09:10:00.000Z",
+    "workflowId": "wf-1",
+    "contactId": "3"
+  },
+  {
+    "id": "notif-013",
+    "type": "segment_membership_changed",
+    "title": "Segment Updated \u2014 Active Brokers Q2",
+    "message": "3 new contacts were added to \"Active Brokers Q2\" and 1 contact no longer meets the filter criteria.",
+    "read": true,
+    "createdAt": "2026-05-08T06:00:00.000Z"
   }
 ]

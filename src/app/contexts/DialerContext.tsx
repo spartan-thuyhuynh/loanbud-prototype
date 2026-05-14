@@ -165,7 +165,6 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDialer(): DialerContextValue {
   const ctx = useContext(DialerContext);
   if (!ctx) throw new Error("useDialer must be used within a DialerProvider");

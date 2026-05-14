@@ -44,4 +44,11 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // Context files export both Provider components and useXxx hooks — standard React pattern
+    files: ['src/app/contexts/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 );

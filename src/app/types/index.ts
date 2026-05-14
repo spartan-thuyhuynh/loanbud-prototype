@@ -13,19 +13,11 @@ export type MainSection =
 export type CRMView =
   | "contacts"
   | "companies"
-  | "leads"
-  | "deals"
-  | "tickets"
-  | "orders"
-  | "listings"
-  | "segments-lists"
+  | "segments"
+  | "workflows"
   | "inbox"
-  | "calls"
-  | "meetings"
-  | "tasks"
-  | "playbooks"
-  | "message-templates"
-  | "snippets";
+  | "settings"
+  | "tasks";
 
 export type EmailWorkflowView =
   | "overview"
@@ -65,6 +57,8 @@ export interface AppSidebarSubItem {
   label: string;
   route: string;
   icon?: React.ElementType;
+  /** When true, this item is greyed out in V1 and only active in V2 */
+  v2Only?: boolean;
 }
 
 export interface AppSidebarItem {
@@ -102,10 +96,21 @@ export interface EmailRecord {
   contactName: string;
   subject: string;
   senderIdentity: string;
-  status: "Sent" | "Delivered" | "Opened" | "Failed" | "Bounced" | "Undelivered";
+  status: "Sent" | "Delivered" | "Opened" | "Failed" | "Bounced" | "Undelivered" | "Received";
   sequenceDay: number;
   sentAt: Date;
   channel?: "email" | "sms";
+  // ── V2 fields ────────────────────────────────────────────────────────────────
+  /** Direction of the message. Defaults to "outbound" for all V1 records. */
+  direction?: "inbound" | "outbound";
+  /** Workflow and step context for inbound replies */
+  workflowId?: string;
+  workflowName?: string;
+  stepName?: string;
+  /** Email body text (present on inbound records). */
+  body?: string;
+  /** Whether the message has been read. Undefined/true = read; false = unread. */
+  read?: boolean;
 }
 
 export interface Task {
@@ -218,7 +223,7 @@ export interface WorkflowStep {
   name: string;
   order: number;
   dayOffset: number;
-  actionType: "email" | "sms" | "call-reminder" | "voicemail-reminder" | "delay";
+  actionType: "email" | "sms" | "call-reminder" | "voicemail-reminder" | "delay" | "conditional";
   delayDays?: number;
   delayHours?: number;
   delayMinutes?: number;
@@ -233,6 +238,12 @@ export interface WorkflowStep {
   note?: string;
   reminderDaysBefore?: number;
   outcomeRules?: OutcomeRule[];
+  // ── V2: Conditional (if/else) step fields ────────────────────────────────────
+  conditionField?: string;
+  conditionOperator?: "=" | "!=" | "is true" | "is false" | ">" | "<" | ">=" | "<=";
+  conditionValue?: string;
+  ifBranch?: WorkflowStep[];
+  elseBranch?: WorkflowStep[];
 }
 
 export interface Workflow {
@@ -246,6 +257,9 @@ export interface Workflow {
   createdAt: Date;
   createdBy: string;
   enrolledCount: number;
+  // ── V2 fields ────────────────────────────────────────────────────────────────
+  /** When true, this workflow was duplicated from another; original id stored here */
+  duplicatedFromId?: string;
 }
 
 export interface WorkflowStepProgress {
@@ -431,9 +445,71 @@ export interface SenderIdentity {
 
 export interface Notification {
   id: string;
-  type: "task_due" | "task_overdue" | "workflow_update" | "application_update";
+  type:
+    | "task_due"
+    | "task_overdue"
+    | "workflow_update"
+    | "application_update"
+    // ── V2 workflow-specific types ────────────────────────────────────────────
+    | "enrollment_completed"
+    | "enrollment_paused"
+    | "step_bounced"
+    | "workflow_completed_all"
+    | "inbound_reply"
+    | "segment_membership_changed";
   title: string;
   message: string;
   read: boolean;
   createdAt: Date;
+  /** V2: link to a specific workflow, contact, or task for actionable navigation */
+  workflowId?: string;
+  contactId?: string;
+  taskId?: string;
+}
+
+// ── V2: Segment enhancements ──────────────────────────────────────────────────
+
+export interface SegmentV2 extends Segment {
+  segmentType: "dynamic" | "static";
+  /** Populated when segmentType = "static"; contact ids locked at save time */
+  snapshotContactIds?: string[];
+}
+
+// ── V2: Filter rule extensions ────────────────────────────────────────────────
+
+export type FilterFieldV2 =
+  | "listingStatus"
+  | "userType"
+  | "optedOut"
+  | "hasActiveEnrollment"
+  | "enrolledInWorkflow"
+  | "lastContacted"
+  | "brokerageName";
+
+export type FilterOperatorV2 =
+  | "="
+  | "!="
+  | "is true"
+  | "is false"
+  | "contains"
+  | "not_contains"
+  | "before"
+  | "after"
+  | "within_last_n_days"
+  | ">"
+  | "<"
+  | ">="
+  | "<=";
+
+export interface FilterRuleV2 {
+  field: FilterFieldV2;
+  operator: FilterOperatorV2;
+  value: string;
+  logic: "and" | "or";
+}
+
+export interface FilterGroupV2 {
+  id: string;
+  filters: FilterRuleV2[];
+  connectorAfter: "and" | "or";
 }

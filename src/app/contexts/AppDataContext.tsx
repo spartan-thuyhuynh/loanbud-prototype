@@ -124,6 +124,9 @@ interface AppDataContextValue {
   handleMarkNotificationRead: (id: string) => void;
   handleMarkAllNotificationsRead: () => void;
   handleDismissNotification: (id: string) => void;
+  // Email read-state handlers (V2)
+  handleMarkEmailRead: (emailId: string) => void;
+  handleMarkContactEmailsRead: (contactId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -168,6 +171,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const updated = notifications.filter((n) => n.id !== id);
     setNotifications(updated);
     store.notifications.write(updated);
+  };
+
+  const handleMarkEmailRead = (emailId: string) => {
+    const updated = emailHistory.map((e) => e.id === emailId ? { ...e, read: true } : e);
+    setEmailHistory(updated);
+    store.emailHistory.write(updated);
+  };
+
+  const handleMarkContactEmailsRead = (contactId: string) => {
+    const updated = emailHistory.map((e) =>
+      e.contactId === contactId && e.direction === "inbound" && !e.read
+        ? { ...e, read: true }
+        : e,
+    );
+    setEmailHistory(updated);
+    store.emailHistory.write(updated);
   };
 
   const handleLogCallDisposition = (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => {
@@ -1731,6 +1750,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleMarkNotificationRead,
         handleMarkAllNotificationsRead,
         handleDismissNotification,
+        handleMarkEmailRead,
+        handleMarkContactEmailsRead,
       }}
     >
       {children}
@@ -1738,7 +1759,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAppData(): AppDataContextValue {
   const ctx = useContext(AppDataContext);
   if (!ctx) throw new Error("useAppData must be used inside AppDataProvider");

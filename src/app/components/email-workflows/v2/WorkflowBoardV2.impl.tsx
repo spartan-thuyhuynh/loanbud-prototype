@@ -1,19 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
-import { WorkflowContactPanel } from "./WorkflowContactPanel";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, MoreHorizontal } from "lucide-react";
+import { WorkflowContactPanel } from "../WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../ui/dialog";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../ui/alert-dialog";
-import { useAppData } from "../../contexts/AppDataContext";
-import type { Contact, WorkflowEnrollment, WorkflowStep } from "../../types";
-import { CURRENT_USER } from "../../config/featureFlags";
-import { WorkflowAnalytics } from "./WorkflowAnalytics";
+import { Button } from "../../ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../../ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../../ui/alert-dialog";
+import { useAppData } from "../../../contexts/AppDataContext";
+import type { Contact, WorkflowEnrollment, WorkflowStep } from "../../../types";
+import { CURRENT_USER } from "../../../config/featureFlags";
+import { WorkflowAnalytics } from "../WorkflowAnalytics";
 
-const CARD_DRAG_TYPE = "WORKFLOW_CONTACT_CARD";
+const CARD_DRAG_TYPE = "WORKFLOW_CONTACT_CARD_V2";
 
 interface DragItem {
   enrollmentId: string;
@@ -120,12 +120,10 @@ function StepsTimeline({ steps, enrollmentStats }: {
 
   return (
     <div className="border-b border-border bg-background">
-      {/* Compact summary bar */}
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-4 px-6 py-2.5 hover:bg-muted/40 transition-colors text-left"
       >
-        {/* Flow shape */}
         <span className="text-xs font-medium text-muted-foreground">{actionSteps.length} steps</span>
         <span className="text-muted-foreground/30 text-xs">·</span>
         <span className="text-xs text-muted-foreground">{totalDays}d total</span>
@@ -143,10 +141,8 @@ function StepsTimeline({ steps, enrollmentStats }: {
           })}
         </div>
 
-        {/* Divider */}
         <div className="h-4 w-px bg-border mx-1" />
 
-        {/* Health stats */}
         <div className="flex items-center gap-4">
           <span className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{enrollmentStats.total}</span> enrolled
@@ -173,7 +169,6 @@ function StepsTimeline({ steps, enrollmentStats }: {
         <ChevronDown className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Expanded full timeline */}
       {expanded && (
         <div className="px-6 pb-4 overflow-x-auto border-t border-border/60">
           <div className="flex items-end gap-0 min-w-max pt-3">
@@ -214,18 +209,102 @@ function StepsTimeline({ steps, enrollmentStats }: {
   );
 }
 
-// ── ContactCard (kanban) ────────────────────────────────────────────────────
+// ── V2 ContactCard context menu ────────────────────────────────────────────
 
+function CardContextMenu({
+  enrollmentId,
+  contactId,
+  currentStep,
+  onSkip,
+  onPause,
+}: {
+  enrollmentId: string;
+  contactId: string;
+  currentStep: WorkflowStep | null;
+  onSkip: (enrollmentId: string, stepId: string) => void;
+  onPause: (enrollmentId: string) => void;
+}) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="p-0.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+        title="More options"
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          />
+          <div className="absolute right-0 top-6 z-50 w-40 bg-card border border-border rounded-lg shadow-lg py-1 text-xs">
+            {currentStep && (
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  onSkip(enrollmentId, currentStep.id);
+                }}
+              >
+                <SkipForward className="h-3 w-3 text-muted-foreground" />
+                Skip step
+              </button>
+            )}
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-amber-50 hover:text-amber-700 transition-colors text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onPause(enrollmentId);
+              }}
+            >
+              <PauseCircle className="h-3 w-3 text-muted-foreground" />
+              Pause
+            </button>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                navigate(`/crm/contacts/${contactId}`);
+              }}
+            >
+              <Mail className="h-3 w-3 text-muted-foreground" />
+              View contact
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
-function ContactCard({
+// ── V2 ContactCard ─────────────────────────────────────────────────────────
+
+function ContactCardV2({
   contact,
   enrollmentId,
   columnId,
   currentStep,
   scheduledDate,
   enrollmentStatus,
+  enrollmentStartDate,
+  unreadCount,
   onCardClick,
+  onSkip,
+  onPause,
 }: {
   contact: Contact;
   enrollmentId: string;
@@ -233,8 +312,13 @@ function ContactCard({
   currentStep: WorkflowStep | null;
   scheduledDate: Date | null;
   enrollmentStatus: string;
+  enrollmentStartDate: Date;
+  unreadCount: number;
   onCardClick: () => void;
+  onSkip: (enrollmentId: string, stepId: string) => void;
+  onPause: (enrollmentId: string) => void;
 }) {
+  const [showMenu, setShowMenu] = useState(false);
   const avatarClass = USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700";
   const isCompleted = columnId === "completed";
 
@@ -248,6 +332,11 @@ function ContactCard({
   const isCallReminder = currentStep?.actionType === "call-reminder";
   const dueStr = scheduledDate && !isCompleted ? fmtDate(scheduledDate) : null;
   const cantSend = isAutoStep && contact.optedOut;
+
+  // V2: days-in-step counter
+  const daysInStep = currentStep && !isCompleted
+    ? Math.max(0, Math.floor((Date.now() - enrollmentStartDate.getTime()) / 86_400_000) - currentStep.dayOffset)
+    : null;
 
   const accentClass = isCompleted
     ? "border-l-green-300"
@@ -263,9 +352,11 @@ function ContactCard({
     <div
       ref={dragRef}
       onClick={onCardClick}
+      onMouseEnter={() => setShowMenu(true)}
+      onMouseLeave={() => setShowMenu(false)}
       className={`rounded-lg border border-border border-l-2 ${accentClass} bg-card p-3 shadow-sm hover:shadow-md transition-all cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
     >
-      {/* Header: avatar + name/email */}
+      {/* Header: avatar + name/email + context menu */}
       <div className="flex items-start gap-2.5">
         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
           {getInitials(contact.firstName, contact.lastName)}
@@ -288,10 +379,33 @@ function ContactCard({
             </div>
           )}
         </div>
+        {/* V2: context menu (⋯) — shown on hover */}
+        <div className={`flex-shrink-0 transition-opacity ${showMenu ? "opacity-100" : "opacity-0"}`}>
+          <CardContextMenu
+            enrollmentId={enrollmentId}
+            contactId={contact.id}
+            currentStep={currentStep}
+            onSkip={onSkip}
+            onPause={onPause}
+          />
+        </div>
       </div>
 
       {/* Footer: chips */}
       <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center gap-1.5 min-w-0 flex-wrap">
+        {/* V2: days-in-step badge */}
+        {daysInStep !== null && (
+          <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-100">
+            Day {daysInStep}
+          </span>
+        )}
+        {/* V2: unread reply badge */}
+        {unreadCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/25">
+            <Mail className="h-2.5 w-2.5" />
+            {unreadCount} repl{unreadCount === 1 ? "y" : "ies"}
+          </span>
+        )}
         {dueStr && (
           <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
             Due {dueStr}
@@ -330,24 +444,30 @@ function ContactCard({
   );
 }
 
-// ── KanbanColumn ───────────────────────────────────────────────────────────
+// ── KanbanColumn (V2) ──────────────────────────────────────────────────────
 
-function KanbanColumn({
+function KanbanColumnV2({
   colId,
   label,
   colEnrollments,
   contacts,
   currentStep,
+  emailHistory,
   handleDrop,
   handleCardClick,
+  handleSkip,
+  handlePause,
 }: {
   colId: string;
   label: string;
   colEnrollments: WorkflowEnrollment[];
   contacts: Contact[];
   currentStep: WorkflowStep | null;
+  emailHistory: import("../../../types").EmailRecord[];
   handleDrop: (enrollmentId: string, targetStepId: string) => void;
   handleCardClick: (contactId: string, enrollmentId: string) => void;
+  handleSkip: (enrollmentId: string, stepId: string) => void;
+  handlePause: (enrollmentId: string) => void;
 }) {
   const [{ isOver, canDrop }, dropRef] = useDrop<DragItem, unknown, { isOver: boolean; canDrop: boolean }>({
     accept: CARD_DRAG_TYPE,
@@ -388,8 +508,11 @@ function KanbanColumn({
           const scheduledDate = currentStep
             ? new Date(enrollment.startDate.getTime() + currentStep.dayOffset * 86_400_000)
             : null;
+          const unreadCount = emailHistory.filter(
+            (e) => e.contactId === contact.id && e.direction === "inbound" && !e.read,
+          ).length;
           return (
-            <ContactCard
+            <ContactCardV2
               key={enrollment.id}
               contact={contact}
               enrollmentId={enrollment.id}
@@ -397,7 +520,11 @@ function KanbanColumn({
               currentStep={currentStep}
               scheduledDate={scheduledDate}
               enrollmentStatus={enrollment.status}
+              enrollmentStartDate={enrollment.startDate}
+              unreadCount={unreadCount}
               onCardClick={() => handleCardClick(contact.id, enrollment.id)}
+              onSkip={handleSkip}
+              onPause={handlePause}
             />
           );
         })}
@@ -411,15 +538,15 @@ function KanbanColumn({
   );
 }
 
-// ── Main Board ─────────────────────────────────────────────────────────────
+// ── Main Board V2 ──────────────────────────────────────────────────────────
 
 type ViewMode = "kanban" | "list";
 
-export function WorkflowBoard() {
+export function WorkflowBoardV2() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
+  const { workflows, workflowEnrollments, contacts, segments, emailHistory, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
 
   const navState = location.state as { openContactId?: string; openEnrollmentId?: string } | null;
 
@@ -431,12 +558,9 @@ export function WorkflowBoard() {
   const [automationSearch, setAutomationSearch] = useState("");
   const [selectedAutomationKeys, setSelectedAutomationKeys] = useState<Set<string>>(new Set());
 
-  // Shared filters (synced across kanban & list)
   const [search, setSearch] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
-
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
   const [boardTab, setBoardTab] = useState<"enrollment" | "settings" | "statistic">("enrollment");
 
   const [pauseConfirm, setPauseConfirm] = useState<{
@@ -458,7 +582,6 @@ export function WorkflowBoard() {
 
   const segment = segments.find((s) => s.id === workflow?.segmentId);
 
-  // Map enrollment → column (first pending action step, or "completed")
   const getContactColumn = (enrollment: WorkflowEnrollment): string => {
     const firstPending = actionSteps.find(
       (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
@@ -493,8 +616,28 @@ export function WorkflowBoard() {
     toast.success("Contact moved");
   };
 
+  // V2: skip step handler with toast
+  const handleSkip = (enrollmentId: string, stepId: string) => {
+    handleSkipStep(enrollmentId, stepId);
+    toast.success("Step skipped");
+  };
 
-  // ── List view data (must be before any conditional returns) ────────────
+  // V2: pause with confirm dialog
+  const handlePauseCard = (enrollmentId: string) => {
+    const enrollment = myEnrollments.find((e) => e.id === enrollmentId);
+    const contact = enrollment ? contacts.find((c) => c.id === enrollment.contactId) : null;
+    const name = contact ? `${contact.firstName} ${contact.lastName}` : "this contact";
+    setPauseConfirm({
+      title: `Pause enrollment for ${name}?`,
+      description: `${name} will stop receiving automated steps immediately. No emails or SMS will be sent until the enrollment is manually resumed. Their progress is saved and they can be reactivated at any time.`,
+      onConfirm: () => {
+        handleSetEnrollmentStatus(enrollmentId, "paused");
+        toast.success(`Enrollment paused for ${contact?.firstName ?? "contact"}`);
+      },
+    });
+  };
+
+  // ── List view data ─────────────────────────────────────────────────────
   const listRows = useMemo(() => {
     return myEnrollments
       .map((enrollment) => {
@@ -567,7 +710,6 @@ export function WorkflowBoard() {
       </div>
     );
   }
-
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -645,7 +787,6 @@ export function WorkflowBoard() {
       {/* Upcoming automations modal */}
       <Dialog open={showAutomationsModal} onOpenChange={(open) => { setShowAutomationsModal(open); if (!open) { setAutomationSearch(""); setSelectedAutomationKeys(new Set()); } }}>
         <DialogContent className="max-w-3xl h-[80vh] overflow-hidden flex flex-col">
-          {/* X close button */}
           <DialogClose className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground">
             <X className="h-4 w-4" />
           </DialogClose>
@@ -656,7 +797,6 @@ export function WorkflowBoard() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-1">Sorted by nearest schedule. Skip a step or pause the enrollment to stop delivery.</p>
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
@@ -893,6 +1033,7 @@ export function WorkflowBoard() {
         workflowId={workflow.id}
         onClose={() => { setSelectedContactId(null); setSelectedEnrollmentId(null); }}
       />
+
       {/* Sticky header */}
       <div className="border-b border-border bg-card px-8 py-4 flex items-center gap-3 sticky top-0 z-10">
         <button
@@ -903,29 +1044,37 @@ export function WorkflowBoard() {
         </button>
         <div className="flex items-center justify-between flex-1 gap-4">
           <div className="flex flex-col gap-0.5">
-            <h2 className="text-xl font-semibold text-foreground">{workflow.name}</h2>
+            {/* V2: workflow name + V2 badge */}
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-foreground">{workflow.name}</h2>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200 leading-none tracking-wide">
+                V2
+              </span>
+            </div>
             <span className="text-xs text-muted-foreground">
               {workflow.description || "No description"}
             </span>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span
-              className={`px-3 py-0.5 rounded-full text-xs ${
-                workflow.status === "active"
-                  ? "bg-green-100 text-green-700 border border-green-200"
-                  : "bg-gray-100 text-gray-700 border border-gray-200"
-              }`}
-            >
-              {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
-            </span>
-            {segment && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Applied segment:</span>
-                <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
-                  {segment.name}
-                </span>
-              </div>
-            )}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`px-3 py-0.5 rounded-full text-xs ${
+                  workflow.status === "active"
+                    ? "bg-green-100 text-green-700 border border-green-200"
+                    : "bg-gray-100 text-gray-700 border border-gray-200"
+                }`}
+              >
+                {workflow.status === "active" ? "Active" : workflow.status === "draft" ? "Draft" : "Paused"}
+              </span>
+              {segment && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Applied segment:</span>
+                  <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
+                    {segment.name}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -954,275 +1103,270 @@ export function WorkflowBoard() {
         <>
           <StepsTimeline steps={sortedSteps} enrollmentStats={enrollmentStats} />
           {viewMode === "kanban" ? (
-        /* ── Kanban view ─────────────────────────────────────────────────── */
-        <DndProvider backend={HTML5Backend}>
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Toolbar row — stays fixed while columns scroll horizontally */}
-            <div className="flex items-center gap-3 px-6 pt-4 pb-2 flex-wrap flex-shrink-0">
-              {/* View toggle */}
-              <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
-                <button
-                  onClick={() => setViewMode("kanban")}
-                  className="px-3 py-1.5 transition-colors bg-primary text-primary-foreground"
-                  title="Kanban view"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className="px-3 py-1.5 border-l border-input transition-colors bg-background text-muted-foreground hover:bg-muted"
-                  title="List view"
-                >
-                  <List className="h-4 w-4" />
-                </button>
-              </div>
-              {/* Search */}
-              <div className="relative flex-1 min-w-40 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search contacts..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              {/* Status filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="all">All enrollment statuses</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-              </select>
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  onClick={() => setShowAutomationsModal(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  {`Automations (${upcomingAutomations.length})`}
-                </button>
-                <button
-                  onClick={() => setShowCompletedModal(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  {`Show Completed (${completedCount})`}
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-x-auto">
-            <div
-              className="flex gap-4 p-6 min-h-full items-start"
-              style={{ minWidth: `${actionSteps.length * 288}px` }}
-            >
-              {actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep }))
-              .map(({ id: colId, label, step }) => {
-                  const colEnrollments = myEnrollments.filter((e) => {
-                    if (getContactColumn(e) !== colId) return false;
-                    if (statusFilter !== "all" && e.status !== statusFilter) return false;
-                    if (search) {
-                      const contact = contacts.find((c) => c.id === e.contactId);
-                      if (!contact) return false;
-                      const q = search.toLowerCase();
-                      const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
-                      if (!fullName.includes(q) && !contact.email.toLowerCase().includes(q)) return false;
-                    }
-                    return true;
-                  });
-                  return (
-                    <KanbanColumn
-                      key={colId}
-                      colId={colId}
-                      label={label}
-                      colEnrollments={colEnrollments}
-                      contacts={contacts}
-                      currentStep={step}
-                      handleDrop={handleDrop}
-                      handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
+            /* ── Kanban view ─────────────────────────────────────────────────── */
+            <DndProvider backend={HTML5Backend}>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex items-center gap-3 px-6 pt-4 pb-2 flex-wrap flex-shrink-0">
+                  <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
+                    <button
+                      onClick={() => setViewMode("kanban")}
+                      className="px-3 py-1.5 transition-colors bg-primary text-primary-foreground"
+                      title="Kanban view"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className="px-3 py-1.5 border-l border-input transition-colors bg-background text-muted-foreground hover:bg-muted"
+                      title="List view"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="relative flex-1 min-w-40 max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search contacts..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                  );
-                },
-              )}
-            </div>
-            </div>
-          </div>
-        </DndProvider>
-      ) : (
-        /* ── List view ───────────────────────────────────────────────────── */
-        <div className="flex-1 overflow-auto flex flex-col">
-          {/* Filters */}
-          <div className="flex items-center gap-3 px-6 pt-4 pb-3 flex-wrap border-b border-border">
-            {/* View toggle */}
-            <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
-              <button
-                onClick={() => setViewMode("kanban")}
-                className="px-3 py-1.5 transition-colors bg-background text-muted-foreground hover:bg-muted"
-                title="Kanban view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className="px-3 py-1.5 border-l border-input transition-colors bg-primary text-primary-foreground"
-                title="List view"
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="relative flex-1 min-w-40 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search contacts..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <select
-              value={stepFilter}
-              onChange={(e) => setStepFilter(e.target.value)}
-              className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
-            >
-              <option value="all">All Steps</option>
-              {actionSteps.map((s, i) => (
-                <option key={s.id} value={s.id}>
-                  Step {i + 1} — {ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
-            >
-              <option value="all">All enrollment statuses</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="paused">Paused</option>
-            </select>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setShowAutomationsModal(true)}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {`Automations (${upcomingAutomations.length})`}
-              </button>
-              <button
-                onClick={() => setShowCompletedModal(true)}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {`Show Completed (${completedCount})`}
-              </button>
-            </div>
-          </div>
-          {/* Table */}
-          <div className="px-8 py-4 flex-1 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-            <div className="rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 border-b border-border">
-                  <tr>
-                    {["Actions", "Contact", "Current Step", "Enrollment Status", "Start Date"].map((col) => (
-                      <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-card">
-                  {listRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground text-sm">
-                        {myEnrollments.length === 0
-                          ? "No contacts enrolled yet. Contacts matching this flow's segment will appear here once enrolled."
-                          : "No contacts match the current filters."}
-                      </td>
-                    </tr>
-                  ) : (
-                    listRows.map(({ enrollment, contact, currentStep, colStepId }) => (
-                      <tr
-                        key={enrollment.id}
-                        onClick={() => contact && (setSelectedContactId(contact.id), setSelectedEnrollmentId(enrollment.id))}
-                        className="hover:bg-muted/10 transition-colors cursor-pointer"
-                      >
-                        <td className="px-5 py-3">
-                          {currentStep && colStepId !== "completed" ? (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleAdvance(enrollment.id, currentStep.id); }}
-                              className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="all">All enrollment statuses</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                  </select>
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      onClick={() => setShowAutomationsModal(true)}
+                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                      {`Automations (${upcomingAutomations.length})`}
+                    </button>
+                    <button
+                      onClick={() => setShowCompletedModal(true)}
+                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {`Show Completed (${completedCount})`}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-x-auto">
+                  <div
+                    className="flex gap-4 p-6 min-h-full items-start"
+                    style={{ minWidth: `${actionSteps.length * 288}px` }}
+                  >
+                    {actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep }))
+                      .map(({ id: colId, label, step }) => {
+                        const colEnrollments = myEnrollments.filter((e) => {
+                          if (getContactColumn(e) !== colId) return false;
+                          if (statusFilter !== "all" && e.status !== statusFilter) return false;
+                          if (search) {
+                            const contact = contacts.find((c) => c.id === e.contactId);
+                            if (!contact) return false;
+                            const q = search.toLowerCase();
+                            const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+                            if (!fullName.includes(q) && !contact.email.toLowerCase().includes(q)) return false;
+                          }
+                          return true;
+                        });
+                        return (
+                          <KanbanColumnV2
+                            key={colId}
+                            colId={colId}
+                            label={label}
+                            colEnrollments={colEnrollments}
+                            contacts={contacts}
+                            currentStep={step}
+                            emailHistory={emailHistory}
+                            handleDrop={handleDrop}
+                            handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
+                            handleSkip={handleSkip}
+                            handlePause={handlePauseCard}
+                          />
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            </DndProvider>
+          ) : (
+            /* ── List view ───────────────────────────────────────────────────── */
+            <div className="flex-1 overflow-auto flex flex-col">
+              <div className="flex items-center gap-3 px-6 pt-4 pb-3 flex-wrap border-b border-border">
+                <div className="flex rounded-md border border-input overflow-hidden flex-shrink-0">
+                  <button
+                    onClick={() => setViewMode("kanban")}
+                    className="px-3 py-1.5 transition-colors bg-background text-muted-foreground hover:bg-muted"
+                    title="Kanban view"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className="px-3 py-1.5 border-l border-input transition-colors bg-primary text-primary-foreground"
+                    title="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="relative flex-1 min-w-40 max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search contacts..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <select
+                  value={stepFilter}
+                  onChange={(e) => setStepFilter(e.target.value)}
+                  className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
+                >
+                  <option value="all">All Steps</option>
+                  {actionSteps.map((s, i) => (
+                    <option key={s.id} value={s.id}>
+                      Step {i + 1} — {ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs border border-border rounded-lg bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 text-muted-foreground"
+                >
+                  <option value="all">All enrollment statuses</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="paused">Paused</option>
+                </select>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => setShowAutomationsModal(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700"
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    {`Automations (${upcomingAutomations.length})`}
+                  </button>
+                  <button
+                    onClick={() => setShowCompletedModal(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {`Show Completed (${completedCount})`}
+                  </button>
+                </div>
+              </div>
+              <div className="px-8 py-4 flex-1 overflow-auto">
+                <div className="max-w-7xl mx-auto">
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40 border-b border-border">
+                        <tr>
+                          {["Actions", "Contact", "Current Step", "Enrollment Status", "Start Date"].map((col) => (
+                            <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border bg-card">
+                        {listRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground text-sm">
+                              {myEnrollments.length === 0
+                                ? "No contacts enrolled yet. Contacts matching this flow's segment will appear here once enrolled."
+                                : "No contacts match the current filters."}
+                            </td>
+                          </tr>
+                        ) : (
+                          listRows.map(({ enrollment, contact, currentStep, colStepId }) => (
+                            <tr
+                              key={enrollment.id}
+                              onClick={() => contact && (setSelectedContactId(contact.id), setSelectedEnrollmentId(enrollment.id))}
+                              className="hover:bg-muted/10 transition-colors cursor-pointer"
                             >
-                              {ACTION_LABELS[currentStep.actionType] ?? currentStep.actionType}
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3">
-                          {contact ? (
-                            <div className="flex items-center gap-2">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700"}`}>
-                                {getInitials(contact.firstName, contact.lastName)}
-                              </div>
-                              <div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setSelectedContactId(contact.id); setSelectedEnrollmentId(enrollment.id); }}
-                                  className="font-medium text-foreground hover:text-primary hover:underline text-left"
-                                >
-                                  {contact.firstName} {contact.lastName}
-                                </button>
-                                <p className="text-xs text-muted-foreground">{contact.email}</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">Unknown contact</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-muted-foreground text-xs">
-                          {colStepId === "completed" ? (
-                            <span className="flex items-center gap-1 text-green-600 font-medium">
-                              <Check className="h-3.5 w-3.5" /> Completed
-                            </span>
-                          ) : currentStep ? (
-                            <div className="flex items-center gap-2">
-                              <span>{`Day ${currentStep.dayOffset} — ${ACTION_TYPE_DISPLAY[currentStep.actionType] ?? currentStep.actionType}`}</span>
-                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary leading-none">
-                                Day {Math.floor((Date.now() - new Date(enrollment.startDate).getTime()) / 86_400_000)}
-                              </span>
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td className="px-5 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            enrollment.status === "active"
-                              ? "bg-green-100 text-green-700 border border-green-200"
-                              : enrollment.status === "completed"
-                                ? "bg-gray-100 text-gray-600 border border-gray-200"
-                                : "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                          }`}>
-                            {enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-muted-foreground text-xs">
-                          {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(enrollment.startDate)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                              <td className="px-5 py-3">
+                                {currentStep && colStepId !== "completed" ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleAdvance(enrollment.id, currentStep.id); }}
+                                    className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+                                  >
+                                    {ACTION_LABELS[currentStep.actionType] ?? currentStep.actionType}
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-3">
+                                {contact ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${USER_TYPE_AVATAR[contact.userType] ?? "bg-gray-100 text-gray-700"}`}>
+                                      {getInitials(contact.firstName, contact.lastName)}
+                                    </div>
+                                    <div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedContactId(contact.id); setSelectedEnrollmentId(enrollment.id); }}
+                                        className="font-medium text-foreground hover:text-primary hover:underline text-left"
+                                      >
+                                        {contact.firstName} {contact.lastName}
+                                      </button>
+                                      <p className="text-xs text-muted-foreground">{contact.email}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">Unknown contact</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-3 text-muted-foreground text-xs">
+                                {colStepId === "completed" ? (
+                                  <span className="flex items-center gap-1 text-green-600 font-medium">
+                                    <Check className="h-3.5 w-3.5" /> Completed
+                                  </span>
+                                ) : currentStep ? (
+                                  <div className="flex items-center gap-2">
+                                    <span>{`Day ${currentStep.dayOffset} — ${ACTION_TYPE_DISPLAY[currentStep.actionType] ?? currentStep.actionType}`}</span>
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary leading-none">
+                                      Day {Math.floor((Date.now() - new Date(enrollment.startDate).getTime()) / 86_400_000)}
+                                    </span>
+                                  </div>
+                                ) : "—"}
+                              </td>
+                              <td className="px-5 py-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  enrollment.status === "active"
+                                    ? "bg-green-100 text-green-700 border border-green-200"
+                                    : enrollment.status === "completed"
+                                      ? "bg-gray-100 text-gray-600 border border-gray-200"
+                                      : "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                                }`}>
+                                  {enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 text-muted-foreground text-xs">
+                                {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(enrollment.startDate)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
         </>
       )}
 
@@ -1230,7 +1374,6 @@ export function WorkflowBoard() {
         <div className="flex-1 overflow-auto px-8 py-6">
           <div className="max-w-2xl mx-auto space-y-6">
 
-            {/* Status */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
                 Status
@@ -1273,7 +1416,6 @@ export function WorkflowBoard() {
               </div>
             </div>
 
-            {/* Flow configuration */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">

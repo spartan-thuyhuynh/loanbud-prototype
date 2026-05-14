@@ -20,7 +20,7 @@ import type { TaskItem, ContactActivityRecord } from "@/app/types";
 
 type TaskModalMode = "complete" | "reschedule" | "delete" | null;
 
-type ActivityEntry = ContactActivityRecord & { _ts: Date };
+type ActivityEntry = ContactActivityRecord & { _ts: Date; direction?: "inbound" | "outbound"; read?: boolean };
 
 const STATUS_COLORS: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
@@ -57,6 +57,7 @@ export function ContactDetail() {
     handleCompleteTask,
     handleRescheduleTask,
     handleDeleteTask,
+    handleMarkEmailRead,
   } = useAppData();
 
   const { openDialer } = useDialer();
@@ -107,6 +108,8 @@ export function ContactDetail() {
       assignee: e.senderIdentity,
       timestamp: new Date(e.sentAt),
       _ts: new Date(e.sentAt),
+      direction: e.direction,
+      read: e.read,
     })),
   ].sort((a, b) => b._ts.getTime() - a._ts.getTime());
 
@@ -251,6 +254,7 @@ export function ContactDetail() {
                       const isEmail = entry.type === "email_sent";
                       const isSms = entry.type === "sms_sent";
                       const isTask = entry.type === "task_completed";
+                      const isUnreadInbound = isEmail && entry.direction === "inbound" && !entry.read;
 
                       const iconBg = isCall
                         ? "bg-green-100 text-green-600"
@@ -270,13 +274,18 @@ export function ContactDetail() {
                       const typeLabel = isCall
                         ? "Call"
                         : isEmail
-                        ? "Email"
+                        ? entry.direction === "inbound" ? "Reply received" : "Email"
                         : isSms
                         ? "SMS"
                         : entry.taskType ?? "Task";
 
                       return (
-                        <div key={entry.id} className="flex items-start gap-3 p-4 bg-card border border-border rounded-xl">
+                        <div
+                          key={entry.id}
+                          className={`flex items-start gap-3 p-4 bg-card border rounded-xl transition-colors ${isUnreadInbound ? "border-blue-200 bg-blue-50/40 cursor-pointer hover:bg-blue-50" : "border-border"}`}
+                          onClick={isUnreadInbound ? () => handleMarkEmailRead(entry.id) : undefined}
+                          title={isUnreadInbound ? "Click to mark as read" : undefined}
+                        >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${iconBg}`}>
                             {isCall && <PhoneCall className="w-4 h-4" />}
                             {isEmail && <Mail className="w-4 h-4" />}
@@ -285,7 +294,13 @@ export function ContactDetail() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium">{typeLabel}</span>
+                              <span className={`text-sm font-medium ${isUnreadInbound ? "text-blue-700" : ""}`}>{typeLabel}</span>
+                              {isUnreadInbound && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
+                                  Unread
+                                </span>
+                              )}
                               {isTask && entry.disposition && (
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${dispositionColors[entry.disposition] ?? "bg-muted text-muted-foreground"}`}>
                                   {entry.disposition}
