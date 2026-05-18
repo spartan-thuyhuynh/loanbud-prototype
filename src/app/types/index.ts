@@ -128,8 +128,15 @@ export interface Task {
 }
 
 export interface FilterRule {
-  field: "listingStatus" | "userType";
-  operator: "=" | "!=";
+  field:
+    | "listingStatus"
+    | "userType"
+    | "firstName"
+    | "lastName"
+    | "email"
+    | "phone"
+    | "listingName";
+  operator: "=" | "!=" | "contains" | "not_contains";
   value: string;
   logic: "and" | "or";
 }
@@ -480,11 +487,18 @@ export interface SegmentV2 extends Segment {
 export type FilterFieldV2 =
   | "listingStatus"
   | "userType"
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "phone"
+  | "listingName"
+  | "brokerageName"
+  | "createAt"
+  | "openReminders"
   | "optedOut"
   | "hasActiveEnrollment"
   | "enrolledInWorkflow"
-  | "lastContacted"
-  | "brokerageName";
+  | "lastContacted";
 
 export type FilterOperatorV2 =
   | "="

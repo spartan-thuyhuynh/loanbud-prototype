@@ -28,8 +28,16 @@ function makeGroup(): FilterGroup {
 }
 
 function evalFilter(f: FilterRule, contact: Contact): boolean {
-  const val = (contact as unknown as Record<string, string>)[f.field];
-  return f.operator === "=" ? val === f.value : val !== f.value;
+  const raw = (contact as unknown as Record<string, unknown>)[f.field];
+  const val = String(raw ?? "").toLowerCase();
+  const target = f.value.toLowerCase();
+  switch (f.operator) {
+    case "=": return val === target;
+    case "!=": return val !== target;
+    case "contains": return val.includes(target);
+    case "not_contains": return !val.includes(target);
+    default: return true;
+  }
 }
 
 function evalGroup(group: FilterGroup, contact: Contact): boolean {
@@ -347,10 +355,8 @@ export function SegmentBuilder({
                   onAddFilter={activeGroups.addFilter}
                   onRemoveFilter={activeGroups.removeFilter}
                   onUpdateFilter={activeGroups.updateFilter}
-                  onToggleFilterLogic={activeGroups.toggleFilterLogic}
                   onDuplicateGroup={activeGroups.duplicateGroup}
                   onRemoveGroup={activeGroups.removeGroup}
-                  onToggleGroupConnector={activeGroups.toggleGroupConnector}
                 />
               ))}
 

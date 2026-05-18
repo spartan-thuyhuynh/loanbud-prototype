@@ -4,53 +4,135 @@ import type { Contact, FilterRule, SavedSegment, Segment, Workflow } from "@/app
 import type { FilterFieldV2, FilterOperatorV2, FilterRuleV2, FilterGroupV2 } from "@/app/types";
 import { SegmentPreviewPanel } from "../segment-builder/SegmentPreviewPanel";
 import { SpecificContactPicker } from "../segment-builder/SpecificContactPicker";
+import { FilterFieldPicker } from "../segment-builder/FilterFieldPicker";
+import type { FieldPickerItem } from "../segment-builder/FilterFieldPicker";
 import { useAppData } from "@/app/contexts/AppDataContext";
 
 // ─── V2 field/operator config ─────────────────────────────────────────────────
 
 interface FieldConfig {
   label: string;
-  type: "select" | "boolean" | "workflow" | "date" | "text";
+  description: string;
+  category: string;
+  subCategory?: string;
+  type: "select" | "boolean" | "workflow" | "date" | "text" | "number";
   operators: FilterOperatorV2[];
   options?: string[];
 }
 
 const FIELD_CONFIG: Record<FilterFieldV2, FieldConfig> = {
-  listingStatus: {
-    label: "Listing Status",
-    type: "select",
-    operators: ["=", "!="],
-    options: ["New", "Draft", "Submitted", "On Hold", "Declined"],
+  // ── Contact Info ──────────────────────────────────────────────────────────────
+  firstName: {
+    label: "First Name",
+    description: "The contact's first name",
+    category: "Properties",
+    subCategory: "Contact Info",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
+  },
+  lastName: {
+    label: "Last Name",
+    description: "The contact's last name",
+    category: "Properties",
+    subCategory: "Contact Info",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
+  },
+  email: {
+    label: "Email",
+    description: "The contact's email address",
+    category: "Properties",
+    subCategory: "Contact Info",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
+  },
+  phone: {
+    label: "Phone",
+    description: "The contact's phone number",
+    category: "Properties",
+    subCategory: "Contact Info",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
   },
   userType: {
     label: "User Type",
+    description: "Role of the contact in the lending network",
+    category: "Properties",
+    subCategory: "Contact Info",
     type: "select",
     operators: ["=", "!="],
     options: ["Broker", "Lender", "Partner"],
   },
+  brokerageName: {
+    label: "Brokerage Name",
+    description: "Brokerage organization the contact is affiliated with",
+    category: "Properties",
+    subCategory: "Contact Info",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
+  },
+  // ── Application ───────────────────────────────────────────────────────────────
+  listingStatus: {
+    label: "Listing Status",
+    description: "Current processing stage of the loan application",
+    category: "Properties",
+    subCategory: "Application",
+    type: "select",
+    operators: ["=", "!="],
+    options: ["New", "Draft", "Submitted", "On Hold", "Declined"],
+  },
+  listingName: {
+    label: "Listing Name",
+    description: "Name or title of the loan listing",
+    category: "Properties",
+    subCategory: "Application",
+    type: "text",
+    operators: ["contains", "not_contains", "=", "!="],
+  },
+  createAt: {
+    label: "Created Date",
+    description: "Date the contact record was created",
+    category: "Properties",
+    subCategory: "Application",
+    type: "date",
+    operators: ["before", "after", "within_last_n_days"],
+  },
+  openReminders: {
+    label: "Open Reminders",
+    description: "Number of open reminder tasks for this contact",
+    category: "Properties",
+    subCategory: "Application",
+    type: "number",
+    operators: ["=", "!=", ">", "<", ">=", "<="],
+  },
+  // ── Activity ──────────────────────────────────────────────────────────────────
   optedOut: {
     label: "Opted Out",
+    description: "Whether the contact has opted out of email communications",
+    category: "Activity",
     type: "boolean",
     operators: ["is true", "is false"],
   },
+  lastContacted: {
+    label: "Last Contacted",
+    description: "Date this contact was last reached out to",
+    category: "Activity",
+    type: "date",
+    operators: ["before", "after", "within_last_n_days"],
+  },
+  // ── Membership ────────────────────────────────────────────────────────────────
   hasActiveEnrollment: {
     label: "Has Active Enrollment",
+    description: "Whether the contact is enrolled in any active workflow",
+    category: "Membership",
     type: "boolean",
     operators: ["is true", "is false"],
   },
   enrolledInWorkflow: {
     label: "Enrolled in Workflow",
+    description: "The specific workflow the contact is enrolled in",
+    category: "Membership",
     type: "workflow",
-    operators: ["=", "!="],
-  },
-  lastContacted: {
-    label: "Last Contacted",
-    type: "date",
-    operators: ["before", "after", "within_last_n_days"],
-  },
-  brokerageName: {
-    label: "Brokerage Name",
-    type: "text",
     operators: ["=", "!="],
   },
 };
@@ -58,22 +140,45 @@ const FIELD_CONFIG: Record<FilterFieldV2, FieldConfig> = {
 const OPERATOR_LABELS: Partial<Record<FilterOperatorV2, string>> = {
   "=": "equals",
   "!=": "not equals",
+  "contains": "contains",
+  "not_contains": "not contains",
   "is true": "is true",
   "is false": "is false",
   "before": "before",
   "after": "after",
   "within_last_n_days": "within last N days",
+  ">": "greater than",
+  "<": "less than",
+  ">=": "at least",
+  "<=": "at most",
 };
 
 const ALL_FIELDS: FilterFieldV2[] = [
-  "listingStatus",
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
   "userType",
+  "brokerageName",
+  "listingStatus",
+  "listingName",
+  "createAt",
+  "openReminders",
   "optedOut",
+  "lastContacted",
   "hasActiveEnrollment",
   "enrolledInWorkflow",
-  "lastContacted",
-  "brokerageName",
 ];
+
+const FIELD_PICKER_ITEMS: FieldPickerItem<FilterFieldV2>[] = ALL_FIELDS.map((f) => ({
+  field: f,
+  label: FIELD_CONFIG[f].label,
+  description: FIELD_CONFIG[f].description,
+  category: FIELD_CONFIG[f].category,
+  subCategory: FIELD_CONFIG[f].subCategory,
+  fieldType: FIELD_CONFIG[f].type,
+  options: FIELD_CONFIG[f].options,
+}));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +190,7 @@ function defaultValueForField(field: FilterFieldV2): string {
   const cfg = FIELD_CONFIG[field];
   if (cfg.type === "boolean") return "";
   if (cfg.type === "select" && cfg.options?.length) return cfg.options[0];
+  if (cfg.type === "number") return "0";
   return "";
 }
 
@@ -97,6 +203,21 @@ function evalFilterV2(f: FilterRuleV2, contact: Contact, _workflows: Workflow[])
   const field = f.field;
   const op = f.operator;
 
+  // Text fields with string comparison operators
+  const TEXT_FIELDS: FilterFieldV2[] = ["firstName", "lastName", "email", "phone", "brokerageName", "listingName"];
+  if (TEXT_FIELDS.includes(field)) {
+    const raw = (contact as unknown as Record<string, unknown>)[field];
+    const val = String(raw ?? "").toLowerCase();
+    const target = f.value.toLowerCase();
+    switch (op) {
+      case "=": return val === target;
+      case "!=": return val !== target;
+      case "contains": return val.includes(target);
+      case "not_contains": return !val.includes(target);
+      default: return true;
+    }
+  }
+
   if (field === "listingStatus") {
     const val = contact.listingStatus;
     return op === "=" ? val === f.value : val !== f.value;
@@ -108,9 +229,29 @@ function evalFilterV2(f: FilterRuleV2, contact: Contact, _workflows: Workflow[])
   if (field === "optedOut") {
     return op === "is true" ? contact.optedOut === true : contact.optedOut !== true;
   }
-  if (field === "brokerageName") {
-    const val = (contact as unknown as Record<string, string>)["brokerageName"] ?? "";
-    return op === "=" ? val === f.value : val !== f.value;
+  if (field === "openReminders") {
+    const num = contact.openReminders ?? 0;
+    const target = Number(f.value);
+    switch (op) {
+      case "=": return num === target;
+      case "!=": return num !== target;
+      case ">": return num > target;
+      case "<": return num < target;
+      case ">=": return num >= target;
+      case "<=": return num <= target;
+      default: return true;
+    }
+  }
+  if (field === "createAt") {
+    const contactDate = contact.createAt ? new Date(contact.createAt).getTime() : 0;
+    if (op === "within_last_n_days") {
+      const days = Number(f.value) || 7;
+      return contactDate >= Date.now() - days * 86400000;
+    }
+    const target = new Date(f.value).getTime();
+    if (op === "before") return contactDate < target;
+    if (op === "after") return contactDate > target;
+    return true;
   }
   // Fields we can't evaluate client-side: pass through
   return true;
@@ -139,13 +280,15 @@ function matchGroupsV2(groups: FilterGroupV2[], contacts: Contact[], workflows: 
   });
 }
 
-// Convert V2 filter rules to V1-compatible for saving (field/operator subset)
+// V1-compatible fields and operators
+const V1_FIELDS = new Set<FilterFieldV2>(["listingStatus", "userType", "firstName", "lastName", "email", "phone", "listingName"]);
+const V1_OPERATORS = new Set<FilterOperatorV2>(["=", "!=", "contains", "not_contains"]);
+
+// Convert V2 filter rules to V1-compatible for saving
 function v2RuleToV1(rule: FilterRuleV2): FilterRule {
   return {
-    field: (rule.field === "listingStatus" || rule.field === "userType")
-      ? rule.field
-      : "listingStatus", // fallback for V2-only fields stored as-is
-    operator: (rule.operator === "=" || rule.operator === "!=") ? rule.operator : "=",
+    field: V1_FIELDS.has(rule.field) ? (rule.field as FilterRule["field"]) : "listingStatus",
+    operator: V1_OPERATORS.has(rule.operator) ? (rule.operator as FilterRule["operator"]) : "=",
     value: rule.value,
     logic: rule.logic,
   };
@@ -267,6 +410,12 @@ function useGroupStateV2(initial: FilterGroupV2[]) {
 const selectClass =
   "px-3 py-1.5 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none";
 
+const connectorBadge = (label: string) => (
+  <span className="px-2 py-0.5 bg-muted border border-border rounded-full text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+    {label}
+  </span>
+);
+
 interface FilterGroupCardV2Props {
   group: FilterGroupV2;
   groupIdx: number;
@@ -276,10 +425,8 @@ interface FilterGroupCardV2Props {
   onAddFilter: (groupId: string) => void;
   onRemoveFilter: (groupId: string, idx: number) => void;
   onUpdateFilter: (groupId: string, idx: number, updates: Partial<FilterRuleV2>) => void;
-  onToggleFilterLogic: (groupId: string, filterIdx: number) => void;
   onDuplicateGroup: (groupId: string) => void;
   onRemoveGroup: (groupId: string) => void;
-  onToggleGroupConnector: (groupId: string) => void;
 }
 
 function FilterGroupCardV2({
@@ -291,10 +438,8 @@ function FilterGroupCardV2({
   onAddFilter,
   onRemoveFilter,
   onUpdateFilter,
-  onToggleFilterLogic,
   onDuplicateGroup,
   onRemoveGroup,
-  onToggleGroupConnector,
 }: FilterGroupCardV2Props) {
   return (
     <div>
@@ -334,25 +479,17 @@ function FilterGroupCardV2({
                 <div key={filterIdx}>
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Field selector */}
-                    <div className="relative">
-                      <select
-                        value={filter.field}
-                        onChange={(e) => {
-                          const newField = e.target.value as FilterFieldV2;
-                          onUpdateFilter(group.id, filterIdx, {
-                            field: newField,
-                            operator: defaultOperatorForField(newField),
-                            value: defaultValueForField(newField),
-                          });
-                        }}
-                        className={selectClass}
-                      >
-                        {ALL_FIELDS.map((f) => (
-                          <option key={f} value={f}>{FIELD_CONFIG[f].label}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-                    </div>
+                    <FilterFieldPicker
+                      value={filter.field}
+                      fields={FIELD_PICKER_ITEMS}
+                      onChange={(newField) => {
+                        onUpdateFilter(group.id, filterIdx, {
+                          field: newField,
+                          operator: defaultOperatorForField(newField),
+                          value: defaultValueForField(newField),
+                        });
+                      }}
+                    />
 
                     {/* Operator selector */}
                     <div className="relative">
@@ -428,6 +565,16 @@ function FilterGroupCardV2({
                               className={selectClass}
                             />
                           )
+                        ) : cfg.type === "number" ? (
+                          <input
+                            type="number"
+                            value={filter.value || "0"}
+                            onChange={(e) =>
+                              onUpdateFilter(group.id, filterIdx, { value: e.target.value })
+                            }
+                            placeholder="0"
+                            className={`${selectClass} w-24`}
+                          />
                         ) : (
                           <input
                             type="text"
@@ -450,16 +597,10 @@ function FilterGroupCardV2({
                     </button>
                   </div>
 
-                  {/* Per-filter connector */}
+                  {/* Static AND connector between filters */}
                   {filterIdx < group.filters.length - 1 && (
                     <div className="flex items-center gap-2 my-1.5 pl-1">
-                      <button
-                        onClick={() => onToggleFilterLogic(group.id, filterIdx)}
-                        className="flex items-center gap-0.5 px-2 py-0.5 bg-background border border-border rounded-full text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                      >
-                        {filter.logic}
-                        <ChevronDown className="w-2.5 h-2.5" />
-                      </button>
+                      {connectorBadge("and")}
                     </div>
                   )}
                 </div>
@@ -469,15 +610,7 @@ function FilterGroupCardV2({
 
           {/* Add filter row */}
           <div className="flex items-center gap-3 pt-1">
-            {group.filters.length > 0 && (
-              <button
-                onClick={() => onToggleFilterLogic(group.id, group.filters.length - 1)}
-                className="flex items-center gap-0.5 px-2 py-0.5 bg-background border border-border rounded-full text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-              >
-                {group.filters[group.filters.length - 1].logic}
-                <ChevronDown className="w-2.5 h-2.5" />
-              </button>
-            )}
+            {group.filters.length > 0 && connectorBadge("and")}
             <button
               onClick={() => onAddFilter(group.id)}
               className="flex items-center gap-1 text-sm text-primary hover:underline"
@@ -489,16 +622,10 @@ function FilterGroupCardV2({
         </div>
       </div>
 
-      {/* Between-group connector */}
+      {/* Static OR connector between groups */}
       {!isLast && (
         <div className="flex items-center gap-3 my-2 pl-2">
-          <button
-            onClick={() => onToggleGroupConnector(group.id)}
-            className="flex items-center gap-1 px-3 py-1 bg-background border border-border rounded-full text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-          >
-            {group.connectorAfter}
-            <ChevronDown className="w-3 h-3" />
-          </button>
+          {connectorBadge("or")}
         </div>
       )}
     </div>
@@ -824,10 +951,8 @@ export function SegmentBuilderV2({
                   onAddFilter={activeGroups.addFilter}
                   onRemoveFilter={activeGroups.removeFilter}
                   onUpdateFilter={activeGroups.updateFilter}
-                  onToggleFilterLogic={activeGroups.toggleFilterLogic}
                   onDuplicateGroup={activeGroups.duplicateGroup}
                   onRemoveGroup={activeGroups.removeGroup}
-                  onToggleGroupConnector={activeGroups.toggleGroupConnector}
                 />
               ))}
 

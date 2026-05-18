@@ -25,6 +25,18 @@ const formatDateTime = (date: Date) =>
 const FIELD_LABEL: Record<FilterRule["field"], string> = {
   listingStatus: "Listing Status",
   userType: "User Type",
+  firstName: "First Name",
+  lastName: "Last Name",
+  email: "Email",
+  phone: "Phone",
+  listingName: "Listing Name",
+};
+
+const OP_LABEL: Record<FilterRule["operator"], string> = {
+  "=": "is",
+  "!=": "is not",
+  contains: "contains",
+  not_contains: "not contains",
 };
 
 function FilterRuleChip({
@@ -34,7 +46,7 @@ function FilterRuleChip({
   rule: FilterRule;
   variant?: "include" | "exclude";
 }) {
-  const opLabel = rule.operator === "=" ? "is" : "is not";
+  const opLabel = OP_LABEL[rule.operator] ?? rule.operator;
   const chipCls =
     variant === "include"
       ? "bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-800 dark:text-green-200"
