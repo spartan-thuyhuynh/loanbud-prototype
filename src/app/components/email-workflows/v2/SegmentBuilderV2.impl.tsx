@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "react-router";
 import { Plus, Save, Pencil, X, Copy, Trash2, ChevronDown } from "lucide-react";
 import type { Contact, FilterRule, SavedSegment, Segment, Workflow } from "@/app/types";
 import type { FilterFieldV2, FilterOperatorV2, FilterRuleV2, FilterGroupV2 } from "@/app/types";
@@ -673,6 +674,10 @@ export function SegmentBuilderV2({
   embeddedMode = false,
 }: SegmentBuilderV2Props) {
   const { workflows, contacts: contextContacts, handleCreateSegment, handleUpdateSegment } = useAppData();
+  const location = useLocation();
+  const locationState = !initialSegment
+    ? (location.state as { name?: string; description?: string } | null)
+    : null;
   const contacts = contactsProp ?? contextContacts;
   const onSaveSegment = onSaveSegmentProp ?? ((seg: SavedSegment) => {
     const base: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt"> = {
@@ -693,8 +698,8 @@ export function SegmentBuilderV2({
     }
   });
 
-  const [segName, setSegName] = useState(initialName ?? "New segment");
-  const [segDescription, setSegDescription] = useState(initialDescription ?? "");
+  const [segName, setSegName] = useState(initialName ?? locationState?.name ?? "New segment");
+  const [segDescription, setSegDescription] = useState(initialDescription ?? locationState?.description ?? "");
   const [editingName, setEditingName] = useState(false);
   const [segmentType, setSegmentType] = useState<SegmentType>("dynamic");
   const [activeTab, setActiveTab] = useState<"include" | "exclude">("include");

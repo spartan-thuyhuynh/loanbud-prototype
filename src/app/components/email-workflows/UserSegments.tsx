@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { useNavigate } from "react-router";
 import { useAppData } from "@/app/contexts/AppDataContext";
+import { CreateSegmentDialog } from "./CreateSegmentDialog";
 
 export function UserSegments() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export function UserSegments() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -73,7 +75,7 @@ export function UserSegments() {
           <Button
             variant="default"
             className="px-3 py-1.5 text-sm"
-            onClick={() => navigate("/email-workflows/user-segments/builder")}
+            onClick={() => setCreateDialogOpen(true)}
           >
             <Plus className="w-4 h-4" />
             Create Segment
@@ -232,6 +234,14 @@ export function UserSegments() {
           </div>
         </div>
       )}
+      <CreateSegmentDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onConfirm={(name, description) => {
+          setCreateDialogOpen(false);
+          navigate("/email-workflows/user-segments/builder", { state: { name, description } });
+        }}
+      />
     </div>
   );
 }

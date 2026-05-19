@@ -8,7 +8,8 @@ export function SegmentsView() {
   const { contacts, segments, handleCreateSegment, handleUpdateSegment } = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
-  const segmentId = (location.state as { segmentId?: string } | null)?.segmentId;
+  const locationState = location.state as { segmentId?: string; name?: string; description?: string } | null;
+  const segmentId = locationState?.segmentId;
 
   const editingSegment = segmentId ? segments.find((s) => s.id === segmentId) : undefined;
 
@@ -63,8 +64,8 @@ export function SegmentsView() {
         setSavedSegments(savedSegments.filter((s) => s.id !== id))
       }
       onBack={() => navigate(-1)}
-      initialName={editingSegment?.name}
-      initialDescription={editingSegment ? '' : undefined}
+      initialName={editingSegment?.name ?? locationState?.name}
+      initialDescription={editingSegment ? '' : (locationState?.description ?? undefined)}
       initialSegment={editingAsSaved}
     />
   );

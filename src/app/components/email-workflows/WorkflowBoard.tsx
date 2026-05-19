@@ -11,7 +11,6 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { useAppData } from "../../contexts/AppDataContext";
 import type { Contact, WorkflowEnrollment, WorkflowStep } from "../../types";
 import { CURRENT_USER } from "../../config/featureFlags";
-import { WorkflowAnalytics } from "./WorkflowAnalytics";
 
 const CARD_DRAG_TYPE = "WORKFLOW_CONTACT_CARD";
 
@@ -437,7 +436,7 @@ export function WorkflowBoard() {
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [boardTab, setBoardTab] = useState<"enrollment" | "settings" | "statistic">("enrollment");
+  const [boardTab, setBoardTab] = useState<"enrollment" | "settings">("enrollment");
 
   const [pauseConfirm, setPauseConfirm] = useState<{
     title: string;
@@ -932,7 +931,7 @@ export function WorkflowBoard() {
 
       {/* Tab bar */}
       <div className="border-b border-border bg-card px-8 flex gap-1">
-        {(["enrollment", "settings", "statistic"] as const).map((tab) => (
+        {(["enrollment", "settings"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setBoardTab(tab)}
@@ -1293,7 +1292,6 @@ export function WorkflowBoard() {
         </div>
       )}
 
-      {boardTab === "statistic" && <WorkflowAnalytics workflowId={workflow.id} />}
 
       {/* Pause confirm modal */}
       <AlertDialog open={pauseConfirm !== null} onOpenChange={(open) => { if (!open) setPauseConfirm(null); }}>
