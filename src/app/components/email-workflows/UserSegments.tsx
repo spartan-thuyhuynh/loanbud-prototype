@@ -166,13 +166,8 @@ export function UserSegments() {
                     </button>
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${
-                        segment.status === "Active"
-                          ? "bg-green-100 text-green-700 border border-green-200"
-                          : "bg-gray-100 text-gray-700 border border-gray-200"
-                      }`}
-                    >
+                    <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${segment.status === "Active" ? "bg-green-500" : "bg-gray-400"}`} />
                       {segment.status}
                     </span>
                   </td>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, Play, History } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, Play, History, UserCheck, Clock } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -200,11 +200,11 @@ function StepsTimeline({ steps, enrollmentStats }: {
           <div className="flex items-end gap-0 min-w-max pt-3">
             {/* Start node */}
             <div className="flex flex-col items-center">
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-green-200 bg-green-50">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
-                  <Play className="h-3 w-3 fill-green-600" />
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-gray-200 bg-gray-50">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-100 text-gray-500">
+                  <UserCheck className="h-3 w-3" />
                 </div>
-                <span className="text-xs font-semibold text-green-700 whitespace-nowrap">Start</span>
+                <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">Contact enrolled</span>
               </div>
             </div>
             {/* Connector from Start to first step */}
@@ -462,6 +462,7 @@ export function WorkflowBoard() {
 
   const [boardTab, setBoardTab] = useState<"enrollment" | "settings">("enrollment");
   const [editingGeneral, setEditingGeneral] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [editName, setEditName] = useState(() => workflows.find((wf) => wf.id === id)?.name ?? "");
   const [editDesc, setEditDesc] = useState(() => workflows.find((wf) => wf.id === id)?.description ?? "");
 
@@ -1305,6 +1306,75 @@ export function WorkflowBoard() {
       {boardTab === "settings" && (
         <div className="flex-1 overflow-auto px-8 py-6">
           <div className="max-w-2xl mx-auto space-y-6">
+
+            {/* Summary */}
+            {(() => {
+              const allSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
+              const runStarted = myEnrollments.length > 0
+                ? new Date(Math.min(...myEnrollments.map((e) => new Date(e.startDate).getTime())))
+                : workflow.createdAt;
+              const lastUpdate = myEnrollments.length > 0
+                ? new Date(Math.max(...myEnrollments.map((e) => new Date(e.startDate).getTime())))
+                : workflow.createdAt;
+              const fmtFull = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ", " + fmtTime(d);
+              const STEP_LIMIT = 4;
+              const visibleSteps = summaryExpanded ? allSteps : allSteps.slice(0, STEP_LIMIT);
+              let actionIdx = 0;
+              return (
+                <div className="bg-card border border-border rounded-xl px-6 py-5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Summary</p>
+                  <div className="space-y-2 mb-5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground w-32 flex-shrink-0">Segment</span>
+                      <span className="font-medium text-primary">{workflow.segmentName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground w-32 flex-shrink-0">Run started at</span>
+                      <span className="font-medium text-foreground">{fmtFull(runStarted)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground w-32 flex-shrink-0">Last run update</span>
+                      <span className="font-medium text-foreground">{fmtFull(lastUpdate)}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {visibleSteps.map((step) => {
+                      if (step.actionType === "delay") {
+                        return (
+                          <div key={step.id} className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-50 text-amber-500">
+                              <Clock className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              Wait {step.delayDays ? `${step.delayDays}d` : ""}{step.delayHours ? ` ${step.delayHours}h` : ""}{step.delayMinutes ? ` ${step.delayMinutes}m` : ""}
+                            </span>
+                          </div>
+                        );
+                      }
+                      actionIdx += 1;
+                      const cfg = STEP_TYPE_CONFIG[step.actionType];
+                      return (
+                        <div key={step.id} className="flex items-center gap-3">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg?.iconBg ?? "bg-gray-100"} ${cfg?.iconColor ?? "text-gray-600"}`}>
+                            {cfg?.icon ?? null}
+                          </div>
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md flex-shrink-0">Step {actionIdx}</span>
+                          <span className="text-sm text-foreground truncate">{step.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {allSteps.length > STEP_LIMIT && (
+                    <button
+                      onClick={() => setSummaryExpanded((v) => !v)}
+                      className="mt-3 text-xs font-medium text-primary hover:underline"
+                    >
+                      {summaryExpanded ? "Show less" : `Show all ${allSteps.length} steps`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* General */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">

@@ -98,12 +98,13 @@ export function WorkflowList() {
                     </td>
                     <td className="px-5 py-4 text-muted-foreground">{wf.segmentName}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        wf.status === "active" ? "bg-green-100 text-green-700 border border-green-200"
-                        : wf.status === "paused" ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                        : "bg-gray-100 text-gray-700 border border-gray-200"
-                      }`}>
-                        {wf.status.charAt(0).toUpperCase() + wf.status.slice(1)}
+                      <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                          wf.status === "active" ? "bg-green-500"
+                          : wf.status === "paused" ? "bg-amber-400"
+                          : "bg-gray-400"
+                        }`} />
+                        {wf.status === "active" ? "Active" : wf.status === "draft" ? "Draft" : "Paused"}
                       </span>
                     </td>
                     {version === "v2" && (() => {
