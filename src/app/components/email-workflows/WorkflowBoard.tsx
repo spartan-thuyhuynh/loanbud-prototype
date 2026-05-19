@@ -5,7 +5,6 @@ import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../ui/alert-dialog";
 import { useAppData } from "../../contexts/AppDataContext";
@@ -60,6 +59,13 @@ function getCardStatus(opts: {
   const { enrollmentStatus, cantSend, isAutoStep, scheduledDate } = opts;
   if (enrollmentStatus === "paused") return { label: "Paused", dotClass: "bg-amber-400" };
   if (cantSend) return { label: "Can't Send", dotClass: "bg-red-500" };
+  if (!isAutoStep && scheduledDate) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const d = new Date(scheduledDate);
+    d.setHours(0, 0, 0, 0);
+    if (d <= now) return { label: "Task pending", dotClass: "bg-blue-500" };
+  }
   const time = scheduledDate ? `${fmtDate(scheduledDate)}, ${fmtTime(scheduledDate)}` : null;
   const label = isAutoStep
     ? time ? `Will be sent at ${time}` : "Will be sent"
@@ -303,31 +309,43 @@ function ContactCard({
       </div>
 
       {/* Header: avatar + name/email */}
-      <div className="flex items-start gap-2.5 px-3 pt-2.5 pb-3">
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
-          {getInitials(contact.firstName, contact.lastName)}
+      <div className="px-3 pt-2.5 pb-3">
+        <div className="flex items-start gap-2.5">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
+            {getInitials(contact.firstName, contact.lastName)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+              className="text-sm font-semibold text-foreground hover:text-primary hover:underline truncate block text-left w-full leading-tight"
+            >
+              {contact.firstName} {contact.lastName}
+            </button>
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{contact.email}</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onCardClick(); }}
-            className="text-sm font-semibold text-foreground hover:text-primary hover:underline truncate block text-left w-full leading-tight"
-          >
-            {contact.firstName} {contact.lastName}
-          </button>
-          <p className="text-[11px] text-muted-foreground truncate mt-0.5">{contact.email}</p>
-          {contact.listingName && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <p className="text-[11px] text-muted-foreground truncate">{contact.listingName}</p>
-              <span className={`flex-shrink-0 inline-block text-[10px] px-1.5 py-0.5 rounded font-medium leading-none ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
-                {contact.listingStatus}
-              </span>
-            </div>
-          )}
-          {isCallReminder && !isCompleted && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{CURRENT_USER}</p>
-          )}
-        </div>
+        {(contact.listingName || (isCallReminder && !isCompleted)) && (
+          <div className="mt-2 grid grid-cols-[3rem_1fr] gap-x-2 gap-y-1 items-center">
+            {contact.listingName && (
+              <>
+                <span className="text-[10px] font-medium text-muted-foreground/50 leading-none">Listing</span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[11px] text-muted-foreground truncate" title={contact.listingName}>{contact.listingName}</span>
+                  <span className={`flex-shrink-0 inline-block text-[10px] px-1.5 py-0.5 rounded font-medium leading-none ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                    {contact.listingStatus}
+                  </span>
+                </div>
+              </>
+            )}
+            {isCallReminder && !isCompleted && (
+              <>
+                <span className="text-[10px] font-medium text-muted-foreground/50 leading-none">Assignee</span>
+                <span className="text-[11px] text-muted-foreground truncate" title={CURRENT_USER}>{CURRENT_USER}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1408,10 +1426,13 @@ export function WorkflowBoard() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Flow Configuration
                 </p>
-                <Button variant="secondary" size="sm" onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}>
-                  <Edit className="h-4 w-4 mr-2" />
+                <button
+                  onClick={() => navigate(`/email-workflows/flows/${workflow.id}/edit`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                >
+                  <Edit className="w-3.5 h-3.5" />
                   Edit Flow
-                </Button>
+                </button>
               </div>
               <p className="text-sm text-muted-foreground">
                 Modify steps, timing, and templates for this flow.
