@@ -71,8 +71,9 @@ interface AppDataContextValue {
   handleActivateWorkflow: (workflowId: string) => void;
   handleAdvanceStep: (enrollmentId: string, stepId: string) => void;
   handleMoveToStep: (enrollmentId: string, targetStepId: string | "completed") => void;
-  handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused") => void;
+  handleSetEnrollmentStatus: (enrollmentId: string, status: "active" | "paused", pausedUntil?: Date, pauseReason?: string) => void;
   handleBulkSetEnrollmentStatus: (enrollmentIds: string[], status: "active" | "paused") => void;
+  handlePauseAllEnrollments: (contactId: string, pausedUntil: Date | null, reason: string) => void;
   handleSkipStep: (enrollmentId: string, stepId: string) => void;
   handleBulkSkipSteps: (items: { enrollmentId: string; stepId: string }[]) => void;
   handleUnskipStep: (enrollmentId: string, stepId: string) => void;
@@ -1037,13 +1038,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.taskItems.write(updatedItems);
   };
 
-  const handleSetEnrollmentStatus = (enrollmentId: string, status: "active" | "paused") => {
+  const handleSetEnrollmentStatus = (enrollmentId: string, status: "active" | "paused", pausedUntil?: Date, pauseReason?: string) => {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
-    const updatedEnrollments = workflowEnrollments.map((e) =>
-      e.id === enrollmentId ? { ...e, status } : e,
-    );
+    const updatedEnrollments = workflowEnrollments.map((e) => {
+      if (e.id !== enrollmentId) return e;
+      if (status === "paused") {
+        return {
+          ...e,
+          status,
+          ...(pausedUntil ? { pausedUntil } : {}),
+          ...(pauseReason ? { pauseReason } : {}),
+        };
+      }
+      return { ...e, status, pausedUntil: undefined, pauseReason: undefined };
+    });
     const now = new Date();
 
     // Suspend all pending tasks for this enrollment when pausing,
@@ -1161,6 +1171,58 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           timestamp: now,
         })),
       ];
+    });
+
+    const updatedActivity = [...contactActivity, ...newActivities];
+    setWorkflowEnrollments(updatedEnrollments);
+    setTaskItems(updatedItems);
+    setContactActivity(updatedActivity);
+    store.workflowEnrollments.write(updatedEnrollments);
+    store.taskItems.write(updatedItems);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handlePauseAllEnrollments = (contactId: string, pausedUntil: Date | null, reason: string) => {
+    const activeEnrollments = workflowEnrollments.filter(
+      (e) => e.contactId === contactId && e.status === "active",
+    );
+    if (activeEnrollments.length === 0) return;
+    const idSet = new Set(activeEnrollments.map((e) => e.id));
+    const now = new Date();
+
+    const updatedEnrollments = workflowEnrollments.map((e) => {
+      if (!idSet.has(e.id)) return e;
+      return {
+        ...e,
+        status: "paused" as const,
+        ...(pausedUntil ? { pausedUntil } : {}),
+        ...(reason ? { pauseReason: reason } : {}),
+      };
+    });
+
+    const updatedItems = taskItems.map((ti) => {
+      const inSet = activeEnrollments.some(
+        (e) =>
+          ti.enrollmentId === e.id ||
+          ti.id.startsWith(`taskitem-call-${e.id}-`) ||
+          ti.id.startsWith(`taskitem-flow-${e.id}-`),
+      );
+      if (!inSet || ti.status !== "pending") return ti;
+      return { ...ti, status: "suspended" as const };
+    });
+
+    const newActivities: ContactActivityRecord[] = activeEnrollments.map((e, i) => {
+      const wf = workflows.find((w) => w.id === e.workflowId);
+      return {
+        id: `activity-pauseall-${e.id}-${Date.now()}-${i}`,
+        contactId,
+        type: "enrollment_paused" as const,
+        source: wf?.name,
+        sourceType: "flow" as const,
+        note: reason || undefined,
+        assignee: "You",
+        timestamp: now,
+      };
     });
 
     const updatedActivity = [...contactActivity, ...newActivities];
@@ -1708,6 +1770,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleMoveToStep,
         handleSetEnrollmentStatus,
         handleBulkSetEnrollmentStatus,
+        handlePauseAllEnrollments,
         handleSkipStep,
         handleBulkSkipSteps,
         handleUnskipStep,

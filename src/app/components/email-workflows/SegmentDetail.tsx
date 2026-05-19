@@ -10,8 +10,16 @@ import {
   Edit,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
-import type { FilterRule } from "@/app/types";
+import type { FilterRule, SegmentV2 } from "@/app/types";
 import { InlineToggle } from "@/app/components/email-workflows/segment-builder/InlineToggle";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/app/components/ui/dialog";
 
 const formatDateTime = (date: Date) =>
   new Intl.DateTimeFormat("en-US", {
@@ -76,6 +84,10 @@ export function SegmentDetail() {
   const segment = segments.find((s) => s.id === id);
 
   const [detailTab, setDetailTab] = useState<"contacts" | "settings">("contacts");
+  const [pendingSegmentType, setPendingSegmentType] = useState<"dynamic" | "static" | null>(null);
+  const [editingGeneral, setEditingGeneral] = useState(false);
+  const [editName, setEditName] = useState(segment?.name ?? "");
+  const [editDesc, setEditDesc] = useState(segment?.description ?? "");
 
   const disabledIds = new Set(segment?.excludedContactIds ?? []);
 
@@ -229,6 +241,77 @@ export function SegmentDetail() {
         <div className="flex-1 overflow-auto px-8 py-6">
           <div className="max-w-2xl mx-auto space-y-6">
 
+            {/* General */}
+            <div className="bg-card border border-border rounded-xl px-6 py-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  General
+                </p>
+                {!editingGeneral ? (
+                  <button
+                    onClick={() => { setEditName(segment.name); setEditDesc(segment.description ?? ""); setEditingGeneral(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditingGeneral(false)}
+                      className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!editName.trim()}
+                      onClick={() => {
+                        handleUpdateSegment(segment.id, { name: editName.trim(), description: editDesc.trim() });
+                        setEditingGeneral(false);
+                      }}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+              {!editingGeneral ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Name</p>
+                    <p className="text-sm text-foreground">{segment.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm text-muted-foreground">{segment.description || "No description"}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Segment name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+                    <input
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Add a description…"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Status */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
@@ -253,6 +336,116 @@ export function SegmentDetail() {
                 />
               </div>
             </div>
+
+            {/* Segment Type */}
+            {(() => {
+              const segmentV2 = segment as SegmentV2;
+              const currentType = segmentV2.segmentType ?? "dynamic";
+              return (
+                <div className="bg-card border border-border rounded-xl px-6 py-5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                    Segment Type
+                  </p>
+                  <div className="flex gap-3">
+                    {(["dynamic", "static"] as const).map((type) => {
+                      const isSelected = currentType === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            if (!isSelected) setPendingSegmentType(type);
+                          }}
+                          className={`flex-1 flex flex-col gap-1 px-4 py-3 rounded-lg border text-left transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <span className={`text-sm font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>
+                            {type === "dynamic" ? "Dynamic" : "Snapshot"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {type === "dynamic"
+                              ? "Contacts are re-evaluated on every enrollment run."
+                              : "Contact list is locked at the time the segment is saved."}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Dialog open={!!pendingSegmentType} onOpenChange={(open) => { if (!open) setPendingSegmentType(null); }}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Change to {pendingSegmentType === "dynamic" ? "Dynamic" : "Snapshot"}?</DialogTitle>
+                        <DialogDescription asChild>
+                          <div className="space-y-4 pt-1">
+                            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+                              {pendingSegmentType === "dynamic" ? (
+                                <>
+                                  <p className="text-sm font-semibold text-foreground mb-1">Dynamic</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Contacts are re-evaluated against the segment's filter rules on every enrollment run. New contacts who match the rules are automatically included; contacts who no longer match are excluded.
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-sm font-semibold text-foreground mb-1">Snapshot</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    The contact list is locked at the time the segment is saved. No new contacts are added automatically — the list stays fixed regardless of future filter rule changes.
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            {pendingSegmentType === "static" && (() => {
+                              const enrolledWorkflows = workflows.filter(w => w.segmentId === segment.id);
+                              const contactCount = contacts.length;
+                              return (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-2">
+                                  <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Current Segment State</p>
+                                  <div className="flex gap-4">
+                                    <div>
+                                      <p className="text-lg font-bold text-foreground">{contactCount}</p>
+                                      <p className="text-xs text-muted-foreground">contacts will be locked in</p>
+                                    </div>
+                                    <div className="w-px bg-amber-200" />
+                                    <div>
+                                      <p className="text-lg font-bold text-foreground">{enrolledWorkflows.length}</p>
+                                      <p className="text-xs text-muted-foreground">workflow{enrolledWorkflows.length !== 1 ? "s" : ""} using this segment</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            <p className="text-sm text-muted-foreground">
+                              This will affect how contacts are evaluated for all workflows using this segment. This action can be undone by switching back.
+                            </p>
+                          </div>
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <button
+                          onClick={() => setPendingSegmentType(null)}
+                          className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (pendingSegmentType) {
+                              handleUpdateSegment(segment.id, { segmentType: pendingSegmentType } as Partial<SegmentV2>);
+                            }
+                            setPendingSegmentType(null);
+                          }}
+                          className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors"
+                        >
+                          Confirm Change
+                        </button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              );
+            })()}
 
             {/* Rules */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">

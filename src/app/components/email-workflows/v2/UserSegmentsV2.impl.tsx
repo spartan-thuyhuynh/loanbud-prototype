@@ -7,7 +7,7 @@ import { CreateSegmentDialog } from "../CreateSegmentDialog";
 
 export function UserSegmentsV2() {
   const navigate = useNavigate();
-  const { segments, contacts } = useAppData();
+  const { segments, contacts, workflows } = useAppData();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
@@ -52,10 +52,8 @@ export function UserSegmentsV2() {
     return contacts.length;
   }
 
-  // V2: Derive health for a segment
-  function getSegmentHealth(segmentId: string): "green" | "yellow" {
-    const count = getSegmentCount(segmentId);
-    return count > 0 ? "green" : "yellow";
+  function getWorkflowCount(segmentId: string): number {
+    return workflows.filter((wf) => wf.segmentId === segmentId).length;
   }
 
   return (
@@ -143,13 +141,6 @@ export function UserSegmentsV2() {
                   >
                     Type
                   </th>
-                  {/* V2: Health column */}
-                  <th
-                    className="px-6 py-4 text-left text-sm text-muted-foreground"
-                    style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-                  >
-                    Health
-                  </th>
                   {/* V2: Contacts count column */}
                   <th
                     className="px-6 py-4 text-left text-sm text-muted-foreground"
@@ -169,11 +160,16 @@ export function UserSegmentsV2() {
                   >
                     Created By
                   </th>
+                  <th
+                    className="px-6 py-4 text-left text-sm text-muted-foreground"
+                    style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                  >
+                    Use in
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredSegments.map((segment) => {
-                  const health = getSegmentHealth(segment.id);
                   const count = getSegmentCount(segment.id);
                   const isStatic = segment.segmentType === "static";
 
@@ -213,39 +209,26 @@ export function UserSegmentsV2() {
                         </button>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs ${
-                            segment.status === "Active"
-                              ? "bg-green-100 text-green-700 border border-green-200"
-                              : "bg-gray-100 text-gray-700 border border-gray-200"
-                          }`}
-                        >
+                        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              segment.status === "Active"
+                                ? "bg-green-500"
+                                : "bg-gray-400"
+                            }`}
+                          />
                           {segment.status}
                         </span>
                       </td>
                       {/* V2: Type badge */}
                       <td className="px-6 py-4">
                         {isStatic ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-muted-foreground border border-gray-200">
                             Snapshot
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-muted-foreground border border-blue-100">
                             Dynamic
-                          </span>
-                        )}
-                      </td>
-                      {/* V2: Health dot + label */}
-                      <td className="px-6 py-4">
-                        {health === "green" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block flex-shrink-0" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block flex-shrink-0" />
-                            Empty
                           </span>
                         )}
                       </td>
@@ -254,7 +237,7 @@ export function UserSegmentsV2() {
                         <span className="font-medium text-foreground">{count}</span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-0.5">
                           <span
                             style={{
                               fontFamily: "var(--font-mono)",
@@ -263,20 +246,16 @@ export function UserSegmentsV2() {
                           >
                             {formatDateTime(segment.lastUpdatedAt)}
                           </span>
+                          <span className="text-xs text-muted-foreground">
+                            {segment.lastUpdatedBy ?? segment.createdBy}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
-                        <div className="flex flex-col">
-                          <span>{segment.createdBy}</span>
-                          <span
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              fontSize: "0.85rem",
-                            }}
-                          >
-                            {formatDateTime(segment.createdAt)}
-                          </span>
-                        </div>
+                        <span>{segment.createdBy}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{getWorkflowCount(segment.id)}</span>
                       </td>
                     </tr>
                   );

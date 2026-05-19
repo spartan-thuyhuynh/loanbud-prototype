@@ -165,6 +165,7 @@ export interface Segment {
   contactCount: number;
   status: "Active" | "Inactive";
   lastUpdatedAt: Date;
+  lastUpdatedBy?: string;
   createdBy: string;
   createdAt: Date;
   filters: FilterRule[];
@@ -292,6 +293,8 @@ export interface WorkflowEnrollment {
   status: "active" | "completed" | "paused";
   stepProgress: WorkflowStepProgress[];
   customSteps?: CustomWorkflowStep[];
+  pausedUntil?: Date;   // V2
+  pauseReason?: string; // V2
 }
 
 export type ApplicationStage =

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Clock, AlertTriangle, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, Play, History } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -49,6 +49,22 @@ const LISTING_STATUS_STYLES: Record<string, string> = {
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+function getCardStatus(opts: {
+  enrollmentStatus: string;
+  cantSend: boolean;
+  isAutoStep: boolean;
+  scheduledDate: Date | null;
+}): { label: string; dotClass: string } {
+  const { enrollmentStatus, cantSend, isAutoStep, scheduledDate } = opts;
+  if (enrollmentStatus === "paused") return { label: "Paused", dotClass: "bg-amber-400" };
+  if (cantSend) return { label: "Can't Send", dotClass: "bg-red-500" };
+  const time = scheduledDate ? `${fmtDate(scheduledDate)}, ${fmtTime(scheduledDate)}` : null;
+  const label = isAutoStep
+    ? time ? `Will be sent at ${time}` : "Will be sent"
+    : time ? `Task will be created at ${time}` : "Task will be created";
+  return { label, dotClass: "bg-muted-foreground/40" };
 }
 
 function fmtDate(d: Date) {
@@ -176,6 +192,22 @@ function StepsTimeline({ steps, enrollmentStats }: {
       {expanded && (
         <div className="px-6 pb-4 overflow-x-auto border-t border-border/60">
           <div className="flex items-end gap-0 min-w-max pt-3">
+            {/* Start node */}
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-green-200 bg-green-50">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-green-100 text-green-600">
+                  <Play className="h-3 w-3 fill-green-600" />
+                </div>
+                <span className="text-xs font-semibold text-green-700 whitespace-nowrap">Start</span>
+              </div>
+            </div>
+            {/* Connector from Start to first step */}
+            <div className="flex items-center self-end mb-[22px]">
+              <div className="flex items-center w-10">
+                <div className="h-px flex-1 bg-border" />
+                <div className="w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-border" />
+              </div>
+            </div>
             {sorted.map((step) => {
               if (step.actionType === "delay") {
                 return (
@@ -245,9 +277,7 @@ function ContactCard({
 
   const isAutoStep = currentStep?.actionType === "email" || currentStep?.actionType === "sms";
   const isCallReminder = currentStep?.actionType === "call-reminder";
-  const dueStr = scheduledDate && !isCompleted ? fmtDate(scheduledDate) : null;
   const cantSend = isAutoStep && contact.optedOut;
-
   const accentClass = isCompleted
     ? "border-l-green-300"
     : currentStep?.actionType === "email"
@@ -258,14 +288,22 @@ function ContactCard({
           ? "border-l-amber-300"
           : "border-l-border";
 
+  const { label: statusLabel, dotClass } = getCardStatus({ enrollmentStatus, cantSend, isAutoStep, scheduledDate });
+
   return (
     <div
       ref={dragRef}
       onClick={onCardClick}
-      className={`rounded-lg border border-border border-l-2 ${accentClass} bg-card p-3 shadow-sm hover:shadow-md transition-all cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
+      className={`rounded-lg border border-border border-l-2 ${accentClass} bg-card overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer active:cursor-grabbing${isDragging ? " opacity-40" : ""}`}
     >
+      {/* Status bar */}
+      <div className="px-3 py-2 flex items-center gap-1.5 bg-muted/60 rounded-t-lg border-b border-border/50">
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
+        <span className="text-[10px] font-medium text-muted-foreground tracking-wide">{statusLabel}</span>
+      </div>
+
       {/* Header: avatar + name/email */}
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-2.5 px-3 pt-2.5 pb-3">
         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
           {getInitials(contact.firstName, contact.lastName)}
         </div>
@@ -286,44 +324,10 @@ function ContactCard({
               </span>
             </div>
           )}
+          {isCallReminder && !isCompleted && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{CURRENT_USER}</p>
+          )}
         </div>
-      </div>
-
-      {/* Footer: chips */}
-      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center gap-1.5 min-w-0 flex-wrap">
-        {dueStr && (
-          <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-            Due {dueStr}
-          </span>
-        )}
-        {isCompleted && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-600">
-            <Check className="h-2.5 w-2.5" /> Done
-          </span>
-        )}
-        {isCallReminder && !isCompleted && (
-          <span className="text-[10px] text-muted-foreground truncate">
-            {CURRENT_USER}
-          </span>
-        )}
-        {enrollmentStatus === "paused" && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
-            <PauseCircle className="h-2.5 w-2.5" />
-            Paused
-          </span>
-        )}
-        {isAutoStep && cantSend && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
-            <AlertTriangle className="h-2.5 w-2.5" />
-            Can't Send
-          </span>
-        )}
-        {isAutoStep && !cantSend && enrollmentStatus !== "paused" && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100">
-            <Clock className="h-2.5 w-2.5" />
-            Scheduled
-          </span>
-        )}
       </div>
     </div>
   );
@@ -359,8 +363,8 @@ function KanbanColumn({
   const isAutoStep = currentStep && (currentStep.actionType === "email" || currentStep.actionType === "sms");
 
   return (
-    <div className="w-72 flex-shrink-0 flex flex-col bg-muted/40 border border-border rounded-xl">
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+    <div className="w-72 flex-shrink-0 flex flex-col bg-white border border-border rounded-xl">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
             {label}
@@ -426,6 +430,8 @@ export function WorkflowBoard() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(navState?.openContactId ?? null);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(navState?.openEnrollmentId ?? null);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [enrollmentHistorySearch, setEnrollmentHistorySearch] = useState("");
+  const [enrollmentHistoryStatusFilter, setEnrollmentHistoryStatusFilter] = useState<"all" | "active" | "paused" | "completed">("all");
   const [showAutomationsModal, setShowAutomationsModal] = useState(false);
   const [automationSearch, setAutomationSearch] = useState("");
   const [selectedAutomationKeys, setSelectedAutomationKeys] = useState<Set<string>>(new Set());
@@ -437,6 +443,9 @@ export function WorkflowBoard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [boardTab, setBoardTab] = useState<"enrollment" | "settings">("enrollment");
+  const [editingGeneral, setEditingGeneral] = useState(false);
+  const [editName, setEditName] = useState(() => workflows.find((wf) => wf.id === id)?.name ?? "");
+  const [editDesc, setEditDesc] = useState(() => workflows.find((wf) => wf.id === id)?.description ?? "");
 
   const [pauseConfirm, setPauseConfirm] = useState<{
     title: string;
@@ -518,19 +527,32 @@ export function WorkflowBoard() {
       });
   }, [myEnrollments, contacts, actionSteps, search, stepFilter, statusFilter]);
 
-  const completedRows = useMemo(() => {
+  const allEnrollmentRows = useMemo(() => {
     return myEnrollments
       .filter((e) => {
         const firstPending = actionSteps.find(
           (step) => e.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
         );
-        return firstPending === undefined;
+        const displayStatus = firstPending === undefined ? "completed" : e.status;
+        if (enrollmentHistoryStatusFilter !== "all" && displayStatus !== enrollmentHistoryStatusFilter) return false;
+        if (enrollmentHistorySearch) {
+          const contact = contacts.find((c) => c.id === e.contactId);
+          const q = enrollmentHistorySearch.toLowerCase();
+          const name = contact ? `${contact.firstName} ${contact.lastName}`.toLowerCase() : "";
+          const email = contact?.email.toLowerCase() ?? "";
+          if (!name.includes(q) && !email.includes(q)) return false;
+        }
+        return true;
       })
       .map((enrollment) => {
         const contact = contacts.find((c) => c.id === enrollment.contactId);
-        return { enrollment, contact };
+        const firstPending = actionSteps.find(
+          (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
+        );
+        const displayStatus = firstPending === undefined ? "completed" : enrollment.status;
+        return { enrollment, contact, displayStatus };
       });
-  }, [myEnrollments, contacts, actionSteps]);
+  }, [myEnrollments, contacts, actionSteps, enrollmentHistorySearch, enrollmentHistoryStatusFilter]);
 
   const upcomingAutomations = useMemo(() => {
     const todayStart = new Date();
@@ -570,18 +592,41 @@ export function WorkflowBoard() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Completed contacts modal */}
-      <Dialog open={showCompletedModal} onOpenChange={setShowCompletedModal}>
+      {/* Enrollment history modal */}
+      <Dialog open={showCompletedModal} onOpenChange={(open) => { setShowCompletedModal(open); if (!open) { setEnrollmentHistorySearch(""); setEnrollmentHistoryStatusFilter("all"); } }}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Completed Contacts ({completedCount})</DialogTitle>
+            <DialogTitle>Enrollment History</DialogTitle>
           </DialogHeader>
+          {/* Filters */}
+          <div className="flex items-center gap-2 mt-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={enrollmentHistorySearch}
+                onChange={(e) => setEnrollmentHistorySearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <select
+              value={enrollmentHistoryStatusFilter}
+              onChange={(e) => setEnrollmentHistoryStatusFilter(e.target.value as "all" | "active" | "paused" | "completed")}
+              className="text-sm border border-border rounded-lg px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
           <div className="overflow-auto flex-1 mt-2">
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 border-b border-border">
                   <tr>
-                    {["Contact", "Enrollment Status", "Start Date"].map((col) => (
+                    {["Contact", "Status", "Start Date"].map((col) => (
                       <th key={col} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         {col}
                       </th>
@@ -589,14 +634,14 @@ export function WorkflowBoard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border bg-card">
-                  {completedRows.length === 0 ? (
+                  {allEnrollmentRows.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-5 py-8 text-center text-muted-foreground text-sm">
-                        No completed contacts yet.
+                        No enrollments found.
                       </td>
                     </tr>
                   ) : (
-                    completedRows.map(({ enrollment, contact }) => (
+                    allEnrollmentRows.map(({ enrollment, contact, displayStatus }) => (
                       <tr
                         key={enrollment.id}
                         onClick={() => {
@@ -624,9 +669,21 @@ export function WorkflowBoard() {
                           )}
                         </td>
                         <td className="px-5 py-3">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                            <Check className="h-3 w-3" /> Completed
-                          </span>
+                          {displayStatus === "completed" && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                              <Check className="h-3 w-3" /> Completed
+                            </span>
+                          )}
+                          {displayStatus === "active" && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                              <Play className="h-3 w-3" /> Active
+                            </span>
+                          )}
+                          {displayStatus === "paused" && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                              <PauseCircle className="h-3 w-3" /> Paused
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-muted-foreground text-xs">
                           {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(enrollment.startDate)}
@@ -1008,8 +1065,8 @@ export function WorkflowBoard() {
                   onClick={() => setShowCompletedModal(true)}
                   className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  {`Show Completed (${completedCount})`}
+                  <History className="h-3.5 w-3.5" />
+                  Enrollment History
                 </button>
               </div>
             </div>
@@ -1018,7 +1075,9 @@ export function WorkflowBoard() {
               className="flex gap-4 p-6 min-h-full items-start"
               style={{ minWidth: `${actionSteps.length * 288}px` }}
             >
-              {actionSteps.map((s, i) => ({ id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep }))
+              {actionSteps.map((s, i) => {
+                return { id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep };
+              })
               .map(({ id: colId, label, step }) => {
                   const colEnrollments = myEnrollments.filter((e) => {
                     if (getContactColumn(e) !== colId) return false;
@@ -1228,6 +1287,77 @@ export function WorkflowBoard() {
       {boardTab === "settings" && (
         <div className="flex-1 overflow-auto px-8 py-6">
           <div className="max-w-2xl mx-auto space-y-6">
+
+            {/* General */}
+            <div className="bg-card border border-border rounded-xl px-6 py-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  General
+                </p>
+                {!editingGeneral ? (
+                  <button
+                    onClick={() => { setEditName(workflow.name); setEditDesc(workflow.description ?? ""); setEditingGeneral(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditingGeneral(false)}
+                      className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!editName.trim()}
+                      onClick={() => {
+                        handleUpdateWorkflow(workflow.id, { name: editName.trim(), description: editDesc.trim() });
+                        setEditingGeneral(false);
+                      }}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+              {!editingGeneral ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Name</p>
+                    <p className="text-sm text-foreground">{workflow.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm text-muted-foreground">{workflow.description || "No description"}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Flow name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+                    <input
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Add a description…"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Status */}
             <div className="bg-card border border-border rounded-xl px-6 py-5">

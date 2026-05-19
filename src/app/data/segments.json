@@ -5,6 +5,7 @@
     "contactCount": 1234,
     "status": "Active",
     "lastUpdatedAt": "2026-04-10T14:30:00.000Z",
+    "lastUpdatedBy": "John Doe",
     "createdBy": "John Doe",
     "createdAt": "2026-03-15T09:00:00.000Z",
     "filters": [
@@ -17,6 +18,7 @@
     "contactCount": 856,
     "status": "Active",
     "lastUpdatedAt": "2026-04-08T11:15:00.000Z",
+    "lastUpdatedBy": "Sarah Chen",
     "createdBy": "Sarah Chen",
     "createdAt": "2026-03-20T10:30:00.000Z",
     "filters": [
@@ -30,6 +32,7 @@
     "contactCount": 2145,
     "status": "Active",
     "lastUpdatedAt": "2026-04-05T16:00:00.000Z",
+    "lastUpdatedBy": "Mike Johnson",
     "createdBy": "Mike Johnson",
     "createdAt": "2026-03-10T08:45:00.000Z",
     "filters": [
@@ -43,6 +46,7 @@
     "contactCount": 432,
     "status": "Active",
     "lastUpdatedAt": "2026-04-01T09:30:00.000Z",
+    "lastUpdatedBy": "Emily Davis",
     "createdBy": "Emily Davis",
     "createdAt": "2026-02-28T14:15:00.000Z",
     "filters": []
@@ -53,6 +57,7 @@
     "contactCount": 1678,
     "status": "Active",
     "lastUpdatedAt": "2026-03-28T13:45:00.000Z",
+    "lastUpdatedBy": "Robert Wilson",
     "createdBy": "Robert Wilson",
     "createdAt": "2026-02-15T10:00:00.000Z",
     "filters": [
@@ -65,6 +70,7 @@
     "contactCount": 543,
     "status": "Active",
     "lastUpdatedAt": "2026-03-25T10:20:00.000Z",
+    "lastUpdatedBy": "Lisa Anderson",
     "createdBy": "Lisa Anderson",
     "createdAt": "2026-02-10T09:30:00.000Z",
     "filters": [

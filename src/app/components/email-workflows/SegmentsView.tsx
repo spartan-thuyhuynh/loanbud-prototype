@@ -52,7 +52,7 @@ export function SegmentsView() {
       setSavedSegments((prev) => [...prev, segment]);
       toast.success('Segment created.');
     }
-    navigate('/email-workflows/user-segments');
+    navigate(`/email-workflows/user-segments/${segment.id}`);
   };
 
   return (

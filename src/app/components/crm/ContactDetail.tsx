@@ -11,11 +11,16 @@ import {
   Clock,
   PhoneCall,
   MessageSquare,
+  PauseCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useDialer } from "@/app/contexts/DialerContext";
+import { useVersion } from "@/app/contexts/VersionContext";
 import { CreateTaskModal } from "@/app/components/email-workflows/CreateTaskModal";
 import { TaskActionModal } from "@/app/components/email-workflows/TaskActionModal";
+import { PauseAllCommsModal } from "./PauseAllCommsModal";
+import { ContactCommunicationsTab } from "./ContactCommunicationsTab";
 import type { TaskItem, ContactActivityRecord } from "@/app/types";
 
 type TaskModalMode = "complete" | "reschedule" | "delete" | null;
@@ -54,16 +59,22 @@ export function ContactDetail() {
     emailHistory,
     taskItems,
     contactActivity,
+    workflowEnrollments,
+    workflows,
     handleCompleteTask,
     handleRescheduleTask,
     handleDeleteTask,
     handleMarkEmailRead,
+    handlePauseAllEnrollments,
   } = useAppData();
 
   const { openDialer } = useDialer();
+  const { version } = useVersion();
+  const isV2 = version === "v2";
 
-  const [activeTab, setActiveTab] = useState<"activity" | "tasks">("activity");
+  const [activeTab, setActiveTab] = useState<"timeline" | "tasks" | "communications">("timeline");
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
   const [modalMode, setModalMode] = useState<TaskModalMode>(null);
   const [infoOpen, setInfoOpen] = useState(true);
@@ -113,7 +124,24 @@ export function ContactDetail() {
     })),
   ].sort((a, b) => b._ts.getTime() - a._ts.getTime());
 
+  // Timeline: non-communication contact activity (tasks, status updates, step events)
+  const isCommsEntry = (e: ActivityEntry) =>
+    e.type === "email_sent" ||
+    e.type === "sms_sent" ||
+    (e.type === "task_completed" && (e.taskType === "Call" || e.taskType === "Voicemail")) ||
+    e.direction !== undefined;
+  const timelineFeed = activityFeed.filter((e) => !isCommsEntry(e));
+
   const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
+
+  const contactEnrollments = workflowEnrollments.filter(
+    (e) => e.contactId === contact.id && e.status !== "completed",
+  );
+  const activeEnrollmentCount = contactEnrollments.filter((e) => e.status === "active").length;
+  const hasOverdueEnrollments = contactEnrollments.some(
+    (e) =>
+      e.status === "paused" && e.pausedUntil && new Date(e.pausedUntil) <= new Date(),
+  );
 
   const openModal = (task: TaskItem, mode: TaskModalMode) => {
     setModalTask(task);
@@ -191,6 +219,92 @@ export function ContactDetail() {
             </div>
           </div>
 
+          {/* V2: Workflow status + comms controls */}
+          {isV2 && contactEnrollments.length > 0 && !contact.optedOut && (
+            <div className="border-t border-border px-5 py-4">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+                Enrolled communication flow
+              </p>
+
+              {hasOverdueEnrollments && (
+                <button
+                  onClick={() => setActiveTab("communications")}
+                  className="mb-3 w-full flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-700 hover:bg-amber-100 transition-colors"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Resume due — click to view
+                </button>
+              )}
+
+              <div className="space-y-2.5">
+                {contactEnrollments.map((e) => {
+                  const isPaused = e.status === "paused";
+                  const wf = workflows.find((w) => w.id === e.workflowId);
+                  const wfName = wf?.name ?? e.workflowId;
+                  const actionStepCount = wf?.steps.filter((s) => s.actionType !== "delay").length ?? 0;
+                  const stepsComplete = e.stepProgress.filter(
+                    (p) => p.status === "done" || p.status === "skipped",
+                  ).length;
+                  const pct =
+                    e.stepProgress.length > 0
+                      ? Math.round((stepsComplete / e.stepProgress.length) * 100)
+                      : 0;
+                  return (
+                    <div key={e.id} className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPaused ? "bg-amber-400" : "bg-green-500"}`}
+                        />
+                        <span className="text-xs font-medium truncate flex-1">
+                          {wfName}
+                        </span>
+                        {actionStepCount > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full shrink-0 whitespace-nowrap">
+                            {actionStepCount} steps
+                          </span>
+                        )}
+                        {isPaused && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full shrink-0">
+                            Paused
+                          </span>
+                        )}
+                      </div>
+                      {isPaused && e.pausedUntil && (
+                        <div className="text-[10px] text-amber-600 pl-3">
+                          Until {formatShortDate(e.pausedUntil)}
+                        </div>
+                      )}
+                      <div className="h-1 bg-muted rounded-full overflow-hidden ml-3">
+                        <div
+                          className="h-full bg-primary/60 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 flex flex-col gap-2">
+                {activeEnrollmentCount > 0 && (
+                  <button
+                    onClick={() => setShowPauseModal(true)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <PauseCircle className="w-3.5 h-3.5" />
+                    Pause All Comms
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveTab("communications")}
+                  className="w-full text-xs text-primary hover:underline py-1"
+                >
+                  View Details →
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Contact info accordion */}
           <div className="p-5">
             <button
@@ -225,7 +339,7 @@ export function ContactDetail() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Tab bar */}
           <div className="border-b border-border bg-card px-6 flex gap-6">
-            {(["activity", "tasks"] as const).map((tab) => (
+            {(["timeline", "tasks", ...(isV2 ? ["communications" as const] : [])] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -235,21 +349,25 @@ export function ContactDetail() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab === "activity" ? `Activity (${activityFeed.length})` : `Tasks (${contactTasks.length})`}
+                {tab === "timeline"
+                  ? `Timeline (${timelineFeed.length})`
+                  : tab === "tasks"
+                  ? `Tasks (${contactTasks.length})`
+                  : "Communications"}
               </button>
             ))}
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
-            {/* ACTIVITY TAB — unified chronological history */}
-            {activeTab === "activity" && (
+            {/* TIMELINE TAB — non-communication contact activity */}
+            {activeTab === "timeline" && (
               <div>
-                {activityFeed.length === 0 ? (
+                {timelineFeed.length === 0 ? (
                   <EmptyState icon={Clock} message="No activity for this contact yet." />
                 ) : (
                   <div className="space-y-2">
-                    {activityFeed.map((entry) => {
+                    {timelineFeed.map((entry) => {
                       const isCall = entry.type === "task_completed" && entry.taskType === "Call";
                       const isEmail = entry.type === "email_sent";
                       const isSms = entry.type === "sms_sent";
@@ -402,6 +520,14 @@ export function ContactDetail() {
                 )}
               </div>
             )}
+
+            {/* COMMUNICATIONS TAB (V2 only) */}
+            {activeTab === "communications" && isV2 && (
+              <ContactCommunicationsTab
+                contactId={contact.id}
+                contactOptedOut={contact.optedOut ?? false}
+              />
+            )}
           </div>
         </main>
 
@@ -478,6 +604,17 @@ export function ContactDetail() {
         onReschedule={(taskId, date, assignee, objective) => { handleRescheduleTask(taskId, date, assignee, objective); closeModal(); }}
         onDelete={(taskId) => { handleDeleteTask(taskId); closeModal(); }}
         onClose={closeModal}
+      />
+
+      <PauseAllCommsModal
+        isOpen={showPauseModal}
+        contactName={`${contact.firstName} ${contact.lastName}`}
+        activeEnrollmentCount={activeEnrollmentCount}
+        onConfirm={(pausedUntil, reason) => {
+          handlePauseAllEnrollments(contact.id, pausedUntil, reason);
+          setShowPauseModal(false);
+        }}
+        onClose={() => setShowPauseModal(false)}
       />
     </div>
   );

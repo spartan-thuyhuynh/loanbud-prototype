@@ -993,21 +993,13 @@ export function WorkflowBuilderV2() {
                 {callCount}
               </span>
             </div>
-            {/* Save as Draft — always available regardless of segment */}
-            <Button
-              variant="outline"
-              onClick={handleSave}
-              disabled={steps.length === 0}
-            >
-              Save as Draft
-            </Button>
-            {/* Activate — requires a segment; tooltip when disabled */}
+            {/* Primary action — requires a segment; tooltip when disabled */}
             <div className="relative group/activate">
               <Button
                 onClick={handleSave}
                 disabled={steps.length === 0 || !canActivate}
               >
-                {id ? "Update Flow" : "Activate Flow"}
+                {id ? "Update Flow" : "Create Flow"}
               </Button>
               {!canActivate && (
                 <div className="absolute right-0 bottom-full mb-2 w-52 px-3 py-2 bg-popover border border-border rounded-lg shadow-md text-xs text-foreground opacity-0 group-hover/activate:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">

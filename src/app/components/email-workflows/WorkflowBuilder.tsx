@@ -16,6 +16,7 @@ import {
   GripVertical,
   Pencil,
   Trash2,
+  Play,
 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -1043,6 +1044,19 @@ export function WorkflowBuilder() {
               ) : (
                 <DndProvider backend={HTML5Backend}>
                   <div>
+                    {/* Start node — static, non-draggable */}
+                    <div className="flex gap-4 mb-0">
+                      <div className="flex flex-col items-center flex-shrink-0 w-10">
+                        <div className="w-10 h-10 rounded-full border-2 border-green-300 flex items-center justify-center bg-green-50 shadow-sm">
+                          <Play className="h-4 w-4 text-green-600 fill-green-600" />
+                        </div>
+                        <div className="w-0.5 bg-border/60 flex-1 min-h-6 mt-1 rounded-full" />
+                      </div>
+                      <div className="flex-1 pb-4 flex items-center gap-2 pt-2">
+                        <span className="text-sm font-semibold text-green-700">Start</span>
+                        <span className="text-xs text-muted-foreground">Contact enrolled</span>
+                      </div>
+                    </div>
                     {steps.map((step, i) => {
                       if (step.actionType === "delay") {
                         return (

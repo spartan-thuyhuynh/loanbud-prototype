@@ -156,7 +156,7 @@ export const store = {
       const enrollments = read<WorkflowEnrollment>(
         KEYS.workflowEnrollments,
         workflowEnrollmentsJson as unknown as WorkflowEnrollment[],
-        ["startDate"],
+        ["startDate", "pausedUntil"],
       );
       return enrollments.map((e) => ({
         ...e,

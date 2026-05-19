@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { Plus, Save, Pencil, X, Copy, Trash2, ChevronDown } from "lucide-react";
 import type { Contact, FilterRule, SavedSegment, Segment, Workflow } from "@/app/types";
 import type { FilterFieldV2, FilterOperatorV2, FilterRuleV2, FilterGroupV2 } from "@/app/types";
@@ -675,6 +675,7 @@ export function SegmentBuilderV2({
 }: SegmentBuilderV2Props) {
   const { workflows, contacts: contextContacts, handleCreateSegment, handleUpdateSegment } = useAppData();
   const location = useLocation();
+  const navigate = useNavigate();
   const locationState = !initialSegment
     ? (location.state as { name?: string; description?: string } | null)
     : null;
@@ -795,7 +796,12 @@ export function SegmentBuilderV2({
     }
 
     onSaveSegment(payload);
-    if (!initialSegment) {
+    if (!embeddedMode) {
+      const detailPath = location.pathname.startsWith("/crm/")
+        ? `/crm/segments/${id}`
+        : `/email-workflows/user-segments/${id}`;
+      navigate(detailPath);
+    } else if (!initialSegment) {
       include.reset();
       exclude.reset();
       setSpecificContacts([]);

@@ -33,7 +33,7 @@ export type TaskTypeId =
   | "Custom";
 
 /** Task types exposed in the Create/Edit Task UI in Phase 1 */
-export const ACTIVE_TASK_TYPES: TaskTypeId[] = ["Call", "Email", "SMS", "Voicemail"];
+export const ACTIVE_TASK_TYPES: TaskTypeId[] = ["Call", "Email", "SMS"];
 
 // ── Disposition Sets ──────────────────────────────────────────────────────────
 

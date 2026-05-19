@@ -375,6 +375,21 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                   <div className="relative">
                     <div className="absolute left-[35px] top-5 bottom-5 w-px bg-border" />
 
+                    {/* Start node */}
+                    <div className="relative flex gap-3 mb-2">
+                      <div className="flex flex-col items-center shrink-0 pt-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ring-2 ring-background ${isCompleted ? "bg-gray-100 border-2 border-gray-300" : "bg-green-100 border-2 border-green-300"}`}>
+                          <Play className={`h-3.5 w-3.5 ${isCompleted ? "text-gray-400 fill-gray-400" : "text-green-600 fill-green-600"}`} />
+                        </div>
+                      </div>
+                      <div className={`flex-1 min-w-0 rounded-lg border mb-1 ${isCompleted ? "border-gray-200 bg-gray-50" : "border-green-200 bg-green-50"}`}>
+                        <div className="flex items-center gap-2 px-3 py-2.5">
+                          <span className={`text-sm font-semibold ${isCompleted ? "text-gray-500" : "text-green-700"}`}>Start</span>
+                          <span className="text-xs text-muted-foreground">Enrolled {formatDate(enrollment.startDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+
                     {sortedSteps.flatMap((step, idx) => {
                       const isLastStep = idx === sortedSteps.length - 1;
                       const showInsertZone = !isCompleted && !isLastStep && isEditing;
@@ -553,7 +568,11 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         step.note || step.senderIdentity || step.reminderDaysBefore
                       );
 
-                      const timelineNode = isDone ? (
+                      const timelineNode = isDone && isCompleted ? (
+                        <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center shrink-0 z-10 ring-2 ring-background">
+                          <CheckCircle2 className="h-4 w-4 text-gray-500" />
+                        </div>
+                      ) : isDone ? (
                         <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shrink-0 z-10 ring-2 ring-background">
                           <CheckCircle2 className="h-4 w-4 text-white" />
                         </div>

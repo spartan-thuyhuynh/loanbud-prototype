@@ -8,7 +8,7 @@ interface CreateTaskModalProps {
   preselectedContactId?: string;
 }
 
-const TASK_TYPES = ["Call", "Email", "Voicemail"];
+const TASK_TYPES = ["Call", "Email", "SMS"];
 
 export function CreateTaskModal({ isOpen, onClose, preselectedContactId }: CreateTaskModalProps) {
   const { contacts, handleCreateTask } = useAppData();
@@ -22,7 +22,7 @@ export function CreateTaskModal({ isOpen, onClose, preselectedContactId }: Creat
 
   if (!isOpen) return null;
 
-  const showVmField = taskType === "Call" || taskType === "Voicemail";
+  const showVmField = taskType === "Call";
 
   const handleClose = () => {
     setContactId(preselectedContactId ?? "");
