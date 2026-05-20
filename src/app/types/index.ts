@@ -85,9 +85,25 @@ export interface Contact {
   listingName: string;
   listingStatus: "New" | "Draft" | "Submitted" | "On Hold" | "Declined";
   createAt: Date;
-  userType: "Broker" | "Lender" | "Partner";
+  updatedAt?: Date | string;
+  userType: "Broker" | "Lender" | "Partner" | "Borrower" | "Co-Borrower";
   optedOut: boolean;
   openReminders: number;
+  // Extended profile fields
+  status?: "Active" | "Inactive" | "Pending";
+  visibility?: "Public" | "Private";
+  loanOfficer?: string;
+  linkedin?: string;
+  doNotCall?: "No Calls" | "Allowed";
+  smsConsent?: "Yes" | "No";
+  timeZone?: string;
+  preferredLanguage?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  linkedApplicationId?: string;
+  companies?: string[];
 }
 
 export interface EmailRecord {

@@ -267,7 +267,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="w-[1200px] p-0 gap-0 flex flex-col" style={{ height: "85vh" }}>
+      <DialogContent className="w-[1200px] p-0 gap-0 flex flex-col bg-white" style={{ height: "85vh" }}>
         {/* Header — full width */}
         <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
@@ -332,7 +332,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-100 border border-gray-200 mb-1">
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-100 border border-gray-200 mb-4">
                         <div className="flex items-center gap-2">
                           <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />
                           <span className="text-xs text-gray-700 font-medium">Read-only — click Edit Journey to skip or modify steps.</span>
@@ -373,19 +373,25 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
 
                   {/* Timeline wrapper */}
                   <div className="relative">
-                    <div className="absolute left-[35px] top-5 bottom-5 w-px bg-border" />
+                    <div className="absolute left-4 top-5 bottom-5 w-px bg-border" />
 
                     {/* Start node */}
-                    <div className="relative flex gap-3 mb-2">
+                    <div className="relative flex gap-3 mb-3">
                       <div className="flex flex-col items-center shrink-0 pt-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ring-2 ring-background bg-gray-100 border-2 border-gray-300">
-                          <UserCheck className="h-3.5 w-3.5 text-gray-400" />
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 z-10 ring-2 ring-background">
+                          <UserCheck className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0 rounded-lg border mb-1 border-gray-200 bg-gray-50">
+                      <div className="flex-1 min-w-0 rounded-lg border mb-1 border-border bg-muted/20">
                         <div className="flex items-center gap-2 px-3 py-2.5">
-                          <span className="text-sm font-semibold text-gray-500">Contact enrolled</span>
-                          <span className="text-xs text-muted-foreground">Enrolled {formatDate(enrollment.startDate)}</span>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-muted text-muted-foreground">
+                            <UserCheck className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-sm font-medium text-muted-foreground flex-1">Contact enrolled</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground whitespace-nowrap">
+                            <CheckCircle2 className="h-2.5 w-2.5" />
+                            Enrolled · {formatDate(enrollment.startDate)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -434,13 +440,12 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         );
 
                         const stepElement = (
-                          <div key={step.id} className="relative flex gap-3 mb-2">
+                          <div key={step.id} className="relative flex gap-3 mb-3">
                             <div className="flex flex-col items-center shrink-0 pt-2">
                               {delayTimelineNode}
                             </div>
                             <div className={`flex-1 min-w-0 rounded-lg border mb-1 ${delayIsDone ? "border-border bg-muted/20" : "border-border bg-card"}`}>
                               <div className="flex items-center gap-2 px-3 py-2.5">
-                                <div className="w-3.5 shrink-0" />
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-muted text-muted-foreground">
                                   <Clock className="h-3.5 w-3.5" />
                                 </div>
@@ -524,7 +529,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                         ) : null;
 
                         const stagedCards = stagedAfterThis.map((pending) => (
-                          <div key={pending.tempId} className="relative flex gap-3 mb-2 ml-[44px]">
+                          <div key={pending.tempId} className="relative flex gap-3 mb-3 ml-[44px]">
                             <div className="flex flex-col items-center shrink-0 pt-2">
                               <div className="w-8 h-8 rounded-full bg-background border-2 border-dashed border-violet-400 flex items-center justify-center shrink-0 z-10">
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${TYPE_ICON_BG[pending.stepDef.actionType]}`}>
@@ -593,7 +598,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       const isCustom = !!(step as CustomWorkflowStep).isCustom;
 
                       const stepElement = (
-                        <div key={step.id} className={`relative flex gap-3 mb-2 ${isSkipped ? "opacity-60" : ""}`}>
+                        <div key={step.id} className={`relative flex gap-3 mb-3 ${isSkipped ? "opacity-60" : ""}`}>
                           <div className="flex flex-col items-center shrink-0 pt-2">
                             {timelineNode}
                           </div>
@@ -834,7 +839,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                       );
 
                       const actionStagedCards = pendingCustomSteps.filter((p) => p.insertAfterStepId === step.id).map((pending) => (
-                        <div key={pending.tempId} className="relative flex gap-3 mb-2 ml-[44px]">
+                        <div key={pending.tempId} className="relative flex gap-3 mb-3 ml-[44px]">
                           <div className="flex flex-col items-center shrink-0 pt-2">
                             <div className="w-8 h-8 rounded-full bg-background border-2 border-dashed border-violet-400 flex items-center justify-center shrink-0 z-10">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center ${TYPE_ICON_BG[pending.stepDef.actionType]}`}>

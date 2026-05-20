@@ -200,7 +200,7 @@ function StepsTimeline({ steps, enrollmentStats }: {
           <div className="flex items-end gap-0 min-w-max pt-3">
             {/* Start node */}
             <div className="flex flex-col items-center">
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-gray-200 bg-white">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-100 text-gray-500">
                   <UserCheck className="h-3 w-3" />
                 </div>

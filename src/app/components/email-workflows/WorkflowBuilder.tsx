@@ -1052,8 +1052,13 @@ export function WorkflowBuilder() {
                         </div>
                         <div className="w-0.5 bg-border/60 flex-1 min-h-6 mt-1 rounded-full" />
                       </div>
-                      <div className="flex-1 pb-4 flex items-center gap-2 pt-2">
-                        <span className="text-sm font-semibold text-gray-600">Contact enrolled</span>
+                      <div className="flex-1 pb-4">
+                        <div className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3 select-none">
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold flex-shrink-0 whitespace-nowrap">
+                            Day 0
+                          </span>
+                          <span className="font-semibold text-muted-foreground text-sm">Contact enrolled</span>
+                        </div>
                       </div>
                     </div>
                     {steps.map((step, i) => {
