@@ -281,5 +281,39 @@
     "stepName": "Re-Engagement Email",
     "body": "Hi, I noticed I haven't heard back about my application status. Could you give me an update? I submitted the required documents over two weeks ago and would like to know if anything else is needed.",
     "read": false
+  },
+  {
+    "id": "eh-024",
+    "contactId": "5",
+    "contactName": "David Patel",
+    "subject": "Re: Day 3 Check-In",
+    "senderIdentity": "+15551234567",
+    "status": "Received",
+    "sequenceDay": 4,
+    "sentAt": "2026-05-10T14:30:00.000Z",
+    "channel": "sms",
+    "direction": "inbound",
+    "workflowId": "wf-3",
+    "workflowName": "Re-Engagement Sequence",
+    "stepName": "Day 3 SMS",
+    "body": "Yes, I'm still interested. Can you send me more details about the re-engagement offer?",
+    "read": false
+  },
+  {
+    "id": "eh-025",
+    "contactId": "1",
+    "contactName": "James Lee",
+    "subject": "Re: Quick follow-up",
+    "senderIdentity": "+15559876543",
+    "status": "Received",
+    "sequenceDay": 5,
+    "sentAt": "2026-05-11T10:00:00.000Z",
+    "channel": "sms",
+    "direction": "inbound",
+    "workflowId": "wf-1",
+    "workflowName": "Q2 Broker Outreach",
+    "stepName": "Day 5 SMS",
+    "body": "Sure, call me tomorrow at 2pm.",
+    "read": false
   }
 ]

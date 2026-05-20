@@ -383,9 +383,12 @@ export interface ContactActivityRecord {
     | "step_unskipped"
     | "enrollment_paused"
     | "enrollment_resumed"
+    | "enrollment_created"
     | "custom_step_added"
     | "custom_step_removed"
     | "contact_moved_to_step"
+    | "status_changed"
+    | "contact_updated"
     // Task lifecycle
     | "task_suspended"
     | "task_reactivated"
@@ -401,6 +404,9 @@ export interface ContactActivityRecord {
   subject?: string;
   message?: string;
   assignee?: string;
+  oldStatus?: string;
+  newStatus?: string;
+  updatedFields?: string[];
   timestamp: Date;
   dialerSessionId?: string;
   retryOf?: string;

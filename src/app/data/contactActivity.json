@@ -1,5 +1,50 @@
 [
   {
+    "id": "ca-030",
+    "contactId": "1",
+    "type": "enrollment_created",
+    "source": "New Broker Onboarding",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-04-10T08:00:00.000Z"
+  },
+  {
+    "id": "ca-031",
+    "contactId": "1",
+    "type": "status_changed",
+    "oldStatus": "New",
+    "newStatus": "Active",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-04-10T08:05:00.000Z"
+  },
+  {
+    "id": "ca-032",
+    "contactId": "1",
+    "type": "contact_updated",
+    "updatedFields": ["phone", "email"],
+    "assignee": "Andy Officer",
+    "timestamp": "2026-04-11T09:30:00.000Z"
+  },
+  {
+    "id": "ca-033",
+    "contactId": "1",
+    "type": "enrollment_paused",
+    "source": "New Broker Onboarding",
+    "sourceType": "flow",
+    "note": "Contact requested no communications until end of month",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-04-22T14:00:00.000Z"
+  },
+  {
+    "id": "ca-034",
+    "contactId": "1",
+    "type": "enrollment_resumed",
+    "source": "New Broker Onboarding",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-05-01T09:00:00.000Z"
+  },
+  {
     "id": "ca-001",
     "contactId": "1",
     "type": "task_completed",

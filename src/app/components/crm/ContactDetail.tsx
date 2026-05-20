@@ -12,6 +12,7 @@ import {
   PhoneCall,
   MessageSquare,
   PauseCircle,
+  PlayCircle,
   AlertTriangle,
   Pencil,
   Copy,
@@ -21,6 +22,13 @@ import {
   ChevronUp,
   Building2,
   X,
+  Search,
+  UserPlus,
+  Pause,
+  Play,
+  ArrowRightLeft,
+  Info,
+  ArrowRight,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useDialer } from "@/app/contexts/DialerContext";
@@ -36,11 +44,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
-import type { Contact, TaskItem, ContactActivityRecord } from "@/app/types";
+import { ACTIVE_TASK_TYPES } from "@/app/lib/taskTypeRegistry";
+import type { Contact, TaskItem } from "@/app/types";
 
 type TaskModalMode = "complete" | "reschedule" | "delete" | null;
-
-type ActivityEntry = ContactActivityRecord & { _ts: Date; direction?: "inbound" | "outbound"; read?: boolean };
+type DueDateFilter = "all" | "today" | "this-week" | "overdue";
 
 const STATUS_COLORS: Record<string, string> = {
   New: "bg-blue-100 text-blue-700",
@@ -49,7 +57,6 @@ const STATUS_COLORS: Record<string, string> = {
   "On Hold": "bg-orange-100 text-orange-700",
   Declined: "bg-red-100 text-red-700",
 };
-
 
 function formatDate(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
@@ -66,6 +73,29 @@ function formatShortDate(date: Date | string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
 }
 
+// Unified timeline entry (activity log only — no email/sms sends)
+interface TimelineEntry {
+  id: string;
+  _ts: Date;
+  type: string;
+  taskType?: string;
+  disposition?: string;
+  note?: string;
+  source?: string;
+  stepName?: string;
+  assignee?: string;
+  oldStatus?: string;
+  newStatus?: string;
+  updatedFields?: string[];
+  // email / sms record fields
+  subject?: string;
+  channel?: "email" | "sms";
+  direction?: "inbound" | "outbound";
+  read?: boolean;
+  workflowName?: string;
+  senderIdentity?: string;
+}
+
 export function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -79,8 +109,9 @@ export function ContactDetail() {
     handleCompleteTask,
     handleRescheduleTask,
     handleDeleteTask,
-    handleMarkEmailRead,
     handlePauseAllEnrollments,
+    handleSetEnrollmentStatus,
+    handleBulkSetEnrollmentStatus,
     handleUpdateContact,
     applications,
   } = useAppData();
@@ -94,11 +125,22 @@ export function ContactDetail() {
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
   const [modalMode, setModalMode] = useState<TaskModalMode>(null);
+  const [enrollmentsOpen, setEnrollmentsOpen] = useState(true);
   const [infoOpen, setInfoOpen] = useState(true);
-  const [addressOpen, setAddressOpen] = useState(true);
+  const [addressOpen, setAddressOpen] = useState(false);
   const [applicationsOpen, setApplicationsOpen] = useState(true);
   const [companiesOpen, setCompaniesOpen] = useState(true);
   const [listingOpen, setListingOpen] = useState(true);
+
+  // Cross-tab navigation: Timeline → Communications
+  const [highlightEnrollmentId, setHighlightEnrollmentId] = useState<string | null>(null);
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
+
+  // Tasks tab filters
+  const [taskSearch, setTaskSearch] = useState("");
+  const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>("all");
+  const [taskTypeFilter, setTaskTypeFilter] = useState("all");
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const contact = contacts.find((c) => c.id === id);
 
@@ -115,50 +157,114 @@ export function ContactDetail() {
     );
   }
 
-  const contactEmails = emailHistory
-    .filter((e) => e.contactId === contact.id)
-    .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+  const contactEmails = emailHistory.filter((e) => e.contactId === contact.id);
 
   const contactTasks = taskItems
     .filter((t) => t.contactId === contact.id)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  const pendingTasks = contactTasks.filter((t) => t.status !== "completed");
+  const pendingTasks = contactTasks.filter((t) => t.status !== "completed" && t.status !== "suspended");
 
-  // Unified activity feed: contactActivity records + campaign emailHistory records
-  const activityFeed: ActivityEntry[] = [
-    ...contactActivity
-      .filter((a) => a.contactId === contact.id)
-      .map((a) => ({ ...a, _ts: new Date(a.timestamp) })),
-    // Campaign emails from emailHistory (workflow email/SMS go through contactActivity)
-    ...contactEmails.map((e) => ({
-      id: e.id,
-      contactId: e.contactId,
-      type: (e.channel === "sms" ? "sms_sent" : "email_sent") as ContactActivityRecord["type"],
-      subject: e.subject || undefined,
-      source: e.senderIdentity,
-      assignee: e.senderIdentity,
-      timestamp: new Date(e.sentAt),
+  // ── Timeline feed ────────────────────────────────────────────────────────────
+  const activityEntries: TimelineEntry[] = contactActivity
+    .filter((a) => a.contactId === contact.id)
+    .map((a) => ({
+      id: a.id,
+      _ts: new Date(a.timestamp),
+      type: a.type,
+      taskType: a.taskType,
+      disposition: a.disposition,
+      note: a.note,
+      source: a.source,
+      stepName: a.stepName,
+      assignee: a.assignee,
+      oldStatus: a.oldStatus,
+      newStatus: a.newStatus,
+      updatedFields: a.updatedFields,
+      subject: (a as { subject?: string }).subject,
+      channel: (a as { channel?: "email" | "sms" }).channel,
+    }));
+
+  const emailEntries: TimelineEntry[] = emailHistory
+    .filter((e) => e.contactId === contact.id)
+    .map((e) => ({
+      id: `eh-${e.id}`,
       _ts: new Date(e.sentAt),
-      direction: e.direction,
+      type: e.direction === "inbound"
+        ? (e.channel === "sms" ? "sms_received" : "email_received")
+        : (e.channel === "sms" ? "sms_sent" : "email_sent"),
+      subject: e.subject ?? undefined,
+      channel: e.channel ?? "email",
+      direction: e.direction ?? "outbound",
       read: e.read,
-    })),
-  ].sort((a, b) => b._ts.getTime() - a._ts.getTime());
+      workflowName: e.workflowName,
+      stepName: e.stepName,
+      senderIdentity: e.senderIdentity,
+    }));
 
-  // Timeline: non-communication contact activity (tasks, status updates, step events)
-  const isCommsEntry = (e: ActivityEntry) =>
-    e.type === "email_sent" ||
-    e.type === "sms_sent" ||
-    (e.type === "task_completed" && (e.taskType === "Call" || e.taskType === "Voicemail")) ||
-    e.direction !== undefined;
-  const timelineFeed = activityFeed.filter((e) => !isCommsEntry(e));
+  const timelineFeed: TimelineEntry[] = [...activityEntries, ...emailEntries]
+    .sort((a, b) => b._ts.getTime() - a._ts.getTime());
 
+  // ── Tasks filtering ──────────────────────────────────────────────────────────
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const weekEnd = new Date(todayStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const filteredTasks = contactTasks.filter((task) => {
+    const isCompletedOrSuspended = task.status === "completed" || task.status === "suspended";
+    if (!showCompleted && isCompletedOrSuspended) return false;
+
+    if (taskSearch) {
+      const q = taskSearch.toLowerCase();
+      const matches =
+        (task.triggerContext ?? "").toLowerCase().includes(q) ||
+        (task.notes ?? "").toLowerCase().includes(q) ||
+        task.taskType.toLowerCase().includes(q) ||
+        (task.ruleName ?? "").toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+
+    if (taskTypeFilter !== "all" && task.taskType !== taskTypeFilter) return false;
+
+    if (!isCompletedOrSuspended && dueDateFilter !== "all") {
+      const due = new Date(task.dueDate);
+      if (dueDateFilter === "overdue" && due >= todayStart) return false;
+      if (dueDateFilter === "today" && (due < todayStart || due > todayEnd)) return false;
+      if (dueDateFilter === "this-week" && (due < todayStart || due > weekEnd)) return false;
+    }
+
+    return true;
+  });
+
+  const overdueTasks = filteredTasks.filter(
+    (t) => t.status !== "completed" && t.status !== "suspended" && new Date(t.dueDate) < todayStart,
+  );
+  const upcomingTasks = filteredTasks.filter(
+    (t) => t.status !== "completed" && t.status !== "suspended" && new Date(t.dueDate) >= todayStart,
+  );
+  const completedTasks = filteredTasks.filter(
+    (t) => t.status === "completed" || t.status === "suspended",
+  ).sort((a, b) => new Date(b.completedAt ?? b.dueDate).getTime() - new Date(a.completedAt ?? a.dueDate).getTime());
+
+  // Chip counts (always based on full contactTasks, not filtered)
+  const chipCounts: Record<DueDateFilter, number> = {
+    all: contactTasks.filter((t) => t.status !== "completed" && t.status !== "suspended").length,
+    overdue: contactTasks.filter((t) => t.status !== "completed" && t.status !== "suspended" && new Date(t.dueDate) < todayStart).length,
+    today: contactTasks.filter((t) => t.status !== "completed" && t.status !== "suspended" && new Date(t.dueDate) >= todayStart && new Date(t.dueDate) <= todayEnd).length,
+    "this-week": contactTasks.filter((t) => t.status !== "completed" && t.status !== "suspended" && new Date(t.dueDate) >= todayStart && new Date(t.dueDate) <= weekEnd).length,
+  };
+
+  // ── Enrollments ──────────────────────────────────────────────────────────────
   const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
 
   const contactEnrollments = workflowEnrollments.filter(
     (e) => e.contactId === contact.id && e.status !== "completed",
   );
   const activeEnrollmentCount = contactEnrollments.filter((e) => e.status === "active").length;
+  const pausedEnrollments = contactEnrollments.filter((e) => e.status === "paused");
 
   const sortedEnrollments = [...contactEnrollments]
     .sort((a, b) => {
@@ -173,10 +279,13 @@ export function ContactDetail() {
       return lastB - lastA;
     })
     .slice(0, 3);
+
   const hasOverdueEnrollments = contactEnrollments.some(
-    (e) =>
-      e.status === "paused" && e.pausedUntil && new Date(e.pausedUntil) <= new Date(),
+    (e) => e.status === "paused" && e.pausedUntil && new Date(e.pausedUntil) <= new Date(),
   );
+
+  // Unread count for Communications tab badge
+  const unreadCount = contactEmails.filter((e) => e.direction === "inbound" && !e.read).length;
 
   const openModal = (task: TaskItem, mode: TaskModalMode) => {
     setModalTask(task);
@@ -185,6 +294,14 @@ export function ContactDetail() {
   const closeModal = () => {
     setModalTask(null);
     setModalMode(null);
+  };
+
+  // ── Render helpers ────────────────────────────────────────────────────────────
+  const dispositionColors: Record<string, string> = {
+    Answered: "bg-green-100 text-green-700",
+    "Voicemail Left": "bg-amber-100 text-amber-700",
+    "No Answer — Voicemail Drop": "bg-red-100 text-red-700",
+    "Not Needed": "bg-muted text-muted-foreground",
   };
 
   return (
@@ -215,7 +332,6 @@ export function ContactDetail() {
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="text-base font-semibold leading-tight truncate">{contact.firstName} {contact.lastName}</h2>
-                {/* Role select — sits directly below the name */}
                 <Select
                   value={contact.userType}
                   onValueChange={(v) => handleUpdateContact(contact.id, { userType: v as Contact["userType"] })}
@@ -339,14 +455,20 @@ export function ContactDetail() {
           {/* V2: Workflow status + comms controls */}
           {isV2 && contactEnrollments.length > 0 && !contact.optedOut && (
             <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => setEnrollmentsOpen((v) => !v)}
+                className="flex items-center justify-between w-full mb-3"
+              >
                 <span className="text-sm font-semibold">Enrolled communication flow</span>
-                <span className="text-xs font-semibold px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full">
-                  {contactEnrollments.length}
-                </span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full">
+                    {contactEnrollments.length}
+                  </span>
+                  {enrollmentsOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </div>
+              </button>
 
-              {hasOverdueEnrollments && (
+              {enrollmentsOpen && hasOverdueEnrollments && (
                 <button
                   onClick={() => setActiveTab("communications")}
                   className="mb-3 w-full flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-700 hover:bg-amber-100 transition-colors"
@@ -356,72 +478,75 @@ export function ContactDetail() {
                 </button>
               )}
 
-              <div className="space-y-2.5">
-                {sortedEnrollments.map((e) => {
-                  const isPaused = e.status === "paused";
-                  const wf = workflows.find((w) => w.id === e.workflowId);
-                  const wfName = wf?.name ?? e.workflowId;
-                  const actionStepCount = wf?.steps.filter((s) => s.actionType !== "delay").length ?? 0;
-                  const stepsComplete = e.stepProgress.filter(
-                    (p) => p.status === "done" || p.status === "skipped",
-                  ).length;
-                  const pct =
-                    e.stepProgress.length > 0
-                      ? Math.round((stepsComplete / e.stepProgress.length) * 100)
-                      : 0;
-                  return (
-                    <div key={e.id} className="space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPaused ? "bg-amber-400" : "bg-green-500"}`}
-                        />
-                        <span className="text-xs font-medium truncate flex-1">
-                          {wfName}
-                        </span>
-                        {actionStepCount > 0 && (
-                          <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full shrink-0 whitespace-nowrap">
-                            {actionStepCount} steps
-                          </span>
-                        )}
-                        {isPaused && (
-                          <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full shrink-0">
-                            Paused
-                          </span>
-                        )}
-                      </div>
-                      {isPaused && e.pausedUntil && (
-                        <div className="text-[10px] text-amber-600 pl-3">
-                          Until {formatShortDate(e.pausedUntil)}
+              {enrollmentsOpen && (
+                <div className="space-y-2.5">
+                  {sortedEnrollments.map((e) => {
+                    const isPaused = e.status === "paused";
+                    const wf = workflows.find((w) => w.id === e.workflowId);
+                    const wfName = wf?.name ?? e.workflowId;
+                    const actionStepCount = wf?.steps.filter((s) => s.actionType !== "delay").length ?? 0;
+                    const stepsComplete = e.stepProgress.filter(
+                      (p) => p.status === "done" || p.status === "skipped",
+                    ).length;
+                    const pct =
+                      e.stepProgress.length > 0
+                        ? Math.round((stepsComplete / e.stepProgress.length) * 100)
+                        : 0;
+                    return (
+                      <div key={e.id} className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPaused ? "bg-amber-400" : "bg-green-500"}`}
+                          />
+                          <span className="text-xs font-medium truncate flex-1">{wfName}</span>
+                          {actionStepCount > 0 && (
+                            <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full shrink-0 whitespace-nowrap">
+                              {actionStepCount} steps
+                            </span>
+                          )}
                         </div>
-                      )}
-                      <div className="h-1 bg-muted rounded-full overflow-hidden ml-3">
-                        <div
-                          className="h-full bg-primary/60 rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
+                        {isPaused && (
+                          <div className="text-xs text-amber-600 pl-3">
+                            {e.pausedUntil ? `Paused until ${formatShortDate(e.pausedUntil)}` : "Paused"}
+                          </div>
+                        )}
+                        <div className="h-1 bg-muted rounded-full overflow-hidden ml-3">
+                          <div className="h-full bg-primary/60 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
 
-              <div className="mt-3 flex flex-col gap-2">
-                {activeEnrollmentCount > 0 && (
+              {enrollmentsOpen && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {activeEnrollmentCount > 0 && (
+                    <button
+                      onClick={() => setShowPauseModal(true)}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-border text-foreground bg-background rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <PauseCircle className="w-3.5 h-3.5" />
+                      Pause communication
+                    </button>
+                  )}
+                  {pausedEnrollments.length > 0 && (
+                    <button
+                      onClick={() => handleBulkSetEnrollmentStatus(pausedEnrollments.map((e) => e.id), "active")}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-border text-foreground bg-background rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <PlayCircle className="w-3.5 h-3.5" />
+                      Resume all paused
+                    </button>
+                  )}
                   <button
-                    onClick={() => setShowPauseModal(true)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                    onClick={() => setActiveTab("communications")}
+                    className="w-full text-xs text-primary hover:underline py-1"
                   >
-                    <PauseCircle className="w-3.5 h-3.5" />
-                    Pause All Comms
+                    View Details →
                   </button>
-                )}
-                <button
-                  onClick={() => setActiveTab("communications")}
-                  className="w-full text-xs text-primary hover:underline py-1"
-                >
-                  View Details →
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -437,7 +562,6 @@ export function ContactDetail() {
 
             {infoOpen && (
               <div className="space-y-4">
-                {/* Phone */}
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Phone</p>
                   <div className="flex items-center justify-between gap-2">
@@ -447,17 +571,14 @@ export function ContactDetail() {
                     </button>
                   </div>
                 </div>
-                {/* Email */}
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Email</p>
                   <span className="text-sm break-all">{contact.email}</span>
                 </div>
-                {/* LinkedIn */}
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Linkedin</p>
                   <span className="text-sm text-muted-foreground">{contact.linkedin ?? "N/A"}</span>
                 </div>
-                {/* Do Not Call + SMS Consent */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Do Not Call</p>
@@ -468,7 +589,6 @@ export function ContactDetail() {
                     <span className="text-sm">{contact.smsConsent ?? "No"}</span>
                   </div>
                 </div>
-                {/* Time Zone + Preferred Language */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Time Zone</p>
@@ -479,7 +599,6 @@ export function ContactDetail() {
                     <span className="text-sm">{contact.preferredLanguage ?? "—"}</span>
                   </div>
                 </div>
-                {/* Created at + Updated at */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Created at</p>
@@ -544,30 +663,39 @@ export function ContactDetail() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Tab bar */}
           <div className="border-b border-border flex justify-center gap-8">
-            {(["timeline", ...(isV2 ? ["communications" as const] : []), "tasks", "notes"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 text-sm capitalize border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? "border-primary text-primary font-semibold"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "timeline"
-                  ? `Timeline (${timelineFeed.length})`
-                  : tab === "tasks"
-                  ? `Tasks (${contactTasks.length})`
-                  : tab === "notes"
-                  ? "Notes"
-                  : "Communications"}
-              </button>
-            ))}
+            {(["timeline", ...(isV2 ? ["communications" as const] : []), "tasks", "notes"] as const).map((tab) => {
+              let label: string;
+              if (tab === "timeline") label = "Timeline";
+              else if (tab === "tasks") label = `Tasks (${contactTasks.filter((t) => t.status !== "completed").length})`;
+              else if (tab === "communications") {
+                label = "Communications";
+              } else {
+                label = "Notes";
+              }
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`py-4 text-sm capitalize border-b-2 transition-colors relative ${
+                    activeTab === tab
+                      ? "border-primary text-primary font-semibold"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  {tab === "communications" && unreadCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white text-[9px] font-bold">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex-1 overflow-y-auto bg-muted/40 px-6 py-5">
 
-            {/* TIMELINE TAB — non-communication contact activity */}
+            {/* ── TIMELINE TAB ── */}
             {activeTab === "timeline" && (
               <div className="bg-card rounded-xl p-5">
                 {timelineFeed.length === 0 ? (
@@ -576,85 +704,162 @@ export function ContactDetail() {
                   <div className="space-y-2">
                     {timelineFeed.map((entry) => {
                       const isCall = entry.type === "task_completed" && entry.taskType === "Call";
-                      const isEmail = entry.type === "email_sent";
-                      const isSms = entry.type === "sms_sent";
-                      const isTask = entry.type === "task_completed";
-                      const isUnreadInbound = isEmail && entry.direction === "inbound" && !entry.read;
+                      const isTask = entry.type === "task_completed" && !isCall;
+                      const isEnrollmentCreated = entry.type === "enrollment_created";
+                      const isEnrollmentPaused = entry.type === "enrollment_paused";
+                      const isEnrollmentResumed = entry.type === "enrollment_resumed";
+                      const isStatusChanged = entry.type === "status_changed";
+                      const isContactUpdated = entry.type === "contact_updated";
+                      const isStepSkipped = entry.type === "step_skipped" || entry.type === "step_unskipped";
+                      const isEmailSent = entry.type === "email_sent";
+                      const isSmsSent = entry.type === "sms_sent";
+                      const isEmailReceived = entry.type === "email_received";
+                      const isSmsReceived = entry.type === "sms_received";
+                      const isInbound = isEmailReceived || isSmsReceived;
+                      const isCommsRecord = isEmailSent || isSmsSent || isEmailReceived || isSmsReceived;
+                      const isUnread = isInbound && entry.read === false;
 
                       const iconBg = isCall
                         ? "bg-green-100 text-green-600"
-                        : isEmail
-                        ? "bg-blue-100 text-blue-600"
-                        : isSms
-                        ? "bg-purple-100 text-purple-600"
+                        : isEnrollmentCreated
+                        ? "bg-primary/10 text-primary"
+                        : isEnrollmentPaused
+                        ? "bg-amber-100 text-amber-600"
+                        : isEnrollmentResumed
+                        ? "bg-green-100 text-green-600"
+                        : isStatusChanged
+                        ? "bg-violet-100 text-violet-600"
+                        : isContactUpdated
+                        ? "bg-sky-100 text-sky-600"
+                        : isUnread
+                        ? "bg-green-100 text-green-600"
+                        : isInbound
+                        ? "bg-muted text-muted-foreground"
+                        : isCommsRecord
+                        ? "bg-muted text-muted-foreground"
                         : "bg-muted text-muted-foreground";
 
-                      const dispositionColors: Record<string, string> = {
-                        Answered: "bg-green-100 text-green-700",
-                        "Voicemail Left": "bg-amber-100 text-amber-700",
-                        "No Answer — Voicemail Drop": "bg-red-100 text-red-700",
-                        "Not Needed": "bg-muted text-muted-foreground",
-                      };
+                      const label = isCall
+                        ? "Call logged"
+                        : isTask
+                        ? `${entry.taskType ?? "Task"} completed`
+                        : isEnrollmentCreated
+                        ? `Enrolled in ${entry.source ?? "workflow"}`
+                        : isEnrollmentPaused
+                        ? `Workflow paused — ${entry.source ?? ""}`
+                        : isEnrollmentResumed
+                        ? `Workflow resumed — ${entry.source ?? ""}`
+                        : isStatusChanged
+                        ? "Status changed"
+                        : isContactUpdated
+                        ? "Contact info updated"
+                        : isStepSkipped
+                        ? `Step ${entry.type === "step_skipped" ? "skipped" : "restored"}`
+                        : isEmailSent
+                        ? entry.subject ?? "Email sent"
+                        : isSmsSent
+                        ? entry.subject ?? entry.stepName ?? "SMS sent"
+                        : isEmailReceived
+                        ? entry.subject ?? "Email received"
+                        : isSmsReceived
+                        ? entry.subject ?? "SMS received"
+                        : entry.type.replace(/_/g, " ");
 
-                      const typeLabel = isCall
-                        ? "Call"
-                        : isEmail
-                        ? entry.direction === "inbound" ? "Reply received" : "Email"
-                        : isSms
-                        ? "SMS"
-                        : entry.taskType ?? "Task";
+                      // Paused/resumed don't need navigation — the status is visible inline
+                      const isWorkflowEvent = isEnrollmentCreated || isStepSkipped;
+                      const isTaskEvent = isCall || isTask;
+                      // Strip the "eh-" prefix added when merging emailHistory
+                      const emailRecordId = isCommsRecord ? entry.id.replace(/^eh-/, "") : null;
 
                       return (
                         <div
                           key={entry.id}
-                          className={`flex items-start gap-3 p-4 bg-card border rounded-xl transition-colors ${isUnreadInbound ? "border-blue-200 bg-blue-50/40 cursor-pointer hover:bg-blue-50" : "border-border"}`}
-                          onClick={isUnreadInbound ? () => handleMarkEmailRead(entry.id) : undefined}
-                          title={isUnreadInbound ? "Click to mark as read" : undefined}
+                          className={`flex items-start gap-3 p-4 border rounded-xl ${isUnread ? "bg-green-50/50 border-green-100" : "bg-card border-border"}`}
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${iconBg}`}>
                             {isCall && <PhoneCall className="w-4 h-4" />}
-                            {isEmail && <Mail className="w-4 h-4" />}
-                            {isSms && <MessageSquare className="w-4 h-4" />}
-                            {isTask && !isCall && <CheckCircle2 className="w-4 h-4" />}
+                            {isTask && <CheckCircle2 className="w-4 h-4" />}
+                            {isEnrollmentCreated && <UserPlus className="w-4 h-4" />}
+                            {isEnrollmentPaused && <Pause className="w-4 h-4" />}
+                            {isEnrollmentResumed && <Play className="w-4 h-4" />}
+                            {isStatusChanged && <ArrowRightLeft className="w-4 h-4" />}
+                            {isContactUpdated && <Info className="w-4 h-4" />}
+                            {isStepSkipped && <Clock className="w-4 h-4" />}
+                            {(isEmailSent || isEmailReceived) && <Mail className="w-4 h-4" />}
+                            {(isSmsSent || isSmsReceived) && <MessageSquare className="w-4 h-4" />}
+                            {!isCall && !isTask && !isEnrollmentCreated && !isEnrollmentPaused && !isEnrollmentResumed && !isStatusChanged && !isContactUpdated && !isStepSkipped && !isCommsRecord && (
+                              <Clock className="w-4 h-4" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-sm font-medium ${isUnreadInbound ? "text-blue-700" : ""}`}>{typeLabel}</span>
-                              {isUnreadInbound && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
-                                  Unread
+                              {/* direction tag */}
+                              {isCommsRecord && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isInbound ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
+                                  {isInbound ? "Received" : "Sent"}
                                 </span>
                               )}
-                              {isTask && entry.disposition && (
+                              <span className={`text-sm font-medium truncate max-w-xs ${isUnread ? "text-foreground" : ""}`}>
+                                {label}
+                              </span>
+                              {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />}
+                              {isCall && entry.disposition && (
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${dispositionColors[entry.disposition] ?? "bg-muted text-muted-foreground"}`}>
                                   {entry.disposition}
                                 </span>
                               )}
+                              {isStatusChanged && entry.oldStatus && entry.newStatus && (
+                                <span className="text-xs text-muted-foreground">
+                                  {entry.oldStatus} → {entry.newStatus}
+                                </span>
+                              )}
                             </div>
-                            {isEmail && entry.subject && (
-                              <div className="text-xs text-foreground mt-0.5 truncate">{entry.subject}</div>
+
+                            {/* comms context line */}
+                            {isCommsRecord && (entry.senderIdentity || entry.workflowName || entry.stepName) && (
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-xs text-muted-foreground">
+                                {entry.senderIdentity && <span>{entry.senderIdentity}</span>}
+                                {entry.workflowName && <span className="px-1.5 py-0.5 rounded-full bg-muted font-medium">{entry.workflowName}</span>}
+                                {entry.stepName && <span className="text-muted-foreground/60">· {entry.stepName}</span>}
+                              </div>
                             )}
-                            {isSms && entry.message && (
-                              <div className="text-xs text-foreground mt-0.5 line-clamp-2">{entry.message}</div>
+
+                            {isContactUpdated && entry.updatedFields && entry.updatedFields.length > 0 && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                Fields updated: {entry.updatedFields.join(", ")}
+                              </div>
                             )}
                             {entry.note && (
                               <div className="text-xs text-muted-foreground italic mt-1">"{entry.note}"</div>
                             )}
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              {entry.source && (
-                                <span className="text-xs text-muted-foreground">
-                                  {entry.source}{entry.stepName ? ` — ${entry.stepName}` : ""}
-                                </span>
-                              )}
-                              {entry.assignee && (
-                                <span className="text-xs text-muted-foreground">· {entry.assignee}</span>
-                              )}
-                            </div>
+                            {(isCall || isTask || isStepSkipped) && entry.source && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {entry.source}{entry.stepName ? ` — ${entry.stepName}` : ""}
+                              </div>
+                            )}
+
+                            {/* nav actions */}
+                            {(isWorkflowEvent || isTaskEvent || isCommsRecord) && (
+                              <button
+                                onClick={() => {
+                                  if (isTaskEvent) {
+                                    setShowCompleted(true);
+                                    setActiveTab("tasks");
+                                  } else {
+                                    if (emailRecordId) setHighlightMessageId(emailRecordId);
+                                    setActiveTab("communications");
+                                  }
+                                }}
+                                className="flex items-center gap-1 mt-2 text-xs text-primary hover:underline font-medium"
+                              >
+                                {isTaskEvent ? "View in Tasks" : "View details"}
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
-                          <div className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 mt-0.5">
                             {formatDate(entry._ts)}
-                          </div>
+                          </span>
                         </div>
                       );
                     })}
@@ -663,84 +868,137 @@ export function ContactDetail() {
               </div>
             )}
 
-            {/* TASKS TAB */}
+            {/* ── TASKS TAB ── */}
             {activeTab === "tasks" && (
-              <div className="bg-card rounded-xl p-5">
-                {contactTasks.length === 0 ? (
-                  <EmptyState icon={CheckCircle2} message="No tasks for this contact." />
+              <div className="bg-card rounded-xl p-5 space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    placeholder="Search tasks…"
+                    className="w-full pl-8 pr-8 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none"
+                  />
+                  {taskSearch && (
+                    <button
+                      onClick={() => setTaskSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter chips row */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(["all", "overdue", "today", "this-week"] as DueDateFilter[]).map((f) => {
+                    const labels: Record<DueDateFilter, string> = { all: "All", overdue: "Overdue", today: "Today", "this-week": "This Week" };
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setDueDateFilter(f)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                          dueDateFilter === f
+                            ? f === "overdue"
+                              ? "bg-red-100 text-red-700 border-red-200"
+                              : "bg-primary/10 text-primary border-primary/20"
+                            : "bg-background text-muted-foreground border-border hover:border-foreground/30"
+                        }`}
+                      >
+                        {labels[f]}
+                        <span className={`text-[10px] px-1 py-0.5 rounded-full ${
+                          dueDateFilter === f ? (f === "overdue" ? "bg-red-200 text-red-700" : "bg-primary/20 text-primary") : "bg-muted text-muted-foreground"
+                        }`}>
+                          {chipCounts[f]}
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Type filter */}
+                  <select
+                    value={taskTypeFilter}
+                    onChange={(e) => setTaskTypeFilter(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-border rounded-full bg-background text-muted-foreground focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">Type: All</option>
+                    {ACTIVE_TASK_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+
+                  <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showCompleted}
+                      onChange={(e) => setShowCompleted(e.target.checked)}
+                      className="rounded"
+                    />
+                    Show completed
+                  </label>
+                </div>
+
+                {/* Task groups */}
+                {filteredTasks.length === 0 ? (
+                  <EmptyState icon={CheckCircle2} message="No tasks match your filters." />
                 ) : (
-                  <div className="space-y-2">
-                    {contactTasks.map((task) => {
-                      const isOverdue = task.status !== "completed" && new Date(task.dueDate) < new Date();
-                      const isCompleted = task.status === "completed";
-                      return (
-                        <div
-                          key={task.id}
-                          className={`flex items-start gap-4 p-4 bg-card border rounded-xl transition-colors ${
-                            isCompleted ? "border-border opacity-60" : isOverdue ? "border-red-200 bg-red-50/30" : "border-border"
-                          }`}
-                        >
-                          <div className="shrink-0 mt-0.5">
-                            <span className={`text-[10px] px-2 py-1 rounded-full uppercase tracking-wide font-medium ${
-                              isCompleted ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
-                            }`}>
-                              {task.taskType}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {task.triggerContext && (
-                              <div className="text-sm text-foreground line-clamp-2">{task.triggerContext}</div>
-                            )}
-                            {task.notes && (
-                              <div className="text-xs text-muted-foreground italic mt-0.5 line-clamp-1">VM: {task.notes}</div>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span className={`text-xs ${isOverdue && !isCompleted ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                                {formatDate(task.dueDate)}
-                              </span>
-                              {isOverdue && !isCompleted && (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tight">Overdue</span>
-                              )}
-                              {isCompleted && (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded uppercase tracking-tight">Done</span>
-                              )}
-                            </div>
-                          </div>
-                          {!isCompleted && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button onClick={() => openModal(task, "complete")} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => openModal(task, "reschedule")} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
-                                <Calendar className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => openModal(task, "delete")} className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-4">
+                    {overdueTasks.length > 0 && (
+                      <TaskGroup
+                        label="Overdue"
+                        labelClass="text-red-600"
+                        tasks={overdueTasks}
+                        onComplete={(t) => openModal(t, "complete")}
+                        onReschedule={(t) => openModal(t, "reschedule")}
+                        onDelete={(t) => openModal(t, "delete")}
+                      />
+                    )}
+                    {upcomingTasks.length > 0 && (
+                      <TaskGroup
+                        label="Upcoming"
+                        labelClass="text-foreground"
+                        tasks={upcomingTasks}
+                        onComplete={(t) => openModal(t, "complete")}
+                        onReschedule={(t) => openModal(t, "reschedule")}
+                        onDelete={(t) => openModal(t, "delete")}
+                      />
+                    )}
+                    {showCompleted && completedTasks.length > 0 && (
+                      <TaskGroup
+                        label="Completed"
+                        labelClass="text-muted-foreground"
+                        tasks={completedTasks}
+                        onComplete={() => {}}
+                        onReschedule={() => {}}
+                        onDelete={() => {}}
+                      />
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* NOTES TAB */}
+            {/* ── NOTES TAB ── */}
             {activeTab === "notes" && (
               <div className="bg-card rounded-xl">
                 <EmptyState icon={FileText} message="No notes for this contact yet." />
               </div>
             )}
 
-            {/* COMMUNICATIONS TAB (V2 only) */}
+            {/* ── COMMUNICATIONS TAB (V2 only) ── */}
             {activeTab === "communications" && isV2 && (
               <div className="bg-card rounded-xl overflow-hidden p-5">
                 <ContactCommunicationsTab
                   contactId={contact.id}
                   contactOptedOut={contact.optedOut ?? false}
+                  highlightEnrollmentId={highlightEnrollmentId}
+                  highlightMessageId={highlightMessageId}
+                  onHighlightConsumed={() => {
+                    setHighlightEnrollmentId(null);
+                    setHighlightMessageId(null);
+                  }}
                 />
               </div>
             )}
@@ -773,9 +1031,7 @@ export function ContactDetail() {
               ) : (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Link Application (Loan ID #)</p>
-                  <button className="text-sm font-medium text-primary hover:underline">
-                    Select application
-                  </button>
+                  <button className="text-sm font-medium text-primary hover:underline">Select application</button>
                 </div>
               );
             })()}
@@ -805,7 +1061,7 @@ export function ContactDetail() {
                     </button>
                   </span>
                 ))}
-                <button className="inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                <button className="inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-border rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
                   <Plus className="w-3 h-3" />
                   Add company
                 </button>
@@ -928,6 +1184,85 @@ export function ContactDetail() {
   );
 }
 
+function TaskGroup({
+  label,
+  labelClass,
+  tasks,
+  onComplete,
+  onReschedule,
+  onDelete,
+}: {
+  label: string;
+  labelClass: string;
+  tasks: TaskItem[];
+  onComplete: (t: TaskItem) => void;
+  onReschedule: (t: TaskItem) => void;
+  onDelete: (t: TaskItem) => void;
+}) {
+  return (
+    <div>
+      <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${labelClass}`}>{label}</p>
+      <div className="space-y-2">
+        {tasks.map((task) => {
+          const isOverdue = task.status !== "completed" && new Date(task.dueDate) < new Date();
+          const isCompleted = task.status === "completed" || task.status === "suspended";
+          return (
+            <div
+              key={task.id}
+              className={`flex items-start gap-4 p-4 bg-card border rounded-xl transition-colors ${
+                isCompleted ? "border-border opacity-60" : isOverdue ? "border-red-200 bg-red-50/30" : "border-border"
+              }`}
+            >
+              <div className="shrink-0 mt-0.5">
+                <span className={`text-[10px] px-2 py-1 rounded-full uppercase tracking-wide font-medium ${
+                  isCompleted ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                }`}>
+                  {task.taskType}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                {task.triggerContext && (
+                  <div className="text-sm text-foreground line-clamp-2">{task.triggerContext}</div>
+                )}
+                {task.notes && (
+                  <div className="text-xs text-muted-foreground italic mt-0.5 line-clamp-1">VM: {task.notes}</div>
+                )}
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <span className={`text-xs ${isOverdue && !isCompleted ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
+                    {isCompleted && task.completedAt ? `Done ${formatDate(task.completedAt)}` : formatDate(task.dueDate)}
+                  </span>
+                  {isOverdue && !isCompleted && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tight">Overdue</span>
+                  )}
+                  {isCompleted && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded uppercase tracking-tight">Done</span>
+                  )}
+                </div>
+                {task.disposition && (
+                  <div className="text-xs text-muted-foreground mt-0.5">{task.disposition}</div>
+                )}
+              </div>
+              {!isCompleted && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onComplete(task)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Complete">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => onReschedule(task)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Reschedule">
+                    <Calendar className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => onDelete(task)} className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message: string }) {
   return (

@@ -128,6 +128,7 @@ interface AppDataContextValue {
   // Email read-state handlers (V2)
   handleMarkEmailRead: (emailId: string) => void;
   handleMarkContactEmailsRead: (contactId: string) => void;
+  handleSendReply: (inboundEmailId: string, body: string, senderIdentity: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -188,6 +189,43 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     );
     setEmailHistory(updated);
     store.emailHistory.write(updated);
+  };
+
+  const handleSendReply = (inboundEmailId: string, body: string, senderIdentity: string) => {
+    const original = emailHistory.find((e) => e.id === inboundEmailId);
+    if (!original) return;
+    const newEmail: EmailRecord = {
+      id: crypto.randomUUID(),
+      contactId: original.contactId,
+      contactName: original.contactName,
+      subject: original.subject.startsWith("Re:") ? original.subject : `Re: ${original.subject}`,
+      senderIdentity,
+      status: "Sent",
+      sequenceDay: 0,
+      sentAt: new Date(),
+      channel: original.channel ?? "email",
+      direction: "outbound",
+      workflowId: original.workflowId,
+      workflowName: original.workflowName,
+      stepName: original.stepName,
+    };
+    const newActivity: ContactActivityRecord = {
+      id: `activity-reply-${Date.now()}`,
+      contactId: original.contactId,
+      type: original.channel === "sms" ? "sms_sent" : "email_sent",
+      subject: newEmail.subject,
+      source: original.workflowName ?? "Manual",
+      sourceType: original.workflowId ? "flow" : "manual",
+      stepName: original.stepName,
+      assignee: senderIdentity,
+      timestamp: new Date(),
+    };
+    const updated = emailHistory.map((e) => e.id === inboundEmailId ? { ...e, read: true } : e).concat(newEmail);
+    const updatedActivity = [...contactActivity, newActivity];
+    setEmailHistory(updated);
+    setContactActivity(updatedActivity);
+    store.emailHistory.write(updated);
+    store.contactActivity.write(updatedActivity);
   };
 
   const handleLogCallDisposition = (taskId: string, disposition: string, note?: string, callStartedAt?: Date, droppedVoicemailName?: string) => {
@@ -832,14 +870,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     );
     const newIds = contactIds.filter((id) => !alreadyEnrolled.has(id));
     if (newIds.length === 0) return;
-    const newEnrollments: WorkflowEnrollment[] = newIds.map((contactId) => ({
-      id: `enroll-${Date.now()}-${contactId}`,
-      workflowId,
-      contactId,
-      startDate,
-      status: "active" as const,
-      stepProgress: workflow.steps.map((s: WorkflowStep) => ({ stepId: s.id, status: "pending" as const })),
-    }));
+    const newEnrollments: WorkflowEnrollment[] = newIds.map((contactId) => {
+      const contactEnrollments = workflowEnrollments.filter(e => e.contactId === contactId);
+      const allPaused = contactEnrollments.length > 0 && contactEnrollments.every(e => e.status === "paused");
+      return {
+        id: `enroll-${Date.now()}-${contactId}`,
+        workflowId,
+        contactId,
+        startDate,
+        status: allPaused ? ("paused" as const) : ("active" as const),
+        stepProgress: workflow.steps.map((s: WorkflowStep) => ({ stepId: s.id, status: "pending" as const })),
+      };
+    });
     const updatedEnrollments = [...workflowEnrollments, ...newEnrollments];
     const updatedWorkflows = workflows.map((wf) =>
       wf.id === workflowId ? { ...wf, enrolledCount: wf.enrolledCount + newIds.length } : wf,
@@ -1815,6 +1857,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleDismissNotification,
         handleMarkEmailRead,
         handleMarkContactEmailsRead,
+        handleSendReply,
       }}
     >
       {children}
