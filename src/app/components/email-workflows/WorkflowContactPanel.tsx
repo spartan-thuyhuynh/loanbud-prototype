@@ -378,13 +378,13 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                     {/* Start node */}
                     <div className="relative flex gap-3 mb-2">
                       <div className="flex flex-col items-center shrink-0 pt-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ring-2 ring-background ${isCompleted ? "bg-gray-100 border-2 border-gray-300" : "bg-green-100 border-2 border-green-300"}`}>
-                          <Play className={`h-3.5 w-3.5 ${isCompleted ? "text-gray-400 fill-gray-400" : "text-green-600 fill-green-600"}`} />
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ring-2 ring-background bg-gray-100 border-2 border-gray-300">
+                          <UserCheck className="h-3.5 w-3.5 text-gray-400" />
                         </div>
                       </div>
-                      <div className={`flex-1 min-w-0 rounded-lg border mb-1 ${isCompleted ? "border-gray-200 bg-gray-50" : "border-green-200 bg-green-50"}`}>
+                      <div className="flex-1 min-w-0 rounded-lg border mb-1 border-gray-200 bg-gray-50">
                         <div className="flex items-center gap-2 px-3 py-2.5">
-                          <span className={`text-sm font-semibold ${isCompleted ? "text-gray-500" : "text-green-700"}`}>Start</span>
+                          <span className="text-sm font-semibold text-gray-500">Contact enrolled</span>
                           <span className="text-xs text-muted-foreground">Enrolled {formatDate(enrollment.startDate)}</span>
                         </div>
                       </div>

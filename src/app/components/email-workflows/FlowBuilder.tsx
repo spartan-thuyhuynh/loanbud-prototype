@@ -136,7 +136,7 @@ const initialWorkflows: Workflow[] = [
     createdAt: "2024-01-10",
     createdBy: "Admin",
     nodes: [
-      { id: "aw-trig", nodeType: "trigger", label: "Workflow Start", event: "manual" },
+      { id: "aw-trig", nodeType: "trigger", label: "Contact enrolled", event: "manual" },
       { id: "aw-a0", nodeType: "action", label: "Welcome Email", actionType: "email", delayDays: 0, subject: "Welcome to LoanBud" },
       { id: "aw-a1", nodeType: "action", label: "Intro Call", actionType: "call-reminder", delayDays: 1, note: "Introduce yourself and confirm next steps." },
       { id: "aw-a3", nodeType: "action", label: "Day 3 Follow-up", actionType: "email", delayDays: 3, subject: "Checking In" },
@@ -253,7 +253,7 @@ const initialWorkflows: Workflow[] = [
     createdAt: "2024-01-10",
     createdBy: "Admin",
     nodes: [
-      { id: "cw-trig", nodeType: "trigger", label: "Workflow Start", event: "manual" },
+      { id: "cw-trig", nodeType: "trigger", label: "Contact enrolled", event: "manual" },
       { id: "cw-a0", nodeType: "action", label: "Outcome Notification", actionType: "email", delayDays: 0, subject: "Application Outcome" },
       { id: "cw-a1", nodeType: "action", label: "Optional Follow-up Call", actionType: "call-reminder", delayDays: 1, note: "Call to explain outcome and answer questions." },
       { id: "cw-a3", nodeType: "action", label: "Final Check-in SMS", actionType: "sms-reminder", delayDays: 3, note: "Final SMS check-in after closure." },

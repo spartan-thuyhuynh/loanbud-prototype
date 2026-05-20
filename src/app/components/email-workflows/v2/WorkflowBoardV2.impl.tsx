@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, MoreHorizontal, Play, History, UserCheck } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, MoreHorizontal, Play, History, UserCheck, Clock } from "lucide-react";
 import { WorkflowContactPanel } from "../WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
