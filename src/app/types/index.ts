@@ -76,6 +76,14 @@ export interface AppSidebarSection {
   items: AppSidebarItem[];
 }
 
+export type ListingStatus = "New" | "Draft" | "Submitted" | "On Hold" | "Declined";
+
+export interface Listing {
+  id: string;
+  name: string;
+  status: ListingStatus;
+}
+
 export interface Contact {
   id: string;
   firstName: string;
@@ -83,7 +91,9 @@ export interface Contact {
   email: string;
   phone: string;
   listingName: string;
-  listingStatus: "New" | "Draft" | "Submitted" | "On Hold" | "Declined";
+  listingStatus: ListingStatus;
+  /** V2: all listings associated with this contact. Falls back to listingName/listingStatus when absent. */
+  listings?: Listing[];
   createAt: Date;
   updatedAt?: Date | string;
   userType: "Broker" | "Lender" | "Partner" | "Borrower" | "Co-Borrower";
@@ -305,6 +315,8 @@ export interface WorkflowEnrollment {
   id: string;
   workflowId: string;
   contactId: string;
+  /** V2: which listing this enrollment is for. Undefined for non-listing-filtered enrollments. */
+  listingId?: string;
   startDate: Date;
   status: "active" | "completed" | "paused";
   stepProgress: WorkflowStepProgress[];

@@ -942,13 +942,20 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
               {contact.phone && <p className="text-xs text-foreground">{contact.phone}</p>}
             </div>
 
-            {/* Listing + status */}
+            {/* Listings — all listings associated with this contact */}
             <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Listing</p>
-              <p className="text-xs text-foreground">{contact.listingName || "—"}</p>
-              <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
-                {contact.listingStatus}
-              </span>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Listings</p>
+              {(contact.listings?.length
+                ? contact.listings
+                : [{ id: "primary", name: contact.listingName, status: contact.listingStatus }]
+              ).map((listing) => (
+                <div key={listing.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-foreground truncate">{listing.name || "—"}</span>
+                  <span className={`flex-shrink-0 inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${LISTING_STATUS_STYLES[listing.status] ?? "bg-gray-100 text-gray-600"}`}>
+                    {listing.status}
+                  </span>
+                </div>
+              ))}
             </div>
 
             {/* Divider */}

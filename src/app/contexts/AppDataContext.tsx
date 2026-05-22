@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from "react";
-import type { Contact, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
+import { toast } from "sonner";
+import type { Contact, Listing, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
@@ -19,6 +20,61 @@ function extractEnrollmentIdFromTaskId(taskId: string): string | undefined {
 function extractStepIdFromTaskId(taskId: string): string | undefined {
   const match = taskId.match(/^taskitem-call-(.+)-([^-]+)$/);
   return match ? match[2] : undefined;
+}
+
+// ── Segment / listing helpers ─────────────────────────────────────────────────
+
+const LISTING_FIELDS = new Set<FilterRule["field"]>(["listingStatus", "listingName"]);
+
+/** Pure boolean chain evaluator — mirrors the original matchContact logic. */
+function evaluateFilterChain(filters: FilterRule[], record: Record<string, string>): boolean {
+  if (filters.length === 0) return true;
+  const evalOne = (f: FilterRule): boolean => {
+    const val = record[f.field] ?? "";
+    if (f.operator === "=") return val === f.value;
+    if (f.operator === "!=") return val !== f.value;
+    if (f.operator === "contains") return val.toLowerCase().includes(f.value.toLowerCase());
+    if (f.operator === "not_contains") return !val.toLowerCase().includes(f.value.toLowerCase());
+    return false;
+  };
+  let result = evalOne(filters[0]);
+  for (let i = 1; i < filters.length; i++) {
+    const next = evalOne(filters[i]);
+    result = filters[i - 1].logic === "and" ? result && next : result || next;
+  }
+  return result;
+}
+
+/**
+ * Returns the subset of a contact's listings that satisfy the segment filters.
+ * - If no listing-field filters exist: returns all listings if the contact matches (1 enrollment per contact).
+ * - If listing-field filters exist: returns only the listings where the filter passes (1 enrollment per matching listing).
+ * - Returns [] when the contact does not match at all.
+ */
+function getMatchedListings(contact: Contact, filters: FilterRule[]): Listing[] {
+  const allListings: Listing[] = contact.listings?.length
+    ? contact.listings
+    : [{ id: `${contact.id}-primary`, name: contact.listingName, status: contact.listingStatus }];
+
+  if (filters.length === 0) return allListings;
+
+  const hasListingFilter = filters.some((f) => LISTING_FIELDS.has(f.field));
+
+  if (!hasListingFilter) {
+    // Non-listing segment: one enrollment per contact regardless of listing count
+    const contactRecord = contact as unknown as Record<string, string>;
+    return evaluateFilterChain(filters, contactRecord) ? allListings : [];
+  }
+
+  // Listing-filtered segment: evaluate each listing independently
+  return allListings.filter((listing) => {
+    const merged: Record<string, string> = {
+      ...(contact as unknown as Record<string, string>),
+      listingStatus: listing.status,
+      listingName: listing.name,
+    };
+    return evaluateFilterChain(filters, merged);
+  });
 }
 
 interface AppDataContextValue {
@@ -67,7 +123,7 @@ interface AppDataContextValue {
   handleCreateWorkflow: (w: Omit<Workflow, "id" | "createdAt" | "enrolledCount">) => void;
   handleUpdateWorkflow: (id: string, updates: Partial<Workflow>) => void;
   handleDeleteWorkflow: (id: string) => void;
-  handleEnrollContacts: (workflowId: string, contactIds: string[], startDate: Date) => void;
+  handleEnrollContacts: (workflowId: string, entries: { contactId: string; listingId?: string }[], startDate: Date) => void;
   handleActivateWorkflow: (workflowId: string) => void;
   handleAdvanceStep: (enrollmentId: string, stepId: string) => void;
   handleMoveToStep: (enrollmentId: string, targetStepId: string | "completed") => void;
@@ -764,34 +820,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       enrolledCount: 0,
     };
 
-    // Auto-enroll matching segment contacts
+    // Auto-enroll matching segment contacts — one enrollment per matching listing
     const segment = segments.find((s) => s.id === w.segmentId);
-    const matchContact = (contact: Contact, filters: FilterRule[]): boolean => {
-      if (filters.length === 0) return true;
-      const record = contact as unknown as Record<string, string>;
-      let result = filters[0].operator === "="
-        ? record[filters[0].field] === filters[0].value
-        : record[filters[0].field] !== filters[0].value;
-      for (let i = 1; i < filters.length; i++) {
-        const f = filters[i];
-        const next = f.operator === "=" ? record[f.field] === f.value : record[f.field] !== f.value;
-        result = filters[i - 1].logic === "and" ? result && next : result || next;
-      }
-      return result;
-    };
-    const matchedContacts = segment
-      ? contacts.filter((c) => matchContact(c, segment.filters))
+    const enrollmentPairs = segment
+      ? contacts.flatMap((c) =>
+          getMatchedListings(c, segment.filters).map((l) => ({ contactId: c.id, listingId: l.id }))
+        )
       : [];
     const startDate = new Date();
-    const newEnrollments: WorkflowEnrollment[] = matchedContacts.map((c) => ({
-      id: `enroll-${Date.now()}-${c.id}`,
+    const newEnrollments: WorkflowEnrollment[] = enrollmentPairs.map(({ contactId, listingId }) => ({
+      id: `enroll-${Date.now()}-${contactId}-${listingId ?? ""}`,
       workflowId: newWorkflow.id,
-      contactId: c.id,
+      contactId,
+      listingId,
       startDate,
       status: "active" as const,
       stepProgress: newWorkflow.steps.map((s) => ({ stepId: s.id, status: "pending" as const })),
     }));
-    newWorkflow.enrolledCount = matchedContacts.length;
+    // enrolledCount shows unique contacts, not total enrollments
+    newWorkflow.enrolledCount = new Set(enrollmentPairs.map((p) => p.contactId)).size;
 
     const callTasks = buildCallReminderTaskItems(newWorkflow, newEnrollments, contacts);
     const updatedWorkflows = [...workflows, newWorkflow];
@@ -862,21 +909,31 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.workflowEnrollments.write(updatedEnrollments);
   };
 
-  const handleEnrollContacts = (workflowId: string, contactIds: string[], startDate: Date) => {
+  const handleEnrollContacts = (workflowId: string, entries: { contactId: string; listingId?: string }[], startDate: Date) => {
     const workflow = workflows.find((wf) => wf.id === workflowId);
     if (!workflow) return;
-    const alreadyEnrolled = new Set(
-      workflowEnrollments.filter((e) => e.workflowId === workflowId).map((e) => e.contactId),
+    // Dedup key: contactId::listingId (listing-scoped when listingId present)
+    const alreadyEnrolledKeys = new Set(
+      workflowEnrollments
+        .filter((e) => e.workflowId === workflowId)
+        .map((e) => `${e.contactId}::${e.listingId ?? ""}`),
     );
-    const newIds = contactIds.filter((id) => !alreadyEnrolled.has(id));
-    if (newIds.length === 0) return;
-    const newEnrollments: WorkflowEnrollment[] = newIds.map((contactId) => {
+    const newEntries = entries.filter(
+      ({ contactId, listingId }) => !alreadyEnrolledKeys.has(`${contactId}::${listingId ?? ""}`),
+    );
+    const skipped = entries.length - newEntries.length;
+    if (skipped > 0) {
+      toast.info(`${skipped} enrollment${skipped > 1 ? "s" : ""} skipped — already enrolled`);
+    }
+    if (newEntries.length === 0) return;
+    const newEnrollments: WorkflowEnrollment[] = newEntries.map(({ contactId, listingId }) => {
       const contactEnrollments = workflowEnrollments.filter(e => e.contactId === contactId);
       const allPaused = contactEnrollments.length > 0 && contactEnrollments.every(e => e.status === "paused");
       return {
-        id: `enroll-${Date.now()}-${contactId}`,
+        id: `enroll-${Date.now()}-${contactId}-${listingId ?? ""}`,
         workflowId,
         contactId,
+        listingId,
         startDate,
         status: allPaused ? ("paused" as const) : ("active" as const),
         stepProgress: workflow.steps.map((s: WorkflowStep) => ({ stepId: s.id, status: "pending" as const })),
@@ -945,23 +1002,42 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const workflow = workflows.find((wf) => wf.id === workflowId);
     if (!workflow) return;
 
-    const alreadyEnrolled = new Set(
+    // Build already-enrolled keys (contactId::listingId) to deduplicate listing-scoped enrollments
+    const alreadyEnrolledKeys = new Set(
+      workflowEnrollments
+        .filter((e) => e.workflowId === workflowId)
+        .map((e) => `${e.contactId}::${e.listingId ?? ""}`),
+    );
+    const enrolledContactIds = new Set(
       workflowEnrollments.filter((e) => e.workflowId === workflowId).map((e) => e.contactId),
     );
 
-    // Pick up to 8 contacts not already enrolled
-    const available = contacts.filter((c) => !alreadyEnrolled.has(c.id));
+    // Resolve the segment's filters (if any) so we only enroll listings that actually match
+    const segment = segments.find((s) => s.id === workflow.segmentId);
+    const segmentFilters: FilterRule[] = segment?.filters ?? [];
+
+    // Pick up to 8 contacts not already enrolled, then expand to matched-listing pairs only
+    const available = contacts.filter((c) => !enrolledContactIds.has(c.id));
     const selected = available.slice(0, 8);
 
+    // getMatchedListings returns only the listings that satisfy the segment's listing filters.
+    // For non-listing segments it returns all listings collapsed to one (primary) per contact.
+    const pairs = selected.flatMap((contact) => {
+      return getMatchedListings(contact, segmentFilters)
+        .filter((l) => !alreadyEnrolledKeys.has(`${contact.id}::${l.id}`))
+        .map((l) => ({ contact, listingId: l.id }));
+    });
+
     const now = new Date();
-    const newEnrollments: WorkflowEnrollment[] = selected.map((contact, idx) => {
+    const newEnrollments: WorkflowEnrollment[] = pairs.map(({ contact, listingId }, idx) => {
       const startDate = new Date(now.getTime() - idx * 2 * 24 * 60 * 60 * 1000);
       const stepProgress = generateMockProgress(workflow.steps, idx);
       const allDone = stepProgress.every((p) => p.status === "done" || p.status === "skipped");
       return {
-        id: `enroll-${workflowId}-${contact.id}-${Date.now() + idx}`,
+        id: `enroll-${workflowId}-${contact.id}-${listingId}-${Date.now() + idx}`,
         workflowId,
         contactId: contact.id,
+        listingId,
         startDate,
         status: allDone ? ("completed" as const) : ("active" as const),
         stepProgress,
@@ -969,9 +1045,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
 
     const updatedEnrollments = [...workflowEnrollments, ...newEnrollments];
+    // enrolledCount tracks unique contacts
+    const newUniqueContacts = new Set(newEnrollments.map((e) => e.contactId)).size;
     const updatedWorkflows = workflows.map((wf) =>
       wf.id === workflowId
-        ? { ...wf, status: "active" as const, enrolledCount: wf.enrolledCount + newEnrollments.length }
+        ? { ...wf, status: "active" as const, enrolledCount: wf.enrolledCount + newUniqueContacts }
         : wf,
     );
 

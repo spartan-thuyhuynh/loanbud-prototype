@@ -17,15 +17,15 @@ import senderIdentitiesJson from "./senderIdentities.json";
 import notificationsJson from "./notifications.json";
 
 const KEYS = {
-  contacts: "loanbudcrm:contacts",
+  contacts: "loanbudcrm:v2:contacts",
   segments: "loanbudcrm:segments",
   taskItems: "loanbudcrm:taskItems",
   emailHistory: "loanbudcrm:emailHistory",
   tasks: "loanbudcrm:tasks",
   applications: "loanbudcrm:applications",
   businessAcquisitions: "loanbudcrm:businessAcquisitions",
-  workflows: "loanbudcrm:v2:workflows",
-  workflowEnrollments: "loanbudcrm:v2:workflowEnrollments",
+  workflows: "loanbudcrm:v3:workflows",
+  workflowEnrollments: "loanbudcrm:v4:workflowEnrollments",
   contactActivity: "loanbudcrm:contactActivity",
   adminEmailTemplates: "loanbudcrm:v2:adminEmailTemplates",
   smsTemplates: "loanbudcrm:v2:smsTemplates",

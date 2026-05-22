@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, Play, History, UserCheck, Clock } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Check, Search, Edit, Mail, MessageCircle, Phone, CheckCircle2, Zap, SkipForward, PauseCircle, X, ChevronDown, Square, Play, History, UserCheck, Clock, Trash2 } from "lucide-react";
 import { WorkflowContactPanel } from "./WorkflowContactPanel";
 import { toast } from "sonner";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -258,6 +258,7 @@ function StepsTimeline({ steps, enrollmentStats }: {
 function ContactCard({
   contact,
   enrollmentId,
+  listingId,
   columnId,
   currentStep,
   scheduledDate,
@@ -266,6 +267,7 @@ function ContactCard({
 }: {
   contact: Contact;
   enrollmentId: string;
+  listingId?: string;
   columnId: string;
   currentStep: WorkflowStep | null;
   scheduledDate: Date | null;
@@ -296,6 +298,11 @@ function ContactCard({
 
   const { label: statusLabel, dotClass } = getCardStatus({ enrollmentStatus, cantSend, isAutoStep, scheduledDate });
 
+  // Resolve the specific listing this enrollment is for; fall back to primary listing on contact
+  const resolvedListing = listingId
+    ? (contact.listings?.find((l) => l.id === listingId) ?? { name: contact.listingName, status: contact.listingStatus })
+    : { name: contact.listingName, status: contact.listingStatus };
+
   return (
     <div
       ref={dragRef}
@@ -310,41 +317,51 @@ function ContactCard({
 
       {/* Header: avatar + name/email */}
       <div className="px-3 pt-2.5 pb-3">
-        <div className="flex items-start gap-2.5">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5 ${avatarClass}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-[38px] h-[38px] rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${avatarClass}`}>
             {getInitials(contact.firstName, contact.lastName)}
           </div>
           <div className="flex-1 min-w-0">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onCardClick(); }}
-              className="text-sm font-semibold text-foreground hover:text-primary hover:underline truncate block text-left w-full leading-tight"
+              className="text-[15px] font-semibold text-foreground hover:text-primary hover:underline truncate block text-left w-full leading-tight"
             >
               {contact.firstName} {contact.lastName}
             </button>
-            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{contact.email}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{contact.email}</p>
           </div>
         </div>
-        {(contact.listingName || (isCallReminder && !isCompleted)) && (
-          <div className="mt-2 grid grid-cols-[3rem_1fr] gap-x-2 gap-y-1 items-center">
-            {contact.listingName && (
-              <>
-                <span className="text-[10px] font-medium text-muted-foreground/50 leading-none">Listing</span>
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-[11px] text-muted-foreground truncate" title={contact.listingName}>{contact.listingName}</span>
-                  <span className={`flex-shrink-0 inline-block text-[10px] px-1.5 py-0.5 rounded font-medium leading-none ${LISTING_STATUS_STYLES[contact.listingStatus] ?? "bg-gray-100 text-gray-600"}`}>
-                    {contact.listingStatus}
-                  </span>
-                </div>
-              </>
-            )}
+        {(resolvedListing.name || (isCallReminder && !isCompleted)) && (
+          <>
+            <div className="border-t border-border mt-2.5 mb-2" />
+          <div className="flex flex-col gap-1.5">
             {isCallReminder && !isCompleted && (
-              <>
-                <span className="text-[10px] font-medium text-muted-foreground/50 leading-none">Assignee</span>
-                <span className="text-[11px] text-muted-foreground truncate" title={CURRENT_USER}>{CURRENT_USER}</span>
-              </>
+              <div className="flex gap-4 items-center">
+                <span className="text-xs font-medium text-muted-foreground/50 w-[3.25rem] flex-shrink-0">Assignee</span>
+                <span className="text-xs text-foreground truncate" title={CURRENT_USER}>{CURRENT_USER}</span>
+              </div>
+            )}
+            {resolvedListing.name && (
+              <div className="flex gap-4 items-start">
+                <span className="text-xs font-medium text-muted-foreground/50 w-[3.25rem] flex-shrink-0 leading-[1.5]">Listing</span>
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-xs text-foreground truncate" title={resolvedListing.name}>{resolvedListing.name}</span>
+                    <span className={`flex-shrink-0 inline-block text-xs px-1.5 py-0.5 rounded font-medium leading-none ${LISTING_STATUS_STYLES[resolvedListing.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {resolvedListing.status}
+                    </span>
+                  </div>
+                  {(contact.listings?.length ?? 1) > 1 && (
+                    <span className="text-xs text-muted-foreground/60">
+                      +{(contact.listings?.length ?? 1) - 1} more
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
+          </>
         )}
       </div>
     </div>
@@ -381,7 +398,7 @@ function KanbanColumn({
   const isAutoStep = currentStep && (currentStep.actionType === "email" || currentStep.actionType === "sms");
 
   return (
-    <div className="w-72 flex-shrink-0 flex flex-col bg-white border border-border rounded-xl">
+    <div className="w-80 flex-shrink-0 flex flex-col bg-white border border-border rounded-xl">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
@@ -414,6 +431,7 @@ function KanbanColumn({
               key={enrollment.id}
               contact={contact}
               enrollmentId={enrollment.id}
+              listingId={enrollment.listingId}
               columnId={colId}
               currentStep={currentStep}
               scheduledDate={scheduledDate}
@@ -440,7 +458,7 @@ export function WorkflowBoard() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleUpdateWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
+  const { workflows, workflowEnrollments, contacts, segments, handleActivateWorkflow, handleAdvanceStep, handleMoveToStep, handleUpdateWorkflow, handleDeleteWorkflow, handleSkipStep, handleSetEnrollmentStatus, handleBulkSkipSteps, handleBulkSetEnrollmentStatus } = useAppData();
 
   const navState = location.state as { openContactId?: string; openEnrollmentId?: string } | null;
 
@@ -471,6 +489,7 @@ export function WorkflowBoard() {
     description: string;
     onConfirm: () => void;
   } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   const workflow = workflows.find((wf) => wf.id === id);
   const myEnrollments = workflowEnrollments.filter((e) => e.workflowId === id);
@@ -1509,10 +1528,59 @@ export function WorkflowBoard() {
               </p>
             </div>
 
+            {/* Danger zone */}
+            <div className="bg-card border border-red-200 rounded-xl px-6 py-5">
+              <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-4">Danger Zone</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Delete this flow</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permanently removes the flow and all enrollment records. This cannot be undone.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleteConfirm(true)}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Flow
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
 
+
+      {/* Delete flow confirm modal */}
+      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete this flow?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-semibold text-foreground">{workflow?.name}</span> and all its enrollment records will be permanently deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!workflow) return;
+                handleDeleteWorkflow(workflow.id);
+                toast.success("Flow deleted");
+                navigate("/email-workflows");
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Flow
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Pause confirm modal */}
       <AlertDialog open={pauseConfirm !== null} onOpenChange={(open) => { if (!open) setPauseConfirm(null); }}>

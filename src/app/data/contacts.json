@@ -7,6 +7,10 @@
     "phone": "(555) 123-4567",
     "listingName": "Working Capital",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-1-1", "name": "Working Capital", "status": "New" },
+      { "id": "lst-1-2", "name": "SBA 7(a)", "status": "New" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 3,
@@ -35,6 +39,10 @@
     "phone": "(555) 234-5678",
     "listingName": "Equipment Financing",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-2-1", "name": "Equipment Financing", "status": "Submitted" },
+      { "id": "lst-2-2", "name": "Bridge Loan", "status": "New" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 1,
@@ -63,6 +71,10 @@
     "phone": "(555) 345-6789",
     "listingName": "Real Estate Bridge ",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-3-1", "name": "Real Estate Bridge", "status": "New" },
+      { "id": "lst-3-2", "name": "Working Capital", "status": "Draft" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 4,
@@ -90,6 +102,9 @@
     "phone": "(555) 456-7890",
     "listingName": "SBA 7(a)",
     "listingStatus": "Draft",
+    "listings": [
+      { "id": "lst-4-1", "name": "SBA 7(a)", "status": "Draft" }
+    ],
     "userType": "Partner",
     "optedOut": true,
     "openReminders": 0,
@@ -116,6 +131,9 @@
     "phone": "(555) 567-8901",
     "listingName": "Merchant Cash Advance",
     "listingStatus": "On Hold",
+    "listings": [
+      { "id": "lst-5-1", "name": "Merchant Cash Advance", "status": "On Hold" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 2,
@@ -142,6 +160,9 @@
     "phone": "(555) 678-9012",
     "listingName": "Construction Loan",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-6-1", "name": "Construction Loan", "status": "New" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 4,
@@ -168,6 +189,9 @@
     "phone": "(555) 789-0123",
     "listingName": "Inventory Financing",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-7-1", "name": "Inventory Financing", "status": "Submitted" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 1,
@@ -194,6 +218,9 @@
     "phone": "(555) 890-1234",
     "listingName": "SBA 504",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-8-1", "name": "SBA 504", "status": "New" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 5,
@@ -220,6 +247,9 @@
     "phone": "(555) 901-2345",
     "listingName": "Working Capital",
     "listingStatus": "Draft",
+    "listings": [
+      { "id": "lst-9-1", "name": "Working Capital", "status": "Draft" }
+    ],
     "userType": "Broker",
     "optedOut": true,
     "openReminders": 0,
@@ -246,6 +276,9 @@
     "phone": "(555) 012-3456",
     "listingName": "Equipment Lease",
     "listingStatus": "On Hold",
+    "listings": [
+      { "id": "lst-10-1", "name": "Equipment Lease", "status": "On Hold" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 2,
@@ -272,6 +305,9 @@
     "phone": "(555) 123-9876",
     "listingName": "Invoice Factoring",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-11-1", "name": "Invoice Factoring", "status": "Submitted" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 3,
@@ -298,6 +334,9 @@
     "phone": "(555) 234-8765",
     "listingName": "Commercial Mortgage",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-12-1", "name": "Commercial Mortgage", "status": "New" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 1,
@@ -324,6 +363,9 @@
     "phone": "(555) 345-7654",
     "listingName": "Business Line of Credit",
     "listingStatus": "Draft",
+    "listings": [
+      { "id": "lst-13-1", "name": "Business Line of Credit", "status": "Draft" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 0,
@@ -350,6 +392,9 @@
     "phone": "(555) 456-6543",
     "listingName": "Working Capital",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-14-1", "name": "Working Capital", "status": "Submitted" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 2,
@@ -376,6 +421,9 @@
     "phone": "(555) 567-5432",
     "listingName": "Startup Loan",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-15-1", "name": "Startup Loan", "status": "New" }
+    ],
     "userType": "Lender",
     "optedOut": true,
     "openReminders": 6,
@@ -402,6 +450,9 @@
     "phone": "(555) 678-4321",
     "listingName": "Acquisition Finance",
     "listingStatus": "On Hold",
+    "listings": [
+      { "id": "lst-16-1", "name": "Acquisition Finance", "status": "On Hold" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 1,
@@ -428,6 +479,9 @@
     "phone": "(555) 789-3210",
     "listingName": "SBA 7(a)",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-17-1", "name": "SBA 7(a)", "status": "Submitted" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 4,
@@ -454,6 +508,9 @@
     "phone": "(555) 890-2109",
     "listingName": "Bridge Loan",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-18-1", "name": "Bridge Loan", "status": "New" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 2,
@@ -480,6 +537,9 @@
     "phone": "(555) 901-1098",
     "listingName": "Asset Based Loan",
     "listingStatus": "Draft",
+    "listings": [
+      { "id": "lst-19-1", "name": "Asset Based Loan", "status": "Draft" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 0,
@@ -506,6 +566,9 @@
     "phone": "(555) 012-0987",
     "listingName": "Merchant Cash Advance",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-20-1", "name": "Merchant Cash Advance", "status": "Submitted" }
+    ],
     "userType": "Broker",
     "optedOut": true,
     "openReminders": 1,
@@ -532,6 +595,9 @@
     "phone": "(555) 123-5566",
     "listingName": "Equipment Financing",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-21-1", "name": "Equipment Financing", "status": "New" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 3,
@@ -558,6 +624,9 @@
     "phone": "(555) 234-6677",
     "listingName": "Working Capital",
     "listingStatus": "On Hold",
+    "listings": [
+      { "id": "lst-22-1", "name": "Working Capital", "status": "On Hold" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 5,
@@ -584,6 +653,9 @@
     "phone": "(555) 345-7788",
     "listingName": "SBA 504",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-23-1", "name": "SBA 504", "status": "Submitted" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 2,
@@ -610,6 +682,9 @@
     "phone": "(555) 456-8899",
     "listingName": "Construction Loan",
     "listingStatus": "Draft",
+    "listings": [
+      { "id": "lst-24-1", "name": "Construction Loan", "status": "Draft" }
+    ],
     "userType": "Lender",
     "optedOut": false,
     "openReminders": 0,
@@ -636,6 +711,9 @@
     "phone": "(555) 567-9900",
     "listingName": "Real Estate Bridge",
     "listingStatus": "New",
+    "listings": [
+      { "id": "lst-25-1", "name": "Real Estate Bridge", "status": "New" }
+    ],
     "userType": "Broker",
     "optedOut": false,
     "openReminders": 4,
@@ -662,6 +740,9 @@
     "phone": "(555) 678-0011",
     "listingName": "Inventory Financing",
     "listingStatus": "Submitted",
+    "listings": [
+      { "id": "lst-26-1", "name": "Inventory Financing", "status": "Submitted" }
+    ],
     "userType": "Partner",
     "optedOut": false,
     "openReminders": 1,

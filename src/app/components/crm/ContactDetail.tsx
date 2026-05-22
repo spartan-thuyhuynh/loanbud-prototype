@@ -110,7 +110,6 @@ export function ContactDetail() {
     handleRescheduleTask,
     handleDeleteTask,
     handlePauseAllEnrollments,
-    handleSetEnrollmentStatus,
     handleBulkSetEnrollmentStatus,
     handleUpdateContact,
     applications,
@@ -1078,22 +1077,31 @@ export function ContactDetail() {
               <h3 className="text-sm font-semibold">Listings</h3>
               {listingOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
-            {listingOpen && (
-              <div className="p-3 border border-border rounded-xl bg-background">
-                <div className="flex items-center gap-2 mb-1">
-                  <Building2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium truncate">{contact.listingName}</span>
+            {listingOpen && (() => {
+              const allListings = contact.listings && contact.listings.length > 0
+                ? contact.listings
+                : [{ id: "legacy", name: contact.listingName, status: contact.listingStatus }];
+              return (
+                <div className="space-y-2">
+                  {allListings.map((listing) => (
+                    <div key={listing.id} className="p-3 border border-border rounded-xl bg-background">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Building2 className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-sm font-medium truncate">{listing.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[listing.status] ?? "bg-muted text-muted-foreground"}`}>
+                          {listing.status}
+                        </span>
+                        {contact.optedOut && (
+                          <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded-full">Opted Out</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[contact.listingStatus] ?? "bg-muted text-muted-foreground"}`}>
-                    {contact.listingStatus}
-                  </span>
-                  {contact.optedOut && (
-                    <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded-full">Opted Out</span>
-                  )}
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Upcoming Tasks */}
