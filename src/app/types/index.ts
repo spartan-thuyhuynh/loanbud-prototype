@@ -511,6 +511,11 @@ export interface Notification {
   taskId?: string;
 }
 
+/** V2: per-type notification opt-in preferences. All types default to true. */
+export type NotificationPreferences = {
+  [K in Notification["type"]]: boolean;
+};
+
 // ── V2: Segment enhancements ──────────────────────────────────────────────────
 
 export interface SegmentV2 extends Segment {

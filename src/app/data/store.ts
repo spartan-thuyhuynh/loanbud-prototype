@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
@@ -33,10 +33,20 @@ const KEYS = {
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
   senderIdentities: "loanbudcrm:v2:senderIdentities",
   notifications: "loanbudcrm:notifications",
+  notificationPrefs: "loanbudcrm:v2:notificationPrefs",
   emailCategories: "loanbudcrm:v2:emailCategories",
   smsCategories: "loanbudcrm:v2:smsCategories",
   voicemailCategories: "loanbudcrm:v2:voicemailCategories",
 } as const;
+
+function readObject<T extends object>(key: string, fallback: T): T {
+  const raw = localStorage.getItem(key);
+  return raw ? (JSON.parse(raw) as T) : fallback;
+}
+
+function writeObject<T extends object>(key: string, data: T): void {
+  localStorage.setItem(key, JSON.stringify(data));
+}
 
 function readStringArray(key: string, fallback: string[]): string[] {
   const raw = localStorage.getItem(key);
@@ -222,6 +232,24 @@ export const store = {
         ["createdAt"],
       ),
     write: (data: Notification[]) => write(KEYS.notifications, data),
+  },
+  notificationPrefs: {
+    read: (): NotificationPreferences => readObject<NotificationPreferences>(
+      KEYS.notificationPrefs,
+      {
+        task_due: true,
+        task_overdue: true,
+        workflow_update: true,
+        application_update: true,
+        enrollment_completed: true,
+        enrollment_paused: true,
+        step_bounced: true,
+        workflow_completed_all: true,
+        inbound_reply: true,
+        segment_membership_changed: true,
+      },
+    ),
+    write: (data: NotificationPreferences) => writeObject(KEYS.notificationPrefs, data),
   },
   emailCategories: {
     read: () => readStringArray(KEYS.emailCategories, ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"]),

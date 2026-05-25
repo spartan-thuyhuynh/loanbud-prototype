@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import { toast } from "sonner";
-import type { Contact, Listing, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification } from "../types";
+import type { Contact, Listing, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
@@ -178,9 +178,12 @@ interface AppDataContextValue {
   handleSendTaskEmail: (taskId: string, subject: string, sender: string) => void;
   // Notification data & handlers
   notifications: Notification[];
+  notificationPrefs: NotificationPreferences;
   handleMarkNotificationRead: (id: string) => void;
+  handleMarkNotificationUnread: (id: string) => void;
   handleMarkAllNotificationsRead: () => void;
   handleDismissNotification: (id: string) => void;
+  handleUpdateNotificationPrefs: (updates: Partial<NotificationPreferences>) => void;
   // Email read-state handlers (V2)
   handleMarkEmailRead: (emailId: string) => void;
   handleMarkContactEmailsRead: (contactId: string) => void;
@@ -212,9 +215,37 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [smsCategories, setSmsCategories] = useState<string[]>(store.smsCategories.read());
   const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
   const [notifications, setNotifications] = useState<Notification[]>(store.notifications.read());
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(store.notificationPrefs.read());
+
+  const handleUpdateNotificationPrefs = (updates: Partial<NotificationPreferences>) => {
+    const updated = { ...notificationPrefs, ...updates };
+    setNotificationPrefs(updated);
+    store.notificationPrefs.write(updated);
+  };
+
+  const addNotification = (partial: Omit<Notification, "id" | "createdAt" | "read">) => {
+    if (!notificationPrefs[partial.type]) return;
+    const newNotif: Notification = {
+      ...partial,
+      id: `notif-${Date.now()}`,
+      createdAt: new Date(),
+      read: false,
+    };
+    setNotifications((prev) => {
+      const updated = [newNotif, ...prev];
+      store.notifications.write(updated);
+      return updated;
+    });
+  };
 
   const handleMarkNotificationRead = (id: string) => {
     const updated = notifications.map((n) => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    store.notifications.write(updated);
+  };
+
+  const handleMarkNotificationUnread = (id: string) => {
+    const updated = notifications.map((n) => n.id === id ? { ...n, read: false } : n);
     setNotifications(updated);
     store.notifications.write(updated);
   };
@@ -432,6 +463,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             );
           }
           const allDone = finalProgress.every((p) => p.status === "done" || p.status === "skipped");
+
+          if (allDone) {
+            const completedContact = contacts.find((c) => c.id === enrollment.contactId);
+            const contactName = completedContact
+              ? `${completedContact.firstName} ${completedContact.lastName}`
+              : enrollment.contactId;
+            addNotification({
+              type: "enrollment_completed",
+              title: `${contactName} completed "${workflow.name}"`,
+              message: `${contactName} has completed all steps in "${workflow.name}".`,
+              workflowId: enrollment.workflowId,
+              contactId: enrollment.contactId,
+            });
+          }
+
           const updatedEnrollment: WorkflowEnrollment = {
             ...enrollment,
             stepProgress: finalProgress,
@@ -1070,6 +1116,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         : wf,
     );
 
+    addNotification({
+      type: "workflow_update",
+      title: `"${workflow.name}" enrolled ${newUniqueContacts} contact${newUniqueContacts !== 1 ? "s" : ""}`,
+      message: `"${workflow.name}" was activated and enrolled ${newUniqueContacts} contact${newUniqueContacts !== 1 ? "s" : ""}.`,
+      workflowId: workflowId,
+    });
+
     setWorkflowEnrollments(updatedEnrollments);
     setWorkflows(updatedWorkflows);
     store.workflowEnrollments.write(updatedEnrollments);
@@ -1179,6 +1232,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const enrollment = workflowEnrollments.find((e) => e.id === enrollmentId);
     if (!enrollment) return;
     const workflow = workflows.find((wf) => wf.id === enrollment.workflowId);
+
+    if (status === "paused") {
+      const contact = contacts.find((c) => c.id === enrollment.contactId);
+      const contactName = contact ? `${contact.firstName} ${contact.lastName}` : enrollment.contactId;
+      addNotification({
+        type: "enrollment_paused",
+        title: `${contactName}'s enrollment paused in "${workflow?.name ?? "a workflow"}"`,
+        message: `${contactName}'s enrollment in "${workflow?.name ?? "a workflow"}" was paused.${pauseReason ? ` Reason: ${pauseReason}` : ""}`,
+        workflowId: enrollment.workflowId,
+        contactId: enrollment.contactId,
+      });
+    }
+
     const updatedEnrollments = workflowEnrollments.map((e) => {
       if (e.id !== enrollmentId) return e;
       if (status === "paused") {
@@ -1947,9 +2013,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleDeleteVoicemailCategory,
         handleRenameVoicemailCategory,
         notifications,
+        notificationPrefs,
         handleMarkNotificationRead,
+        handleMarkNotificationUnread,
         handleMarkAllNotificationsRead,
         handleDismissNotification,
+        handleUpdateNotificationPrefs,
         handleMarkEmailRead,
         handleMarkContactEmailsRead,
         handleSendReply,

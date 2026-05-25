@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router";
 import {
   CheckCircle2,
   Plus,
@@ -72,6 +73,16 @@ export function TaskQueue({
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailTask = detailTaskId ? (allTasks.find((t) => t.id === detailTaskId) ?? null) : null;
+
+  // Auto-open task detail panel when navigated with state: { openTaskId }
+  const location = useLocation();
+  useEffect(() => {
+    const openTaskId = (location.state as { openTaskId?: string } | null)?.openTaskId;
+    if (openTaskId) {
+      setDetailTaskId(openTaskId);
+      setDetailOpen(true);
+    }
+  }, [location.state]);
 
   // Assignee filter — only active when tasks prop is NOT passed (full Tasks page)
   const showAssigneeFilter = !tasksProp;

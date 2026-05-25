@@ -2,7 +2,7 @@
   {
     "id": "notif-001",
     "type": "task_overdue",
-    "title": "Overdue Call \u2014 Maria Santos",
+    "title": "Call task for Maria Santos is overdue",
     "message": "A call task for Maria Santos was due 2 days ago and has not been completed.",
     "read": false,
     "createdAt": "2026-05-05T09:15:00.000Z"
@@ -10,7 +10,7 @@
   {
     "id": "notif-002",
     "type": "task_due",
-    "title": "Task Due Today \u2014 James Whitfield",
+    "title": "Follow-up call with James Whitfield is due today",
     "message": "You have a follow-up call with James Whitfield scheduled for today.",
     "read": false,
     "createdAt": "2026-05-07T08:00:00.000Z"
@@ -18,7 +18,7 @@
   {
     "id": "notif-003",
     "type": "workflow_update",
-    "title": "Workflow Activated \u2014 Q2 Broker Outreach",
+    "title": "\"Q2 Broker Outreach\" enrolled 8 contacts",
     "message": "The workflow \"Q2 Broker Outreach\" was activated and enrolled 8 contacts.",
     "read": false,
     "createdAt": "2026-05-06T14:30:00.000Z"
@@ -26,7 +26,7 @@
   {
     "id": "notif-004",
     "type": "application_update",
-    "title": "Application Moved to Underwriting",
+    "title": "Apex Holdings application moved to underwriting",
     "message": "Application #LB-20240312 for Apex Holdings was submitted to underwriting.",
     "read": true,
     "createdAt": "2026-05-04T11:00:00.000Z"
@@ -34,7 +34,7 @@
   {
     "id": "notif-005",
     "type": "workflow_update",
-    "title": "Enrollment Completed \u2014 David Kim",
+    "title": "David Kim completed \"Initial Lender Sequence\"",
     "message": "David Kim has completed all steps in the \"Initial Lender Sequence\" workflow.",
     "read": true,
     "createdAt": "2026-05-03T16:45:00.000Z"
@@ -42,8 +42,8 @@
   {
     "id": "notif-006",
     "type": "inbound_reply",
-    "title": "Reply from James Lee",
-    "message": "James Lee replied to \"Q2 Funding Opportunities for Brokers\" \u2014 they're interested and want to schedule a call.",
+    "title": "James Lee replied to your email",
+    "message": "Hi, thanks for reaching out! I went through the Q2 Funding Opportunities deck and I'm definitely interested. Could we find time to connect this week for a quick call?",
     "read": false,
     "createdAt": "2026-05-03T10:22:00.000Z",
     "workflowId": "wf-1",
@@ -52,7 +52,7 @@
   {
     "id": "notif-007",
     "type": "enrollment_completed",
-    "title": "Enrollment Completed \u2014 Emily Thompson",
+    "title": "Emily Thompson completed \"Q2 Broker Outreach\"",
     "message": "Emily Thompson has completed all steps in the \"Q2 Broker Outreach\" workflow.",
     "read": false,
     "createdAt": "2026-05-06T08:30:00.000Z",
@@ -62,7 +62,7 @@
   {
     "id": "notif-008",
     "type": "enrollment_paused",
-    "title": "Enrollment Paused \u2014 David Patel",
+    "title": "David Patel's enrollment paused in \"Re-Engagement Sequence\"",
     "message": "David Patel's enrollment in \"Re-Engagement Sequence\" was paused. Their last step was Day 3 follow-up.",
     "read": false,
     "createdAt": "2026-05-05T15:10:00.000Z",
@@ -72,8 +72,8 @@
   {
     "id": "notif-009",
     "type": "inbound_reply",
-    "title": "Reply from Sarah Chen",
-    "message": "Sarah Chen replied asking about documents required for equipment financing applications over $500K.",
+    "title": "Sarah Chen replied to your email",
+    "message": "Hi, quick question — what documents do you typically require for equipment financing applications above $500K? We have a client in that range and want to be prepared.",
     "read": true,
     "createdAt": "2026-05-05T14:45:00.000Z",
     "workflowId": "wf-1",
@@ -82,7 +82,7 @@
   {
     "id": "notif-010",
     "type": "step_bounced",
-    "title": "Email Bounced \u2014 2 contacts",
+    "title": "2 contacts bounced in \"Q2 Broker Outreach\"",
     "message": "The Day 7 email in \"Q2 Broker Outreach\" bounced for 2 contacts. Review and update their contact information.",
     "read": false,
     "createdAt": "2026-05-07T09:00:00.000Z",
@@ -91,7 +91,7 @@
   {
     "id": "notif-011",
     "type": "workflow_completed_all",
-    "title": "Workflow Complete \u2014 All Contacts Finished",
+    "title": "All contacts finished \"Initial Lender Sequence\"",
     "message": "All enrolled contacts in \"Initial Lender Sequence\" have completed or exited the workflow.",
     "read": true,
     "createdAt": "2026-05-04T17:00:00.000Z",
@@ -100,8 +100,8 @@
   {
     "id": "notif-012",
     "type": "inbound_reply",
-    "title": "Reply from Michael Rodriguez",
-    "message": "Michael Rodriguez is interested in $750K\u2013$1.2M deals for two clients and wants to connect.",
+    "title": "Michael Rodriguez replied to your email",
+    "message": "Hey, I actually have two clients right now looking at deals in the $750K–$1.2M range. Would love to get on a call and see if there's a fit. What does your availability look like?",
     "read": false,
     "createdAt": "2026-05-07T09:10:00.000Z",
     "workflowId": "wf-1",
@@ -110,7 +110,7 @@
   {
     "id": "notif-013",
     "type": "segment_membership_changed",
-    "title": "Segment Updated \u2014 Active Brokers Q2",
+    "title": "\"Active Brokers Q2\" gained 3 new contacts",
     "message": "3 new contacts were added to \"Active Brokers Q2\" and 1 contact no longer meets the filter criteria.",
     "read": true,
     "createdAt": "2026-05-08T06:00:00.000Z"

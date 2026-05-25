@@ -16,7 +16,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onOpenComposer, onOpenDialer }: AppHeaderProps) {
-  const { notifications, handleMarkNotificationRead, handleMarkAllNotificationsRead, handleDismissNotification } = useAppData();
+  const { notifications, notificationPrefs, handleMarkNotificationRead, handleMarkNotificationUnread, handleMarkAllNotificationsRead, handleDismissNotification, handleUpdateNotificationPrefs } = useAppData();
 
   return (
     <header className="flex items-center h-12 px-4 bg-white border-b border-gray-200 shrink-0 z-10">
@@ -40,8 +40,11 @@ export function AppHeader({ onOpenComposer, onOpenDialer }: AppHeaderProps) {
         <NotificationPanel
           notifications={notifications}
           onMarkRead={handleMarkNotificationRead}
+          onMarkUnread={handleMarkNotificationUnread}
           onMarkAllRead={handleMarkAllNotificationsRead}
           onDismiss={handleDismissNotification}
+          notificationPrefs={notificationPrefs}
+          onUpdatePrefs={handleUpdateNotificationPrefs}
         />
 
         <DropdownMenu>
