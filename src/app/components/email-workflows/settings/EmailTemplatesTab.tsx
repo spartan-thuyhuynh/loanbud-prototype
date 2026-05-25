@@ -52,26 +52,14 @@ function TemplateForm({
         <FieldLabel>Template Name</FieldLabel>
         <Input value={form.name} placeholder="e.g. New Listing Claim" onChange={(e) => onChange({ name: e.target.value })} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <FieldLabel>Category</FieldLabel>
-          <Select value={form.category} onValueChange={(v) => onChange({ category: v as EmailTemplateCategory })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <FieldLabel>Sender Type</FieldLabel>
-          <Select value={form.senderType} onValueChange={(v) => onChange({ senderType: v as "brand" | "loan-officer" })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="brand">Brand</SelectItem>
-              <SelectItem value="loan-officer">Loan Officer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Category</FieldLabel>
+        <Select value={form.category} onValueChange={(v) => onChange({ category: v as EmailTemplateCategory })}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <FieldLabel>Subject Line</FieldLabel>
@@ -194,9 +182,11 @@ export function EmailTemplatesTab() {
                 className={`w-full text-left px-3 py-2.5 border-b border-border/40 last:border-b-0 transition-colors ${isActive ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
               >
                 <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{t.name}</p>
+                {t.subject && (
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.subject}</p>
+                )}
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className={"text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border"}>{t.category}</span>
-                  <span className="text-[10px] text-muted-foreground capitalize">{t.senderType.replace("-", " ")}</span>
                 </div>
               </button>
             );
@@ -208,7 +198,7 @@ export function EmailTemplatesTab() {
             <div className="rounded-xl border border-border bg-card">
               <TemplateDetailHeader
                 name={selected.name}
-                subtitle={<><span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">{selected.category}</span><span className="text-xs text-muted-foreground capitalize">{selected.senderType.replace("-", " ")}</span></>}
+                subtitle={<><span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">{selected.category}</span></>}
                 itemId={selected.id}
                 confirmDeleteId={confirmDeleteId}
                 onEdit={openEdit}
