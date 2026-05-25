@@ -577,8 +577,8 @@ export function WorkflowBuilder() {
     }
   }, [id, workflows]);
 
-  const filteredSegments = segments.filter((s) =>
-    s.name.toLowerCase().includes(segmentSearch.trim().toLowerCase()),
+  const filteredSegments = segments.filter(
+    (s) => s.status === "Active" && s.name.toLowerCase().includes(segmentSearch.trim().toLowerCase()),
   );
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId);
 

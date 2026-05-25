@@ -822,7 +822,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     // Auto-enroll matching segment contacts — one enrollment per matching listing
     const segment = segments.find((s) => s.id === w.segmentId);
-    const enrollmentPairs = segment
+    const enrollmentPairs = segment && segment.status === "Active"
       ? contacts.flatMap((c) =>
           getMatchedListings(c, segment.filters).map((l) => ({ contactId: c.id, listingId: l.id }))
         )
@@ -912,6 +912,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const handleEnrollContacts = (workflowId: string, entries: { contactId: string; listingId?: string }[], startDate: Date) => {
     const workflow = workflows.find((wf) => wf.id === workflowId);
     if (!workflow) return;
+    const enrollSegment = segments.find((s) => s.id === workflow.segmentId);
+    if (enrollSegment && enrollSegment.status !== "Active") {
+      toast.error("Cannot enroll contacts — the linked segment is inactive.");
+      return;
+    }
     // Dedup key: contactId::listingId (listing-scoped when listingId present)
     const alreadyEnrolledKeys = new Set(
       workflowEnrollments
@@ -1014,6 +1019,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     // Resolve the segment's filters (if any) so we only enroll listings that actually match
     const segment = segments.find((s) => s.id === workflow.segmentId);
+
+    // If the segment is inactive, activate the workflow status but skip enrollment
+    if (segment && segment.status !== "Active") {
+      const updatedWorkflows = workflows.map((wf) =>
+        wf.id === workflowId ? { ...wf, status: "active" as const } : wf,
+      );
+      setWorkflows(updatedWorkflows);
+      store.workflows.write(updatedWorkflows);
+      toast.warning("Flow activated — no contacts enrolled because the linked segment is inactive.");
+      return;
+    }
+
     const segmentFilters: FilterRule[] = segment?.filters ?? [];
 
     // Pick up to 8 contacts not already enrolled, then expand to matched-listing pairs only

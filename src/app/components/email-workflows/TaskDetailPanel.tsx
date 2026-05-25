@@ -316,6 +316,28 @@ export function TaskDetailPanel({
             {/* ── Properties ─────────────────────────────────────────────── */}
             <div className="space-y-0.5 mb-6">
 
+              {contactPhone && (
+                <PropRow icon={Phone} label="Phone">
+                  <a
+                    href={`tel:${contactPhone}`}
+                    className="text-sm text-foreground hover:text-primary transition-colors"
+                  >
+                    {contactPhone}
+                  </a>
+                </PropRow>
+              )}
+
+              {contactEmail && (
+                <PropRow icon={Mail} label="Email">
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="text-sm text-foreground hover:text-primary transition-colors truncate"
+                  >
+                    {contactEmail}
+                  </a>
+                </PropRow>
+              )}
+
               <PropRow icon={Tag} label="Task type">
                 <span className={`text-xs px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider ${config.badgeColor}`}>
                   {config.label}
@@ -408,28 +430,6 @@ export function TaskDetailPanel({
                   </select>
                 }
               />
-
-              {contactPhone && (
-                <PropRow icon={Phone} label="Phone">
-                  <a
-                    href={`tel:${contactPhone}`}
-                    className="text-sm text-foreground hover:text-primary transition-colors"
-                  >
-                    {contactPhone}
-                  </a>
-                </PropRow>
-              )}
-
-              {contactEmail && (
-                <PropRow icon={Mail} label="Email">
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    className="text-sm text-foreground hover:text-primary transition-colors truncate"
-                  >
-                    {contactEmail}
-                  </a>
-                </PropRow>
-              )}
 
               {(contactListingName || task.contactStatus) && (
                 <PropRow icon={FileText} label="Application">

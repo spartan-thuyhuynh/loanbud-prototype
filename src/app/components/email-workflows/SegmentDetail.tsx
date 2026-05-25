@@ -84,6 +84,7 @@ export function SegmentDetail() {
   const segment = segments.find((s) => s.id === id);
 
   const [detailTab, setDetailTab] = useState<"contacts" | "settings">("contacts");
+  const [pendingStatus, setPendingStatus] = useState<"Active" | "Inactive" | null>(null);
   const [pendingSegmentType, setPendingSegmentType] = useState<"dynamic" | "static" | null>(null);
   const [editingGeneral, setEditingGeneral] = useState(false);
   const [editName, setEditName] = useState(segment?.name ?? "");
@@ -330,11 +331,79 @@ export function SegmentDetail() {
                 </div>
                 <InlineToggle
                   checked={segment.status === "Active"}
-                  onChange={(v) =>
-                    handleUpdateSegment(segment.id, { status: v ? "Active" : "Inactive" })
-                  }
+                  onChange={(v) => {
+                    const newStatus = v ? "Active" : "Inactive";
+                    const affected = workflows.filter((wf) => wf.segmentId === segment.id);
+                    if (affected.length > 0) {
+                      setPendingStatus(newStatus);
+                    } else {
+                      handleUpdateSegment(segment.id, { status: newStatus });
+                    }
+                  }}
                 />
               </div>
+              <Dialog
+                open={pendingStatus !== null}
+                onOpenChange={(open) => { if (!open) setPendingStatus(null); }}
+              >
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {pendingStatus === "Inactive" ? "Deactivate Segment?" : "Reactivate Segment?"}
+                    </DialogTitle>
+                    <DialogDescription asChild>
+                      <div className="space-y-3 pt-1">
+                        <p className="text-sm text-muted-foreground">
+                          {pendingStatus === "Inactive"
+                            ? "No new contacts will be enrolled in the following workflows. Existing enrollments are not affected."
+                            : "New contacts will resume being enrolled in the following workflows."}
+                        </p>
+                        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-2">
+                          {workflows
+                            .filter((wf) => wf.segmentId === segment.id)
+                            .map((wf) => (
+                              <div key={wf.id} className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium text-foreground">{wf.name}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs border ${
+                                  wf.status === "active"
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : wf.status === "paused"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : "bg-gray-50 text-gray-600 border-gray-200"
+                                }`}>
+                                  {wf.status}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <button
+                      onClick={() => setPendingStatus(null)}
+                      className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (pendingStatus) {
+                          handleUpdateSegment(segment.id, { status: pendingStatus });
+                        }
+                        setPendingStatus(null);
+                      }}
+                      className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                        pendingStatus === "Inactive"
+                          ? "bg-destructive text-destructive-foreground hover:opacity-90"
+                          : "bg-primary text-primary-foreground hover:opacity-90"
+                      }`}
+                    >
+                      {pendingStatus === "Inactive" ? "Deactivate" : "Reactivate"}
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
             {/* Segment Type */}
