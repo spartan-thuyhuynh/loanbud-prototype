@@ -1015,9 +1015,18 @@ export function WorkflowBoard() {
             {segment && (
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Applied segment:</span>
-                <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
+                <span className={`text-xs font-medium rounded-md px-2 py-0.5 border ${
+                  segment.status === "Inactive"
+                    ? "text-gray-500 bg-gray-100 border-gray-200"
+                    : "text-primary bg-primary/10 border-primary/20"
+                }`}>
                   {segment.name}
                 </span>
+                {segment.status === "Inactive" && (
+                  <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5">
+                    Inactive
+                  </span>
+                )}
               </div>
             )}
           </div>

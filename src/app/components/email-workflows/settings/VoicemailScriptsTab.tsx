@@ -262,7 +262,7 @@ export function VoicemailScriptsTab() {
                     onClick={() => { setActiveType(t); setSelected(null); setConfirmDeleteId(null); }}
                     className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-all ${activeType === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    {t === "record" ? "Record" : "Script"}
+                    {t === "record" ? "Recordings" : "Scripts"}
                   </button>
                 ))}
               </div>

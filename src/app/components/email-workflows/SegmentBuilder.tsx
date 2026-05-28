@@ -4,6 +4,16 @@ import type { Contact, FilterGroup, FilterRule, SavedSegment } from "@/app/types
 import { FilterGroupCard } from "./segment-builder/FilterGroupCard";
 import { SegmentPreviewPanel } from "./segment-builder/SegmentPreviewPanel";
 import { SpecificContactPicker } from "./segment-builder/SpecificContactPicker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog";
 
 export type { SavedSegment };
 
@@ -175,6 +185,7 @@ export function SegmentBuilder({
   const [segName, setSegName] = useState(initialName ?? "New segment");
   const [segDescription, setSegDescription] = useState(initialDescription ?? "");
   const [editingName, setEditingName] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [specificContacts, setSpecificContacts] = useState<PinnedContact[]>(() => {
     const inc = (initialSegment?.includedContactIds ?? []).map((id) => ({
       contactId: id,
@@ -221,6 +232,34 @@ export function SegmentBuilder({
 
   const hasNoFilters =
     include.groups.every((g) => g.filters.length === 0) && specificContacts.length === 0;
+
+  const isDirty = useMemo(() => {
+    const hasFilters = include.groups.some((g) => g.filters.length > 0);
+    const hasPinned = specificContacts.length > 0;
+    if (!initialSegment) {
+      const defaultName = initialName ?? "New segment";
+      return hasFilters || hasPinned || segName !== defaultName;
+    }
+    const initIncludeIds = (initialSegment.includedContactIds ?? []).slice().sort().join(",");
+    const initExcludeIds = (initialSegment.excludedContactIds ?? []).slice().sort().join(",");
+    const currIncludeIds = specificContacts.filter((p) => p.mode === "include").map((p) => p.contactId).sort().join(",");
+    const currExcludeIds = specificContacts.filter((p) => p.mode === "exclude").map((p) => p.contactId).sort().join(",");
+    return (
+      segName !== initialSegment.name ||
+      JSON.stringify(include.groups.flatMap((g) => g.filters)) !== JSON.stringify(initialSegment.filters ?? []) ||
+      JSON.stringify(exclude.groups.flatMap((g) => g.filters)) !== JSON.stringify(initialSegment.excludeFilters ?? []) ||
+      currIncludeIds !== initIncludeIds ||
+      currExcludeIds !== initExcludeIds
+    );
+  }, [segName, include.groups, exclude.groups, specificContacts, initialSegment, initialName]);
+
+  const handleBack = () => {
+    if (isDirty) {
+      setShowUnsavedDialog(true);
+    } else {
+      onBack?.();
+    }
+  };
 
   const pinnedIncludeIds = specificContacts
     .filter((p) => p.mode === "include")
@@ -283,7 +322,7 @@ export function SegmentBuilder({
           <div className="flex items-center gap-4 min-w-0 flex-1">
             {onBack && (
               <button
-                onClick={onBack}
+                onClick={handleBack}
                 className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg hover:bg-muted/80 transition-all text-sm flex-shrink-0"
               >
                 ← Back
@@ -409,6 +448,25 @@ export function SegmentBuilder({
         />
       </div>
 
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this segment. If you go back now, your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setShowUnsavedDialog(false); onBack?.(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Discard & go back
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
