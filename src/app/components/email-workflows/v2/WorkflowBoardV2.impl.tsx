@@ -576,7 +576,7 @@ export function WorkflowBoardV2() {
   const [search, setSearch] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [boardTab, setBoardTab] = useState<"enrollment" | "settings" | "statistic">("enrollment");
+  const [boardTab, setBoardTab] = useState<"enrollment" | "settings" | "statistics">("enrollment");
   const [editingGeneral, setEditingGeneral] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [editName, setEditName] = useState(() => workflows.find((wf) => wf.id === id)?.name ?? "");
@@ -1157,7 +1157,7 @@ export function WorkflowBoardV2() {
 
       {/* Tab bar */}
       <div className="border-b border-border bg-card px-8 flex gap-1">
-        {(["enrollment", "settings", "statistic"] as const).map((tab) => (
+        {(["enrollment", "settings", "statistics"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setBoardTab(tab)}
@@ -1656,7 +1656,7 @@ export function WorkflowBoardV2() {
         </div>
       )}
 
-      {boardTab === "statistic" && <WorkflowAnalytics workflowId={workflow.id} />}
+      {boardTab === "statistics" && <WorkflowAnalytics workflowId={workflow.id} />}
 
       {/* Pause confirm modal */}
       <AlertDialog open={pauseConfirm !== null} onOpenChange={(open) => { if (!open) setPauseConfirm(null); }}>
