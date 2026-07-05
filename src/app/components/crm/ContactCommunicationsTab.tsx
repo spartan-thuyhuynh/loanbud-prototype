@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Pause,
@@ -6,25 +6,26 @@ import {
   AlertTriangle,
   Mail,
   MessageSquare,
-  ArrowDownLeft,
   Search,
   X,
-  Send,
   ChevronDown,
   ChevronUp,
   ArrowUpRight,
-  Workflow,
-  ChevronRight,
+  Calendar,
+  Users,
   Phone,
   Clock,
   CheckCircle2,
   Circle,
   SkipForward,
+  RotateCcw,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { mergeSteps } from "@/app/lib/workflowUtils";
-import type { WorkflowEnrollment, Workflow as WorkflowType, WorkflowStep } from "@/app/types";
+import { getContactSegments } from "@/app/lib/segmentUtils";
+import type { WorkflowEnrollment, Workflow as WorkflowType, WorkflowStep, EmailRecord } from "@/app/types";
 import { PauseAllCommsModal } from "./PauseAllCommsModal";
+import { optOutSourceLabel } from "@/app/lib/optOutUtils";
 
 type ChannelFilter = "all" | "email" | "sms";
 
@@ -32,20 +33,24 @@ interface ContactCommunicationsTabProps {
   contactId: string;
   contactOptedOut: boolean;
   highlightEnrollmentId?: string | null;
-  highlightMessageId?: string | null;
   onHighlightConsumed?: () => void;
+}
+
+interface ScheduledMessage {
+  id: string;
+  enrollmentId: string;
+  workflowName: string;
+  stepName: string;
+  subject: string;
+  channel: "email" | "sms";
+  senderIdentity?: string;
+  scheduledAt: Date;
+  enrollmentStatus: "active" | "paused";
 }
 
 function formatShortDate(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
-}
-
-function formatFullDate(date: Date | string) {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(d);
 }
 
 function getEnrollmentProgress(enrollment: WorkflowEnrollment, workflow: WorkflowType) {
@@ -320,78 +325,97 @@ const CARDS_VISIBLE = 4;
 export function ContactCommunicationsTab({
   contactId,
   contactOptedOut,
-  highlightMessageId,
-  onHighlightConsumed,
 }: ContactCommunicationsTabProps) {
   const {
     workflows,
     workflowEnrollments,
     emailHistory,
-    senderIdentities,
+    contacts,
+    segments,
     handlePauseAllEnrollments,
-    handleMarkEmailRead,
-    handleMarkContactEmailsRead,
-    handleSendReply,
+    handleResendMessage,
   } = useAppData();
 
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
-  const [replyBody, setReplyBody] = useState("");
-  const [replySender, setReplySender] = useState(
-    senderIdentities.find(s => s.isDefault)?.emailAddress ?? senderIdentities[0]?.emailAddress ?? "",
-  );
   const [showAllCards, setShowAllCards] = useState(false);
   const [journeyEnrollmentId, setJourneyEnrollmentId] = useState<string | null>(null);
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  useEffect(() => {
-    if (!highlightMessageId) return;
-    setExpandedId(highlightMessageId);
-    setReplyBody("");
-    // Scroll to the row after the next paint
-    requestAnimationFrame(() => {
-      rowRefs.current[highlightMessageId]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    onHighlightConsumed?.();
-  }, [highlightMessageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allEnrollments = workflowEnrollments.filter(e => e.contactId === contactId);
   const activeCount = allEnrollments.filter(e => e.status === "active").length;
-
-  const totalUnread = emailHistory.filter(
-    e => e.contactId === contactId && e.direction === "inbound" && !e.read,
-  ).length;
-
   const visibleCards = showAllCards ? allEnrollments : allEnrollments.slice(0, CARDS_VISIBLE);
 
-  const records = emailHistory
-    .filter(e => {
-      if (e.contactId !== contactId) return false;
-      if (channelFilter === "email" && e.channel !== "email") return false;
-      if (channelFilter === "sms" && e.channel !== "sms") return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return (
-          (e.subject ?? "").toLowerCase().includes(q) ||
-          (e.body ?? "").toLowerCase().includes(q) ||
-          (e.senderIdentity ?? "").toLowerCase().includes(q) ||
-          (e.workflowName ?? "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    })
+  // User Segments
+  const contact = contacts.find(c => c.id === contactId);
+  const contactSegments = contact ? getContactSegments(contact, segments) : [];
+
+  // Scheduled Messages
+  const allScheduledMessages: ScheduledMessage[] = [];
+  for (const enrollment of allEnrollments) {
+    if (enrollment.status === "completed") continue;
+    const workflow = workflows.find(w => w.id === enrollment.workflowId);
+    if (!workflow) continue;
+    const mergedSteps = mergeSteps(workflow.steps, enrollment.customSteps);
+    const startDate = new Date(enrollment.startDate);
+    for (const step of mergedSteps) {
+      if (step.actionType !== "email" && step.actionType !== "sms") continue;
+      const progress = enrollment.stepProgress.find(p => p.stepId === step.id);
+      if (progress && progress.status !== "pending") continue;
+      const scheduledAt = new Date(startDate.getTime() + step.dayOffset * 24 * 60 * 60 * 1000);
+      allScheduledMessages.push({
+        id: `${enrollment.id}-${step.id}`,
+        enrollmentId: enrollment.id,
+        workflowName: workflow.name,
+        stepName: step.name,
+        subject: step.subject ?? step.templateName ?? step.smsTemplateName ?? step.name,
+        channel: step.actionType,
+        senderIdentity: step.senderIdentity,
+        scheduledAt,
+        enrollmentStatus: enrollment.status,
+      });
+    }
+  }
+  allScheduledMessages.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+
+  const filteredScheduledMessages = allScheduledMessages.filter(msg => {
+    if (channelFilter === "email" && msg.channel !== "email") return false;
+    if (channelFilter === "sms" && msg.channel !== "sms") return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        msg.subject.toLowerCase().includes(q) ||
+        msg.workflowName.toLowerCase().includes(q) ||
+        msg.stepName.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  // Failed Messages
+  const failedStatuses = new Set<EmailRecord["status"]>(["Failed", "Bounced", "Undelivered"]);
+  const allFailedMessages = emailHistory
+    .filter(e =>
+      e.contactId === contactId &&
+      (e.direction === "outbound" || e.direction === undefined) &&
+      failedStatuses.has(e.status),
+    )
     .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-  const handleSendReplySubmit = (inboundId: string) => {
-    if (!replyBody.trim()) return;
-    handleSendReply(inboundId, replyBody.trim(), replySender);
-    setExpandedId(null);
-    setReplyOpenId(null);
-    setReplyBody("");
-  };
+  const filteredFailedMessages = allFailedMessages.filter(msg => {
+    if (channelFilter === "email" && msg.channel !== "email") return false;
+    if (channelFilter === "sms" && msg.channel !== "sms") return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        (msg.subject ?? "").toLowerCase().includes(q) ||
+        (msg.senderIdentity ?? "").toLowerCase().includes(q) ||
+        (msg.workflowName ?? "").toLowerCase().includes(q) ||
+        (msg.stepName ?? "").toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   const handleCardClick = (enrollmentId: string) => {
     setJourneyEnrollmentId(enrollmentId);
@@ -439,15 +463,6 @@ export function ContactCommunicationsTab({
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors whitespace-nowrap"
           >
             <Pause className="w-3.5 h-3.5" /> Pause All
-          </button>
-        )}
-        {totalUnread > 0 && (
-          <button
-            onClick={() => handleMarkContactEmailsRead(contactId)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition-colors whitespace-nowrap"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            {totalUnread} unread
           </button>
         )}
       </div>
@@ -518,154 +533,147 @@ export function ContactCommunicationsTab({
         </div>
       )}
 
-      {/* ── Message history ── */}
+      {/* ── Failed Messages ── */}
+      {filteredFailedMessages.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Failed Messages</p>
+            <span className="text-[10px] text-red-600/60 font-medium">({filteredFailedMessages.length})</span>
+          </div>
+          <div className="divide-y divide-border border border-red-200 rounded-xl overflow-hidden">
+            {filteredFailedMessages.map(msg => {
+              const channel = msg.channel ?? "email";
+              const channelOptOut = channel === "sms" ? contact?.smsOptOut : contact?.emailOptOut;
+              const resendBlocked = contactOptedOut || channelOptOut?.optedOut === true;
+              const resendTitle = resendBlocked
+                ? `Cannot resend — contact has opted out of ${channel}`
+                : `Resend ${channel}`;
+              return (
+                <div key={msg.id} className="flex items-start gap-3 px-4 py-3.5 bg-card">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-red-100 text-red-600">
+                    {channel === "sms" ? <MessageSquare className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm truncate text-foreground/80">{msg.subject}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-600">
+                          {msg.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{formatShortDate(msg.sentAt)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {msg.senderIdentity && (
+                        <span className="text-xs text-muted-foreground">{msg.senderIdentity}</span>
+                      )}
+                      {msg.workflowName && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                          {msg.workflowName}
+                        </span>
+                      )}
+                      {channel === "sms" && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">SMS</span>
+                      )}
+                      {msg.stepName && (
+                        <span className="text-[11px] text-muted-foreground/60">{msg.stepName}</span>
+                      )}
+                    </div>
+                    {resendBlocked && channelOptOut?.optedOut && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {optOutSourceLabel(channelOptOut.source)}
+                        {channelOptOut.optedOutAt ? ` · ${formatShortDate(channelOptOut.optedOutAt)}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => !resendBlocked && handleResendMessage(msg.id)}
+                    disabled={resendBlocked}
+                    title={resendTitle}
+                    className={`flex items-center gap-1 text-xs font-medium mt-0.5 shrink-0 ${resendBlocked ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Resend
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── User Segments ── */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">User Segments</p>
+        {contactSegments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Users className="w-7 h-7 mb-2 opacity-20" />
+            <p className="text-sm">Not in any segments.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {contactSegments.map(segment => (
+              <div key={segment.id} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-full bg-background">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                <span className="text-xs font-medium">{segment.name}</span>
+                <span className="text-xs text-muted-foreground">({segment.contactCount})</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Scheduled Messages ── */}
       <div className="space-y-2">
         <div className="flex items-center gap-1.5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Message History</p>
-          {records.length > 0 && (
-            <span className="text-[10px] text-muted-foreground/60 font-medium">({records.length})</span>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Scheduled Messages</p>
+          {filteredScheduledMessages.length > 0 && (
+            <span className="text-[10px] text-muted-foreground/60 font-medium">({filteredScheduledMessages.length})</span>
           )}
         </div>
 
-        {records.length === 0 ? (
+        {filteredScheduledMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <Workflow className="w-8 h-8 mb-2.5 opacity-20" />
-            <p className="text-sm">{search ? `No messages match "${search}"` : "No messages yet."}</p>
+            <Calendar className="w-8 h-8 mb-2.5 opacity-20" />
+            <p className="text-sm">{search ? `No scheduled messages match "${search}"` : "No scheduled messages."}</p>
           </div>
         ) : (
           <div className="divide-y divide-border border border-border rounded-xl overflow-hidden">
-            {records.map(record => {
-              const isInbound = record.direction === "inbound";
-              const isSms = record.channel === "sms";
-              const isUnread = isInbound && !record.read;
-              const isExpanded = expandedId === record.id;
-
+            {filteredScheduledMessages.map(msg => {
+              const isPaused = msg.enrollmentStatus === "paused";
               return (
-                <div
-                  key={record.id}
-                  ref={el => { rowRefs.current[record.id] = el; }}
-                  className={isUnread ? "bg-green-50/40" : "bg-card"}
-                >
-                  {/* Row */}
-                  <button
-                    onClick={() => {
-                      const closing = isExpanded;
-                      setExpandedId(closing ? null : record.id);
-                      if (closing) { setReplyOpenId(null); setReplyBody(""); }
-                    }}
-                    className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-muted/20 transition-colors"
-                  >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                      isUnread ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {isInbound ? <ArrowDownLeft className="w-3.5 h-3.5" /> : isSms ? <MessageSquare className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm truncate ${isUnread ? "font-semibold text-foreground" : "text-foreground/80"}`}>
-                          {record.subject ?? (isSms ? "SMS message" : "—")}
+                <div key={msg.id} className="flex items-start gap-3 px-4 py-3.5 bg-card">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-muted text-muted-foreground">
+                    {msg.channel === "sms" ? <MessageSquare className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm truncate text-foreground/80">{msg.subject}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          isPaused ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-600"
+                        }`}>
+                          {isPaused ? "Paused" : "Scheduled"}
                         </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
-                          <span className="text-xs text-muted-foreground">{formatShortDate(record.sentAt)}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{record.senderIdentity}</span>
-                        {record.workflowName && (
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                            {record.workflowName}
-                          </span>
-                        )}
-                        {isSms && (
-                          <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">SMS</span>
-                        )}
-                        {record.stepName && (
-                          <span className="text-[11px] text-muted-foreground/60 flex items-center gap-0.5">
-                            <ChevronRight className="w-2.5 h-2.5" />{record.stepName}
-                          </span>
+                        {!isPaused && (
+                          <span className="text-xs text-muted-foreground">{formatShortDate(msg.scheduledAt)}</span>
                         )}
                       </div>
                     </div>
-                  </button>
-
-                  {/* Expanded detail */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-2 space-y-3 border-t border-border/40 bg-background/60">
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                        <span>{isInbound ? "From" : "Via"}: <span className="text-foreground font-medium">{record.senderIdentity}</span></span>
-                        <span>{formatFullDate(record.sentAt)}</span>
-                        {record.stepName && <span>Step: <span className="text-foreground">{record.stepName}</span></span>}
-                      </div>
-
-                      {record.body ? (
-                        <div className="text-sm text-foreground leading-relaxed bg-muted/40 rounded-lg px-3.5 py-3 whitespace-pre-wrap">
-                          {record.body}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No message body.</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {msg.senderIdentity && (
+                        <span className="text-xs text-muted-foreground">{msg.senderIdentity}</span>
                       )}
-
-                      {isInbound && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setReplyOpenId(prev => prev === record.id ? null : record.id);
-                                setReplyBody("");
-                              }}
-                              className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-                            >
-                              Reply
-                            </button>
-                            {isUnread && (
-                              <button
-                                onClick={() => handleMarkEmailRead(record.id)}
-                                className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-muted text-muted-foreground transition-colors"
-                              >
-                                Mark read
-                              </button>
-                            )}
-                          </div>
-
-                          {replyOpenId === record.id && (
-                            <div className="border border-border rounded-lg overflow-hidden">
-                              <textarea
-                                value={replyBody}
-                                onChange={e => setReplyBody(e.target.value)}
-                                placeholder="Type your reply…"
-                                rows={3}
-                                autoFocus
-                                className="w-full px-3.5 pt-3 pb-1 text-sm resize-none focus:outline-none bg-background"
-                              />
-                              <div className="flex items-center justify-between px-3.5 py-2 border-t border-border bg-muted/30">
-                                <select
-                                  value={replySender}
-                                  onChange={e => setReplySender(e.target.value)}
-                                  className="text-xs border-0 bg-transparent text-muted-foreground focus:outline-none cursor-pointer max-w-[200px] truncate"
-                                >
-                                  {senderIdentities.map(s => (
-                                    <option key={s.id} value={s.emailAddress}>
-                                      {s.displayName} &lt;{s.emailAddress}&gt;
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleSendReplySubmit(record.id)}
-                                  disabled={!replyBody.trim()}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                                >
-                                  <Send className="w-3.5 h-3.5" /> Send
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                        {msg.workflowName}
+                      </span>
+                      {msg.channel === "sms" && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">SMS</span>
                       )}
+                      <span className="text-[11px] text-muted-foreground/60">{msg.stepName}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}

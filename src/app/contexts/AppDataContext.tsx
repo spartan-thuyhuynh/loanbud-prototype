@@ -1,9 +1,10 @@
 import { createContext, useContext, useState } from "react";
 import { toast } from "sonner";
-import type { Contact, Listing, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
+import type { Contact, ChannelOptOut, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
+import { getMatchedListings } from "../lib/segmentUtils";
 
 // ── Legacy ID migration helpers ───────────────────────────────────────────────
 // Old tasks used the pattern: taskitem-call-${enrollmentId}-${stepId}
@@ -20,61 +21,6 @@ function extractEnrollmentIdFromTaskId(taskId: string): string | undefined {
 function extractStepIdFromTaskId(taskId: string): string | undefined {
   const match = taskId.match(/^taskitem-call-(.+)-([^-]+)$/);
   return match ? match[2] : undefined;
-}
-
-// ── Segment / listing helpers ─────────────────────────────────────────────────
-
-const LISTING_FIELDS = new Set<FilterRule["field"]>(["listingStatus", "listingName"]);
-
-/** Pure boolean chain evaluator — mirrors the original matchContact logic. */
-function evaluateFilterChain(filters: FilterRule[], record: Record<string, string>): boolean {
-  if (filters.length === 0) return true;
-  const evalOne = (f: FilterRule): boolean => {
-    const val = record[f.field] ?? "";
-    if (f.operator === "=") return val === f.value;
-    if (f.operator === "!=") return val !== f.value;
-    if (f.operator === "contains") return val.toLowerCase().includes(f.value.toLowerCase());
-    if (f.operator === "not_contains") return !val.toLowerCase().includes(f.value.toLowerCase());
-    return false;
-  };
-  let result = evalOne(filters[0]);
-  for (let i = 1; i < filters.length; i++) {
-    const next = evalOne(filters[i]);
-    result = filters[i - 1].logic === "and" ? result && next : result || next;
-  }
-  return result;
-}
-
-/**
- * Returns the subset of a contact's listings that satisfy the segment filters.
- * - If no listing-field filters exist: returns all listings if the contact matches (1 enrollment per contact).
- * - If listing-field filters exist: returns only the listings where the filter passes (1 enrollment per matching listing).
- * - Returns [] when the contact does not match at all.
- */
-function getMatchedListings(contact: Contact, filters: FilterRule[]): Listing[] {
-  const allListings: Listing[] = contact.listings?.length
-    ? contact.listings
-    : [{ id: `${contact.id}-primary`, name: contact.listingName, status: contact.listingStatus }];
-
-  if (filters.length === 0) return allListings;
-
-  const hasListingFilter = filters.some((f) => LISTING_FIELDS.has(f.field));
-
-  if (!hasListingFilter) {
-    // Non-listing segment: one enrollment per contact regardless of listing count
-    const contactRecord = contact as unknown as Record<string, string>;
-    return evaluateFilterChain(filters, contactRecord) ? allListings : [];
-  }
-
-  // Listing-filtered segment: evaluate each listing independently
-  return allListings.filter((listing) => {
-    const merged: Record<string, string> = {
-      ...(contact as unknown as Record<string, string>),
-      listingStatus: listing.status,
-      listingName: listing.name,
-    };
-    return evaluateFilterChain(filters, merged);
-  });
 }
 
 interface AppDataContextValue {
@@ -188,6 +134,9 @@ interface AppDataContextValue {
   handleMarkEmailRead: (emailId: string) => void;
   handleMarkContactEmailsRead: (contactId: string) => void;
   handleSendReply: (inboundEmailId: string, body: string, senderIdentity: string) => void;
+  // Failed message resend + per-channel opt-out (V2)
+  handleResendMessage: (emailId: string) => void;
+  handleSetChannelOptOut: (contactId: string, channel: "email" | "sms", optedOut: boolean) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -312,6 +261,96 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setEmailHistory(updated);
     setContactActivity(updatedActivity);
     store.emailHistory.write(updated);
+    store.contactActivity.write(updatedActivity);
+  };
+
+  const handleResendMessage = (emailId: string) => {
+    const original = emailHistory.find((e) => e.id === emailId);
+    if (!original) return;
+    if (original.direction === "inbound") return;
+
+    const contact = contacts.find((c) => c.id === original.contactId);
+    const channel = original.channel ?? "email";
+    const channelOptOut: ChannelOptOut | undefined = channel === "sms"
+      ? contact?.smsOptOut
+      : contact?.emailOptOut;
+
+    if (contact?.optedOut || channelOptOut?.optedOut) {
+      toast.error(`Cannot resend — contact has opted out of ${channel}`);
+      return;
+    }
+
+    const originalStatus = original.status;
+    const newEmail: EmailRecord = {
+      id: crypto.randomUUID(),
+      contactId: original.contactId,
+      contactName: original.contactName,
+      subject: original.subject,
+      senderIdentity: original.senderIdentity,
+      status: "Sent",
+      sequenceDay: original.sequenceDay,
+      sentAt: new Date(),
+      channel,
+      direction: "outbound",
+      workflowId: original.workflowId,
+      workflowName: original.workflowName,
+      stepName: original.stepName,
+    };
+    const newActivity: ContactActivityRecord = {
+      id: `activity-resend-${Date.now()}`,
+      contactId: original.contactId,
+      type: channel === "sms" ? "sms_sent" : "email_sent",
+      subject: newEmail.subject,
+      source: original.workflowName ?? "Manual",
+      sourceType: original.workflowId ? "flow" : "manual",
+      stepName: original.stepName,
+      assignee: original.senderIdentity,
+      note: `Resent after ${originalStatus}`,
+      timestamp: new Date(),
+    };
+    const updated = [...emailHistory, newEmail];
+    const updatedActivity = [...contactActivity, newActivity];
+    setEmailHistory(updated);
+    setContactActivity(updatedActivity);
+    store.emailHistory.write(updated);
+    store.contactActivity.write(updatedActivity);
+    toast.success(channel === "sms" ? "SMS resent" : "Email resent");
+  };
+
+  const handleSetChannelOptOut = (contactId: string, channel: "email" | "sms", optedOut: boolean) => {
+    const contact = contacts.find((c) => c.id === contactId);
+    if (!contact) return;
+
+    const channelData: ChannelOptOut = optedOut
+      ? { optedOut: true, source: "manual", optedOutAt: new Date().toISOString() }
+      : { optedOut: false };
+
+    const updatedContact: Contact = {
+      ...contact,
+      ...(channel === "email" ? { emailOptOut: channelData } : { smsOptOut: channelData }),
+    };
+
+    // Sync global flag: opted out only when BOTH channels are opted out
+    const emailOptedOut = channel === "email" ? optedOut : (contact.emailOptOut?.optedOut === true);
+    const smsOptedOut = channel === "sms" ? optedOut : (contact.smsOptOut?.optedOut === true);
+    updatedContact.optedOut = emailOptedOut && smsOptedOut;
+
+    const updatedContacts = contacts.map((c) => c.id === contactId ? updatedContact : c);
+
+    const channelLabel = channel === "email" ? "Email opt-out" : "SMS opt-out";
+    const newActivity: ContactActivityRecord = {
+      id: `activity-optout-${Date.now()}`,
+      contactId,
+      type: "contact_updated",
+      updatedFields: [channelLabel],
+      assignee: "You",
+      timestamp: new Date(),
+    };
+    const updatedActivity = [...contactActivity, newActivity];
+
+    setContacts(updatedContacts);
+    setContactActivity(updatedActivity);
+    store.contacts.write(updatedContacts);
     store.contactActivity.write(updatedActivity);
   };
 
@@ -2022,6 +2061,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleMarkEmailRead,
         handleMarkContactEmailsRead,
         handleSendReply,
+        handleResendMessage,
+        handleSetChannelOptOut,
       }}
     >
       {children}

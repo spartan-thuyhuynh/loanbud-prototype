@@ -84,6 +84,12 @@ export interface Listing {
   status: ListingStatus;
 }
 
+export interface ChannelOptOut {
+  optedOut: boolean;
+  source?: "manual" | "sms-stop" | "email-unsubscribe";
+  optedOutAt?: string; // ISO string — nested, not revived by store
+}
+
 export interface Contact {
   id: string;
   firstName: string;
@@ -100,12 +106,7 @@ export interface Contact {
   optedOut: boolean;
   openReminders: number;
   // Extended profile fields
-  status?: "Active" | "Inactive" | "Pending";
-  visibility?: "Public" | "Private";
   loanOfficer?: string;
-  linkedin?: string;
-  doNotCall?: "No Calls" | "Allowed";
-  smsConsent?: "Yes" | "No";
   timeZone?: string;
   preferredLanguage?: string;
   address?: string;
@@ -114,6 +115,9 @@ export interface Contact {
   zipCode?: string;
   linkedApplicationId?: string;
   companies?: string[];
+  // Per-channel opt-out
+  emailOptOut?: ChannelOptOut;
+  smsOptOut?: ChannelOptOut;
 }
 
 export interface EmailRecord {

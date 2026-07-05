@@ -17,10 +17,10 @@ import senderIdentitiesJson from "./senderIdentities.json";
 import notificationsJson from "./notifications.json";
 
 const KEYS = {
-  contacts: "loanbudcrm:v2:contacts",
+  contacts: "loanbudcrm:v3:contacts",
   segments: "loanbudcrm:segments",
   taskItems: "loanbudcrm:taskItems",
-  emailHistory: "loanbudcrm:emailHistory",
+  emailHistory: "loanbudcrm:v2:emailHistory",
   tasks: "loanbudcrm:tasks",
   applications: "loanbudcrm:applications",
   businessAcquisitions: "loanbudcrm:businessAcquisitions",

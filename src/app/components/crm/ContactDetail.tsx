@@ -29,6 +29,7 @@ import {
   ArrowRightLeft,
   Info,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useDialer } from "@/app/contexts/DialerContext";
@@ -44,7 +45,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/app/components/ui/alert-dialog";
 import { ACTIVE_TASK_TYPES } from "@/app/lib/taskTypeRegistry";
+import { optOutSourceLabel } from "@/app/lib/optOutUtils";
 import type { Contact, TaskItem } from "@/app/types";
 
 type TaskModalMode = "complete" | "reschedule" | "delete" | null;
@@ -94,6 +106,9 @@ interface TimelineEntry {
   read?: boolean;
   workflowName?: string;
   senderIdentity?: string;
+  // failed message fields
+  status?: "Sent" | "Delivered" | "Opened" | "Failed" | "Bounced" | "Undelivered" | "Received";
+  emailId?: string;
 }
 
 export function ContactDetail() {
@@ -112,6 +127,8 @@ export function ContactDetail() {
     handlePauseAllEnrollments,
     handleBulkSetEnrollmentStatus,
     handleUpdateContact,
+    handleResendMessage,
+    handleSetChannelOptOut,
     applications,
   } = useAppData();
 
@@ -119,7 +136,9 @@ export function ContactDetail() {
   const { version } = useVersion();
   const isV2 = version === "v2";
 
-  const [activeTab, setActiveTab] = useState<"timeline" | "tasks" | "communications" | "notes">("timeline");
+  const [activeTab, setActiveTab] = useState<"history" | "tasks" | "communications" | "notes">(
+    () => (isV2 ? "communications" : "history"),
+  );
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [modalTask, setModalTask] = useState<TaskItem | null>(null);
@@ -130,10 +149,10 @@ export function ContactDetail() {
   const [applicationsOpen, setApplicationsOpen] = useState(true);
   const [companiesOpen, setCompaniesOpen] = useState(true);
   const [listingOpen, setListingOpen] = useState(true);
+  const [optOutConfirm, setOptOutConfirm] = useState<{ channel: "email" | "sms"; optingOut: boolean } | null>(null);
 
-  // Cross-tab navigation: Timeline → Communications
+  // Cross-tab navigation: History → Communications
   const [highlightEnrollmentId, setHighlightEnrollmentId] = useState<string | null>(null);
-  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
 
   // Tasks tab filters
   const [taskSearch, setTaskSearch] = useState("");
@@ -199,6 +218,8 @@ export function ContactDetail() {
       workflowName: e.workflowName,
       stepName: e.stepName,
       senderIdentity: e.senderIdentity,
+      status: e.status,
+      emailId: e.id,
     }));
 
   const timelineFeed: TimelineEntry[] = [...activityEntries, ...emailEntries]
@@ -388,38 +409,42 @@ export function ContactDetail() {
             </div>
           </div>
 
-          {/* Status + Visibility */}
-          <div className="px-5 py-4 border-b border-border grid grid-cols-2 gap-x-3">
-            <div>
-              <p className="text-sm font-semibold mb-0.5">Status</p>
-              <Select
-                value={contact.status ?? "Active"}
-                onValueChange={(v) => handleUpdateContact(contact.id, { status: v as Contact["status"] })}
-              >
-                <SelectTrigger className="!border-0 !bg-transparent !shadow-none !px-0 !py-0 !h-auto !ring-0 !ring-offset-0 !justify-start !gap-1 text-sm text-primary font-medium">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <p className="text-sm font-semibold mb-0.5">Visibility</p>
-              <Select
-                value={contact.visibility ?? "Public"}
-                onValueChange={(v) => handleUpdateContact(contact.id, { visibility: v as Contact["visibility"] })}
-              >
-                <SelectTrigger className="!border-0 !bg-transparent !shadow-none !px-0 !py-0 !h-auto !ring-0 !ring-offset-0 !justify-start !gap-1 text-sm text-primary font-medium">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Public">Public</SelectItem>
-                  <SelectItem value="Private">Private</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Communication Preferences */}
+          <div className="px-5 py-4 border-b border-border">
+            <p className="text-sm font-semibold mb-3">Communication Preferences</p>
+            <div className="space-y-3">
+              {(["email", "sms"] as const).map((channel) => {
+                const optOutData = channel === "email" ? contact.emailOptOut : contact.smsOptOut;
+                const isOptedOut = optOutData?.optedOut === true;
+                return (
+                  <div key={channel} className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <div className="mt-0.5 text-muted-foreground shrink-0">
+                        {channel === "email" ? <Mail className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium capitalize">{channel}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isOptedOut ? "bg-destructive/10 text-destructive" : "bg-green-100 text-green-700"}`}>
+                            {isOptedOut ? "Opted out" : "Subscribed"}
+                          </span>
+                        </div>
+                        {isOptedOut && optOutData?.optedOutAt && (
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                            {optOutSourceLabel(optOutData.source)} · {formatShortDate(optOutData.optedOutAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setOptOutConfirm({ channel, optingOut: !isOptedOut })}
+                      className="text-xs text-primary hover:underline shrink-0 whitespace-nowrap"
+                    >
+                      {isOptedOut ? "Resubscribe" : "Opt out"}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -574,20 +599,6 @@ export function ContactDetail() {
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Email</p>
                   <span className="text-sm break-all">{contact.email}</span>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Linkedin</p>
-                  <span className="text-sm text-muted-foreground">{contact.linkedin ?? "N/A"}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Do Not Call</p>
-                    <span className="text-sm">{contact.doNotCall ?? "Allowed"}</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">SMS Consent</p>
-                    <span className="text-sm">{contact.smsConsent ?? "No"}</span>
-                  </div>
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Time Zone</p>
@@ -662,15 +673,12 @@ export function ContactDetail() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Tab bar */}
           <div className="border-b border-border flex justify-center gap-8">
-            {(["timeline", ...(isV2 ? ["communications" as const] : []), "tasks", "notes"] as const).map((tab) => {
+            {([...(isV2 ? ["communications" as const] : []), "history", "tasks", "notes"] as const).map((tab) => {
               let label: string;
-              if (tab === "timeline") label = "Timeline";
+              if (tab === "history") label = "History";
               else if (tab === "tasks") label = `Tasks (${contactTasks.filter((t) => t.status !== "completed").length})`;
-              else if (tab === "communications") {
-                label = "Communications";
-              } else {
-                label = "Notes";
-              }
+              else if (tab === "communications") label = "Communications";
+              else label = "Notes";
               return (
                 <button
                   key={tab}
@@ -682,7 +690,7 @@ export function ContactDetail() {
                   }`}
                 >
                   {label}
-                  {tab === "communications" && unreadCount > 0 && (
+                  {tab === "history" && unreadCount > 0 && (
                     <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white text-[9px] font-bold">
                       {unreadCount}
                     </span>
@@ -694,8 +702,8 @@ export function ContactDetail() {
 
           <div className="flex-1 overflow-y-auto bg-muted/40 px-6 py-5">
 
-            {/* ── TIMELINE TAB ── */}
-            {activeTab === "timeline" && (
+            {/* ── HISTORY TAB ── */}
+            {activeTab === "history" && (
               <div className="bg-card rounded-xl p-5">
                 {timelineFeed.length === 0 ? (
                   <EmptyState icon={Clock} message="No activity for this contact yet." />
@@ -717,8 +725,20 @@ export function ContactDetail() {
                       const isInbound = isEmailReceived || isSmsReceived;
                       const isCommsRecord = isEmailSent || isSmsSent || isEmailReceived || isSmsReceived;
                       const isUnread = isInbound && entry.read === false;
+                      const isFailed = isCommsRecord && !isInbound && (
+                        entry.status === "Failed" || entry.status === "Bounced" || entry.status === "Undelivered"
+                      );
+                      // Channel opt-out check for resend disabled state
+                      const resendChannel = entry.channel ?? "email";
+                      const resendChannelOptOut = resendChannel === "sms" ? contact.smsOptOut : contact.emailOptOut;
+                      const resendBlocked = contact.optedOut || resendChannelOptOut?.optedOut === true;
+                      const resendTitle = resendBlocked
+                        ? `Cannot resend — contact has opted out of ${resendChannel}`
+                        : `Resend ${resendChannel}`;
 
-                      const iconBg = isCall
+                      const iconBg = isFailed
+                        ? "bg-red-100 text-red-600"
+                        : isCall
                         ? "bg-green-100 text-green-600"
                         : isEnrollmentCreated
                         ? "bg-primary/10 text-primary"
@@ -767,8 +787,6 @@ export function ContactDetail() {
                       // Paused/resumed don't need navigation — the status is visible inline
                       const isWorkflowEvent = isEnrollmentCreated || isStepSkipped;
                       const isTaskEvent = isCall || isTask;
-                      // Strip the "eh-" prefix added when merging emailHistory
-                      const emailRecordId = isCommsRecord ? entry.id.replace(/^eh-/, "") : null;
 
                       return (
                         <div
@@ -796,6 +814,12 @@ export function ContactDetail() {
                               {isCommsRecord && (
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isInbound ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
                                   {isInbound ? "Received" : "Sent"}
+                                </span>
+                              )}
+                              {/* failed status badge */}
+                              {isFailed && entry.status && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-red-100 text-red-600">
+                                  {entry.status}
                                 </span>
                               )}
                               <span className={`text-sm font-medium truncate max-w-xs ${isUnread ? "text-foreground" : ""}`}>
@@ -838,14 +862,13 @@ export function ContactDetail() {
                             )}
 
                             {/* nav actions */}
-                            {(isWorkflowEvent || isTaskEvent || isCommsRecord) && (
+                            {(isWorkflowEvent || isTaskEvent) && (
                               <button
                                 onClick={() => {
                                   if (isTaskEvent) {
                                     setShowCompleted(true);
                                     setActiveTab("tasks");
                                   } else {
-                                    if (emailRecordId) setHighlightMessageId(emailRecordId);
                                     setActiveTab("communications");
                                   }
                                 }}
@@ -853,6 +876,18 @@ export function ContactDetail() {
                               >
                                 {isTaskEvent ? "View in Tasks" : "View details"}
                                 <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
+                            {/* resend action for failed messages */}
+                            {isFailed && entry.emailId && (
+                              <button
+                                onClick={() => !resendBlocked && handleResendMessage(entry.emailId!)}
+                                disabled={resendBlocked}
+                                title={resendTitle}
+                                className={`flex items-center gap-1 mt-2 text-xs font-medium ${resendBlocked ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Resend
                               </button>
                             )}
                           </div>
@@ -993,10 +1028,8 @@ export function ContactDetail() {
                   contactId={contact.id}
                   contactOptedOut={contact.optedOut ?? false}
                   highlightEnrollmentId={highlightEnrollmentId}
-                  highlightMessageId={highlightMessageId}
                   onHighlightConsumed={() => {
                     setHighlightEnrollmentId(null);
-                    setHighlightMessageId(null);
                   }}
                 />
               </div>
@@ -1188,6 +1221,38 @@ export function ContactDetail() {
         }}
         onClose={() => setShowPauseModal(false)}
       />
+
+      {/* Channel Opt-out Confirmation Dialog */}
+      <AlertDialog open={optOutConfirm !== null} onOpenChange={(v) => { if (!v) setOptOutConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {optOutConfirm?.optingOut
+                ? `Opt out of marketing ${optOutConfirm.channel}?`
+                : `Resubscribe to marketing ${optOutConfirm?.channel}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {optOutConfirm?.optingOut
+                ? `${contact.firstName} ${contact.lastName} will no longer receive marketing ${optOutConfirm.channel} messages from workflows or manual sends. Transactional messages (application updates, document requests) will still be delivered. You can resubscribe them at any time.`
+                : `${contact.firstName} ${contact.lastName} will start receiving marketing ${optOutConfirm?.channel} messages again. Transactional messages are always delivered regardless of this setting.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOptOutConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (optOutConfirm) {
+                  handleSetChannelOptOut(contact.id, optOutConfirm.channel, optOutConfirm.optingOut);
+                  setOptOutConfirm(null);
+                }
+              }}
+              className={optOutConfirm?.optingOut ? "bg-destructive text-white hover:bg-destructive/90" : ""}
+            >
+              {optOutConfirm?.optingOut ? "Opt out" : "Resubscribe"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
