@@ -127,7 +127,8 @@
     "address": "501 Commerce Drive",
     "city": "Atlanta",
     "state": "GA",
-    "zipCode": "30301"
+    "zipCode": "30301",
+    "isDoNotCall": true
   },
   {
     "id": "6",
@@ -250,7 +251,8 @@
     "address": "720 Penn Avenue",
     "city": "Philadelphia",
     "state": "PA",
-    "zipCode": "19103"
+    "zipCode": "19103",
+    "isDoNotCall": true
   },
   {
     "id": "11",
@@ -292,13 +294,13 @@
     "openReminders": 1,
     "createAt": "2024-01-26T00:00:00.000Z",
     "updatedAt": "2024-04-01T09:30:00.000Z",
-    "loanOfficer": "Maria Broker",
     "timeZone": "EST (GMT-5)",
     "preferredLanguage": "English",
     "address": "29 Peachtree St",
     "city": "Atlanta",
     "state": "GA",
-    "zipCode": "30308"
+    "zipCode": "30308",
+    "isDoNotCall": true
   },
   {
     "id": "13",
@@ -396,7 +398,8 @@
     "address": "67 King Street",
     "city": "Charlotte",
     "state": "NC",
-    "zipCode": "28202"
+    "zipCode": "28202",
+    "isDoNotCall": true
   },
   {
     "id": "17",
@@ -438,7 +441,6 @@
     "openReminders": 2,
     "createAt": "2024-02-01T00:00:00.000Z",
     "updatedAt": "2024-04-12T14:00:00.000Z",
-    "loanOfficer": "Sarah Manager",
     "timeZone": "CDT (GMT-5)",
     "preferredLanguage": "English",
     "address": "1800 Congress Ave",
@@ -608,7 +610,6 @@
     "openReminders": 4,
     "createAt": "2024-02-08T00:00:00.000Z",
     "updatedAt": "2024-04-24T10:30:00.000Z",
-    "loanOfficer": "Andy Officer",
     "timeZone": "PST (GMT-8)",
     "preferredLanguage": "English",
     "address": "210 Union Square",

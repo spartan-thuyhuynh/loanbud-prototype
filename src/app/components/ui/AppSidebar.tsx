@@ -8,6 +8,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import type { AppSidebarSection } from "../../types";
 import { VersionToggle } from "./VersionToggle";
 import { useVersion } from "../../contexts/VersionContext";
+import { useAppData } from "../../contexts/AppDataContext";
 
 interface AppSidebarProps {
   sections: AppSidebarSection[];
@@ -23,6 +24,27 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { version } = useVersion();
+  const { taskItems } = useAppData();
+
+  // V2 (RFC-008): live open-task badge on the Tasks nav — no notification service needed.
+  const isTaskOpen = (status: string) => status !== "completed" && status !== "suspended";
+  const openTaskCount =
+    version === "v2" ? taskItems.filter((t) => isTaskOpen(t.status)).length : 0;
+  const dueTodayCount =
+    version === "v2"
+      ? taskItems.filter((t) => {
+          if (!isTaskOpen(t.status)) return false;
+          const d = new Date(t.dueDate);
+          const now = new Date();
+          return (
+            d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            d.getDate() === now.getDate()
+          );
+        }).length
+      : 0;
+  const badgeForId = (id: string): number =>
+    id === "crm" || id === "crm-tasks" ? openTaskCount : 0;
 
   const isActive = (route?: string) => {
     if (!route) return false;
@@ -97,13 +119,19 @@ export function AppSidebar({
   const renderFlyoutItem = (item: AppSidebarSection["items"][number]) => {
     const Icon = item.icon;
     const active = hasActiveChild(item);
+    const badge = badgeForId(item.id);
 
     const trigger = collapsed ? (
       <button
-        className={`w-full flex justify-center p-3 rounded-lg transition-all duration-150
+        className={`relative w-full flex justify-center p-3 rounded-lg transition-all duration-150
           ${active ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
       >
         <Icon className="w-5 h-5 shrink-0" />
+        {badge > 0 && (
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#4ade80] text-[#053f4f] text-[9px] font-bold flex items-center justify-center">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </button>
     ) : (
       <button
@@ -112,6 +140,11 @@ export function AppSidebar({
       >
         <Icon className="w-5 h-5 shrink-0" />
         <span className="text-sm flex-1 text-left">{item.label}</span>
+        {badge > 0 && (
+          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#4ade80] text-[#053f4f] text-[10px] font-bold flex items-center justify-center shrink-0">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
         <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" />
       </button>
     );
@@ -179,6 +212,18 @@ export function AppSidebar({
                   >
                     {ChildIcon && <ChildIcon className="w-4 h-4 shrink-0" />}
                     <span>{child.label}</span>
+                    {badgeForId(child.id) > 0 && (
+                      <span className="ml-auto flex items-center gap-1.5 shrink-0">
+                        {dueTodayCount > 0 && (
+                          <span className="text-[9px] font-semibold text-amber-300 whitespace-nowrap">
+                            {dueTodayCount} today
+                          </span>
+                        )}
+                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#4ade80] text-[#053f4f] text-[10px] font-bold flex items-center justify-center">
+                          {openTaskCount > 99 ? "99+" : openTaskCount}
+                        </span>
+                      </span>
+                    )}
                     {isV2Only && (
                       <span className="ml-auto text-[9px] font-bold text-[#4ade80] tracking-wider">
                         V2

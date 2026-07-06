@@ -33,6 +33,21 @@ const ACTION_TYPE_DISPLAY: Record<string, string> = {
   "call-reminder": "Call Reminder",
 };
 
+// RFC-008: manual/actionable "task" steps a user works (call / voicemail reminders).
+// Email, SMS and delay steps are automated, not tasks.
+const TASK_ACTION_TYPES: ReadonlySet<string> = new Set(["call-reminder", "voicemail-reminder"]);
+
+function isTaskStep(step: WorkflowStep | null): boolean {
+  return step !== null && TASK_ACTION_TYPES.has(step.actionType);
+}
+
+// RFC-008: the assignee shown on a task card. Mirrors the card render (and the Tasks page),
+// which labels every actionable task card with CURRENT_USER in this demo. Non-task steps
+// (email/sms/delay/completed) have no assignee.
+function taskAssignee(step: WorkflowStep | null): string | null {
+  return isTaskStep(step) ? CURRENT_USER : null;
+}
+
 const USER_TYPE_AVATAR: Record<string, string> = {
   Broker: "bg-blue-100 text-blue-700",
   Lender: "bg-purple-100 text-purple-700",
@@ -551,6 +566,35 @@ function KanbanColumnV2({
   );
 }
 
+// ── My tasks / Team filter toggle (RFC-008) ─────────────────────────────────
+
+function MyTasksFilterToggle({ myTasksOnly, onChange }: {
+  myTasksOnly: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+        <button
+          onClick={() => onChange(true)}
+          className={`px-2.5 py-1 transition-colors ${myTasksOnly ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+        >
+          My tasks
+        </button>
+        <button
+          onClick={() => onChange(false)}
+          className={`px-2.5 py-1 transition-colors ${!myTasksOnly ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+        >
+          Team
+        </button>
+      </div>
+      <span className="text-[9px] font-bold text-primary/70 uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 whitespace-nowrap">
+        RFC-008 · Proposed
+      </span>
+    </div>
+  );
+}
+
 // ── Main Board V2 ──────────────────────────────────────────────────────────
 
 type ViewMode = "kanban" | "list";
@@ -576,6 +620,8 @@ export function WorkflowBoardV2() {
   const [search, setSearch] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  // RFC-008: "My tasks" (only the current user's actionable task cards) vs "Team" (everything). Default = Team.
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [boardTab, setBoardTab] = useState<"enrollment" | "settings" | "statistics">("enrollment");
   const [editingGeneral, setEditingGeneral] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -606,6 +652,15 @@ export function WorkflowBoardV2() {
       (step) => enrollment.stepProgress.find((p) => p.stepId === step.id)?.status === "pending",
     );
     return firstPending?.id ?? "completed";
+  };
+
+  // RFC-008: an enrollment is "my task" when its current (first-pending) step is an
+  // actionable task step assigned to the current user. Reuses the same current-step
+  // detection the kanban cards use (getContactColumn + actionSteps), so there is one
+  // source of truth for "what step is this contact on".
+  const isMyTaskEnrollment = (enrollment: WorkflowEnrollment): boolean => {
+    const currentStep = actionSteps.find((s) => s.id === getContactColumn(enrollment)) ?? null;
+    return taskAssignee(currentStep) === CURRENT_USER;
   };
 
   const completedCount = useMemo(
@@ -668,7 +723,8 @@ export function WorkflowBoardV2() {
         const currentStep = actionSteps.find((s) => s.id === colStepId) ?? null;
         return { enrollment, contact, currentStep, colStepId };
       })
-      .filter(({ contact, colStepId, enrollment }) => {
+      .filter(({ contact, colStepId, currentStep, enrollment }) => {
+        if (myTasksOnly && taskAssignee(currentStep) !== CURRENT_USER) return false;
         if (search) {
           const q = search.toLowerCase();
           const name = contact ? `${contact.firstName} ${contact.lastName}`.toLowerCase() : "";
@@ -679,7 +735,7 @@ export function WorkflowBoardV2() {
         if (statusFilter !== "all" && enrollment.status !== statusFilter) return false;
         return true;
       });
-  }, [myEnrollments, contacts, actionSteps, search, stepFilter, statusFilter]);
+  }, [myEnrollments, contacts, actionSteps, search, stepFilter, statusFilter, myTasksOnly]);
 
   const allEnrollmentRows = useMemo(() => {
     return myEnrollments
@@ -742,6 +798,35 @@ export function WorkflowBoardV2() {
       </div>
     );
   }
+
+  // Kanban columns — when "My tasks" is on, hide automated-only step columns and keep only
+  // the current user's task cards in each remaining column. Step numbering stays aligned to
+  // the full sequence (a call reminder that is step 3 stays "Step 3").
+  const kanbanColumns = actionSteps
+    .map((s, i) => ({
+      colId: s.id,
+      label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`,
+      step: s,
+    }))
+    .filter(({ step }) => !myTasksOnly || isTaskStep(step))
+    .map((col) => {
+      const colEnrollments = myEnrollments.filter((e) => {
+        if (getContactColumn(e) !== col.colId) return false;
+        if (myTasksOnly && !isMyTaskEnrollment(e)) return false;
+        if (statusFilter !== "all" && e.status !== statusFilter) return false;
+        if (search) {
+          const contact = contacts.find((c) => c.id === e.contactId);
+          if (!contact) return false;
+          const q = search.toLowerCase();
+          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          if (!fullName.includes(q) && !contact.email.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+      return { ...col, colEnrollments };
+    });
+
+  const kanbanIsEmpty = myTasksOnly && kanbanColumns.every((c) => c.colEnrollments.length === 0);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -1199,6 +1284,7 @@ export function WorkflowBoardV2() {
                       <List className="h-4 w-4" />
                     </button>
                   </div>
+                  <MyTasksFilterToggle myTasksOnly={myTasksOnly} onChange={setMyTasksOnly} />
                   <div className="relative flex-1 min-w-40 max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <input
@@ -1236,43 +1322,34 @@ export function WorkflowBoardV2() {
                   </div>
                 </div>
                 <div className="flex-1 overflow-x-auto">
-                  <div
-                    className="flex gap-4 p-6 min-h-full items-start"
-                    style={{ minWidth: `${actionSteps.length * 288}px` }}
-                  >
-                    {actionSteps.map((s, i) => {
-                        return { id: s.id, label: `Step ${i + 1} — ${ACTION_TYPE_DISPLAY[s.actionType] ?? s.actionType}`, step: s as WorkflowStep };
-                      })
-                      .map(({ id: colId, label, step }) => {
-                        const colEnrollments = myEnrollments.filter((e) => {
-                          if (getContactColumn(e) !== colId) return false;
-                          if (statusFilter !== "all" && e.status !== statusFilter) return false;
-                          if (search) {
-                            const contact = contacts.find((c) => c.id === e.contactId);
-                            if (!contact) return false;
-                            const q = search.toLowerCase();
-                            const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
-                            if (!fullName.includes(q) && !contact.email.toLowerCase().includes(q)) return false;
-                          }
-                          return true;
-                        });
-                        return (
-                          <KanbanColumnV2
-                            key={colId}
-                            colId={colId}
-                            label={label}
-                            colEnrollments={colEnrollments}
-                            contacts={contacts}
-                            currentStep={step}
-                            emailHistory={emailHistory}
-                            handleDrop={handleDrop}
-                            handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
-                            handleSkip={handleSkip}
-                            handlePause={handlePauseCard}
-                          />
-                        );
-                      })}
-                  </div>
+                  {kanbanIsEmpty ? (
+                    <div className="flex flex-col items-center justify-center h-full py-16 text-center px-6">
+                      <UserCheck className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm font-medium text-foreground">No tasks assigned to you in this workflow</p>
+                      <p className="text-xs text-muted-foreground mt-1">Switch to Team to see everyone{"’"}s enrollments.</p>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex gap-4 p-6 min-h-full items-start"
+                      style={{ minWidth: `${kanbanColumns.length * 288}px` }}
+                    >
+                      {kanbanColumns.map(({ colId, label, step, colEnrollments }) => (
+                        <KanbanColumnV2
+                          key={colId}
+                          colId={colId}
+                          label={label}
+                          colEnrollments={colEnrollments}
+                          contacts={contacts}
+                          currentStep={step}
+                          emailHistory={emailHistory}
+                          handleDrop={handleDrop}
+                          handleCardClick={(cId, eId) => { setSelectedContactId(cId); setSelectedEnrollmentId(eId); }}
+                          handleSkip={handleSkip}
+                          handlePause={handlePauseCard}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </DndProvider>
@@ -1296,6 +1373,7 @@ export function WorkflowBoardV2() {
                     <List className="h-4 w-4" />
                   </button>
                 </div>
+                <MyTasksFilterToggle myTasksOnly={myTasksOnly} onChange={setMyTasksOnly} />
                 <div className="relative flex-1 min-w-40 max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <input
@@ -1362,9 +1440,11 @@ export function WorkflowBoardV2() {
                         {listRows.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground text-sm">
-                              {myEnrollments.length === 0
-                                ? "No contacts enrolled yet. Contacts matching this flow's segment will appear here once enrolled."
-                                : "No contacts match the current filters."}
+                              {myTasksOnly
+                                ? "No tasks assigned to you in this workflow. Switch to Team to see all enrollments."
+                                : myEnrollments.length === 0
+                                  ? "No contacts enrolled yet. Contacts matching this flow's segment will appear here once enrolled."
+                                  : "No contacts match the current filters."}
                             </td>
                           </tr>
                         ) : (

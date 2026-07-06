@@ -59,6 +59,8 @@ export interface AppSidebarSubItem {
   icon?: React.ElementType;
   /** When true, this item is greyed out in V1 and only active in V2 */
   v2Only?: boolean;
+  /** V2 (RFC-008): dynamic count badge (e.g. open tasks). 0/undefined hides it. */
+  badgeCount?: number;
 }
 
 export interface AppSidebarItem {
@@ -69,6 +71,8 @@ export interface AppSidebarItem {
   action?: "openComposer" | "openDialer";
   externalIcon?: boolean;
   children?: AppSidebarSubItem[];
+  /** V2 (RFC-008): dynamic count badge rolled up from children (e.g. open tasks). */
+  badgeCount?: number;
 }
 
 export interface AppSidebarSection {
@@ -118,6 +122,8 @@ export interface Contact {
   // Per-channel opt-out
   emailOptOut?: ChannelOptOut;
   smsOptOut?: ChannelOptOut;
+  /** V2 (RFC-008): Do-Not-Call flag — surfaced as a warn-and-choose count for bulk CALL tasks. */
+  isDoNotCall?: boolean;
 }
 
 export interface EmailRecord {
@@ -572,4 +578,17 @@ export interface FilterGroupV2 {
   id: string;
   filters: FilterRuleV2[];
   connectorAfter: "and" | "or";
+}
+
+// ── V2: LO groups (RFC-008 — named round-robin fallback pools) ─────────────────
+
+/** A named group of internal-team users, usable as a bulk-create round-robin pool. */
+export interface LoGroup {
+  id: string;
+  name: string;
+  description?: string;
+  /** Member user names (matches TeamUser.name / contact.loanOfficer values). */
+  memberNames: string[];
+  isActive: boolean;
+  createdAt: Date;
 }

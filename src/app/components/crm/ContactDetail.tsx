@@ -38,6 +38,7 @@ import { CreateTaskModal } from "@/app/components/email-workflows/CreateTaskModa
 import { TaskActionModal } from "@/app/components/email-workflows/TaskActionModal";
 import { PauseAllCommsModal } from "./PauseAllCommsModal";
 import { ContactCommunicationsTab } from "./ContactCommunicationsTab";
+import { ExtraWorkflows } from "./ExtraWorkflows";
 import {
   Select,
   SelectContent,
@@ -1068,6 +1069,9 @@ export function ContactDetail() {
               );
             })()}
           </div>
+
+          {/* Workflows (V2 · RFC-008) */}
+          {isV2 && <ExtraWorkflows contactId={contact.id} />}
 
           {/* Companies */}
           <div className="px-5 py-5 border-b border-border">

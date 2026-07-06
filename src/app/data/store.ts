@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup } from "../types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
@@ -15,9 +15,11 @@ import voicemailScriptsJson from "./voicemailScripts.json";
 import voicemailSettingsJson from "./voicemailSettings.json";
 import senderIdentitiesJson from "./senderIdentities.json";
 import notificationsJson from "./notifications.json";
+import loGroupsJson from "./loGroups.json";
 
 const KEYS = {
-  contacts: "loanbudcrm:v3:contacts",
+  // v4: RFC-008 seed — a few contacts unassigned (round-robin fallback) + isDoNotCall flags
+  contacts: "loanbudcrm:v4:contacts",
   segments: "loanbudcrm:segments",
   taskItems: "loanbudcrm:taskItems",
   emailHistory: "loanbudcrm:v2:emailHistory",
@@ -33,6 +35,7 @@ const KEYS = {
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
   senderIdentities: "loanbudcrm:v2:senderIdentities",
   notifications: "loanbudcrm:notifications",
+  loGroups: "loanbudcrm:loGroups",
   notificationPrefs: "loanbudcrm:v2:notificationPrefs",
   emailCategories: "loanbudcrm:v2:emailCategories",
   smsCategories: "loanbudcrm:v2:smsCategories",
@@ -232,6 +235,15 @@ export const store = {
         ["createdAt"],
       ),
     write: (data: Notification[]) => write(KEYS.notifications, data),
+  },
+  loGroups: {
+    read: () =>
+      read<LoGroup>(
+        KEYS.loGroups,
+        loGroupsJson as unknown as LoGroup[],
+        ["createdAt"],
+      ),
+    write: (data: LoGroup[]) => write(KEYS.loGroups, data),
   },
   notificationPrefs: {
     read: (): NotificationPreferences => readObject<NotificationPreferences>(
