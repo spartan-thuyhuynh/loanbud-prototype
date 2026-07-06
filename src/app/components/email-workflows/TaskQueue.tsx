@@ -7,14 +7,24 @@ import {
   ArrowDown,
   Search,
   BarChart3,
+  Users,
+  Layers,
 } from "lucide-react";
 import type { TaskItem } from "@/app/types";
 import { useAppData } from "@/app/contexts/AppDataContext";
+import { useVersion } from "@/app/contexts/VersionContext";
+import { CURRENT_USER } from "@/app/config/featureFlags";
+import { canManageTasks } from "@/app/config/team";
 import { getTaskTypeConfig } from "@/app/lib/taskTypeRegistry";
 import { TaskBulkActionsBar } from "./TaskBulkActionsBar";
 import { TaskBulkActionModal } from "./TaskBulkActionModal";
 import { CreateTaskModal } from "./CreateTaskModal";
+import { BulkCreateTaskModal } from "./BulkCreateTaskModal";
+import { LoGroupsModal } from "./LoGroupsModal";
+import { TaskAdvancedFilter } from "./TaskAdvancedFilter";
 import { TaskDetailPanel } from "./TaskDetailPanel";
+
+const DUE_SOON_MS = 24 * 60 * 60 * 1000;
 
 type BulkMode = "complete" | "reschedule" | "delete" | null;
 type DueDateFilter = "all" | "today" | "this-week" | "overdue";
@@ -57,10 +67,17 @@ export function TaskQueue({
     handleBulkDeleteTask,
   } = useAppData();
 
+  const { version } = useVersion();
+  const isV2 = version === "v2";
+  const isAdmin = canManageTasks();
+
   const allTasks = tasksProp ?? taskItems;
   const contactById = new Map(contacts.map((c) => [c.id, c]));
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkCreate, setShowBulkCreate] = useState(false);
+  const [showLoGroups, setShowLoGroups] = useState(false);
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [bulkMode, setBulkMode] = useState<BulkMode>(null);
 
@@ -93,18 +110,27 @@ export function TaskQueue({
 
   const now = new Date();
 
+  const useMyTasks = isV2 && myTasksOnly;
+
   const filtered = allTasks.filter((t) => {
     if (!showCompleted && (t.status === "completed" || t.status === "suspended")) return false;
     const due = new Date(t.dueDate);
     if (dueDateFilter === "today" && !isSameDay(due, now)) return false;
     if (dueDateFilter === "this-week" && !isWithinDays(due, 7)) return false;
     if (dueDateFilter === "overdue" && !(due < now && t.status !== "completed")) return false;
-    if (showAssigneeFilter && assigneeFilter !== "all" && t.assignee !== assigneeFilter) return false;
+    if (useMyTasks && t.assignee !== CURRENT_USER) return false;
+    if (!useMyTasks && showAssigneeFilter && assigneeFilter !== "all" && t.assignee !== assigneeFilter) return false;
     return true;
   });
 
   const isOverdue = (t: TaskItem) =>
     t.status === "overdue" || (new Date(t.dueDate) < now && t.status !== "completed" && t.status !== "suspended");
+
+  const isDueSoon = (t: TaskItem) => {
+    if (t.status === "completed" || t.status === "suspended") return false;
+    const due = new Date(t.dueDate);
+    return due >= now && due.getTime() - now.getTime() <= DUE_SOON_MS;
+  };
 
   const comparator = (a: TaskItem, b: TaskItem): number => {
     if (sortField === "dueDate")
@@ -231,7 +257,24 @@ export function TaskQueue({
             })}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {showAssigneeFilter && (
+            {/* V2 (RFC-008): My tasks / Team toggle */}
+            {isV2 && (
+              <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+                <button
+                  onClick={() => { setMyTasksOnly(true); setSelectedTasks([]); }}
+                  className={`px-2.5 py-1 transition-colors ${myTasksOnly ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                >
+                  My tasks
+                </button>
+                <button
+                  onClick={() => { setMyTasksOnly(false); setSelectedTasks([]); }}
+                  className={`px-2.5 py-1 transition-colors ${!myTasksOnly ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                >
+                  Team
+                </button>
+              </div>
+            )}
+            {showAssigneeFilter && !useMyTasks && (
               <select
                 value={assigneeFilter}
                 onChange={(e) => {
@@ -258,6 +301,26 @@ export function TaskQueue({
               />
               Show completed
             </label>
+            {/* V2 (RFC-008): admin bulk-create + LO groups */}
+            {isV2 && isAdmin && (
+              <>
+                <button
+                  onClick={() => setShowLoGroups(true)}
+                  title="LO Groups"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-foreground text-xs font-medium rounded-lg hover:bg-muted transition-colors"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  LO Groups
+                </button>
+                <button
+                  onClick={() => setShowBulkCreate(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/40 text-primary text-xs font-medium rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Bulk Create
+                </button>
+              </>
+            )}
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
@@ -267,6 +330,9 @@ export function TaskQueue({
             </button>
           </div>
         </div>
+
+        {/* V2 (RFC-008): advanced filter preview (Phase 3) */}
+        {isV2 && <TaskAdvancedFilter />}
 
         {/* Search + view toggle */}
         {onSearchChange && (
@@ -384,6 +450,11 @@ export function TaskQueue({
                         {overdueFlag && task.status !== "completed" && (
                           <span className="mt-1 inline-block text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded uppercase tracking-tighter">
                             Overdue
+                          </span>
+                        )}
+                        {isV2 && !overdueFlag && isDueSoon(task) && (
+                          <span className="mt-1 inline-block text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded uppercase tracking-tighter">
+                            Due soon
                           </span>
                         )}
                         {task.status === "completed" && (
@@ -519,6 +590,21 @@ export function TaskQueue({
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
         />
+
+        {/* V2 (RFC-008): admin bulk-create + LO group management */}
+        {isV2 && isAdmin && (
+          <>
+            <BulkCreateTaskModal
+              isOpen={showBulkCreate}
+              onClose={() => setShowBulkCreate(false)}
+              onManageGroups={() => setShowLoGroups(true)}
+            />
+            <LoGroupsModal
+              isOpen={showLoGroups}
+              onClose={() => setShowLoGroups(false)}
+            />
+          </>
+        )}
       </div>
 
       {/* Task Detail Panel (right-side drawer) — sole interaction surface for all task actions */}
@@ -538,6 +624,7 @@ export function TaskQueue({
         contactListingName={
           detailTask ? (contactById.get(detailTask.contactId)?.listingName ?? undefined) : undefined
         }
+        contact={detailTask ? (contactById.get(detailTask.contactId) ?? null) : null}
       />
     </div>
   );

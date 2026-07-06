@@ -1,0 +1,18 @@
+[
+  {
+    "id": "log-1",
+    "name": "SBA Team",
+    "description": "Handles SBA 7(a) / 504 follow-ups",
+    "memberNames": ["Andy Officer", "Maria Broker", "John Lead"],
+    "isActive": true,
+    "createdAt": "2026-05-02T09:00:00.000Z"
+  },
+  {
+    "id": "log-2",
+    "name": "West Coast LOs",
+    "description": "Pacific / Mountain time-zone contacts",
+    "memberNames": ["Sarah Manager", "Mike Johnson"],
+    "isActive": true,
+    "createdAt": "2026-05-10T14:30:00.000Z"
+  }
+]

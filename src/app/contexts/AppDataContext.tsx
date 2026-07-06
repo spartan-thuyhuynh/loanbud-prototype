@@ -1,10 +1,11 @@
 import { createContext, useContext, useState } from "react";
 import { toast } from "sonner";
-import type { Contact, ChannelOptOut, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences } from "../types";
+import type { Contact, ChannelOptOut, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
 import { getMatchedListings } from "../lib/segmentUtils";
+import { computeBulkAssignments, type BulkAssignmentResult } from "../lib/bulkTaskUtils";
 
 // ── Legacy ID migration helpers ───────────────────────────────────────────────
 // Old tasks used the pattern: taskitem-call-${enrollmentId}-${stepId}
@@ -58,6 +59,21 @@ interface AppDataContextValue {
     vmScript?: string;
     assignee?: string;
   }) => void;
+  // Bulk task creation (RFC-008 — assignee follows contact; round-robin fallback for LO-less)
+  handleBulkCreateTasks: (params: {
+    contactIds: string[];
+    taskType: string;
+    dueDate: Date;
+    objective: string;
+    vmScript?: string;
+    fallbackPool: string[];
+    source?: string;
+  }) => BulkAssignmentResult;
+  // LO groups (RFC-008 — named round-robin fallback pools)
+  loGroups: LoGroup[];
+  handleCreateLoGroup: (group: Omit<LoGroup, "id" | "createdAt">) => void;
+  handleUpdateLoGroup: (id: string, updates: Partial<Omit<LoGroup, "id" | "createdAt">>) => void;
+  handleDeleteLoGroup: (id: string) => void;
   // Segment handlers
   handleCreateSegment: (segment: Omit<Segment, "id" | "createdAt" | "lastUpdatedAt">) => void;
   handleUpdateSegment: (segmentId: string, updates: Partial<Segment>) => void;
@@ -165,6 +181,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
   const [notifications, setNotifications] = useState<Notification[]>(store.notifications.read());
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(store.notificationPrefs.read());
+  const [loGroups, setLoGroups] = useState<LoGroup[]>(store.loGroups.read());
 
   const handleUpdateNotificationPrefs = (updates: Partial<NotificationPreferences>) => {
     const updated = { ...notificationPrefs, ...updates };
@@ -822,6 +839,99 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setTaskItems(updatedItems);
     store.tasks.write(updatedTasks);
     store.taskItems.write(updatedItems);
+  };
+
+  const handleBulkCreateTasks = (params: {
+    contactIds: string[];
+    taskType: string;
+    dueDate: Date;
+    objective: string;
+    vmScript?: string;
+    fallbackPool: string[];
+    source?: string;
+  }): BulkAssignmentResult => {
+    const contactById = new Map(contacts.map((c) => [c.id, c]));
+    const targets = params.contactIds
+      .map((id) => contactById.get(id))
+      .filter((c): c is Contact => !!c);
+
+    const result = computeBulkAssignments(targets, params.fallbackPool);
+    const batchId = Date.now();
+    const source = params.source ?? "Bulk create";
+
+    const newTasks: Task[] = [];
+    const newItems: TaskItem[] = [];
+    // Round-robin assigns the picked LO to BOTH the contact and the task.
+    const contactLoUpdates = new Map<string, string>();
+
+    result.assignments.forEach((a, i) => {
+      const contact = contactById.get(a.contactId);
+      const uniqueId = `bulk-${batchId}-${i}`;
+      newTasks.push({
+        id: `task-${uniqueId}`,
+        contactId: a.contactId,
+        contactName: a.contactName,
+        contactPhone: contact?.phone ?? "",
+        listingStatus: contact?.listingStatus ?? "",
+        callObjective: params.objective,
+        voicemailScript: params.vmScript ?? "",
+        dueDay: 0,
+        scheduledFor: params.dueDate,
+        status: "pending",
+      });
+      newItems.push({
+        id: `taskitem-${uniqueId}`,
+        contactId: a.contactId,
+        contactName: a.contactName,
+        contactStatus: contact?.listingStatus ?? "",
+        taskType: params.taskType,
+        source,
+        sourceType: "manual",
+        dueDate: params.dueDate,
+        assignee: a.assignee,
+        status: "pending",
+        triggerContext: params.objective,
+        notes: params.vmScript,
+        disposition: "",
+      });
+      if (a.viaRoundRobin && a.assignee) contactLoUpdates.set(a.contactId, a.assignee);
+    });
+
+    const updatedTasks = [...tasks, ...newTasks];
+    const updatedItems = [...taskItems, ...newItems];
+    setTasks(updatedTasks);
+    setTaskItems(updatedItems);
+    store.tasks.write(updatedTasks);
+    store.taskItems.write(updatedItems);
+
+    if (contactLoUpdates.size > 0) {
+      const updatedContacts = contacts.map((c) =>
+        contactLoUpdates.has(c.id) ? { ...c, loanOfficer: contactLoUpdates.get(c.id) } : c,
+      );
+      setContacts(updatedContacts);
+      store.contacts.write(updatedContacts);
+    }
+
+    return result;
+  };
+
+  const handleCreateLoGroup = (group: Omit<LoGroup, "id" | "createdAt">) => {
+    const newGroup: LoGroup = { ...group, id: `log-${Date.now()}`, createdAt: new Date() };
+    const updated = [...loGroups, newGroup];
+    setLoGroups(updated);
+    store.loGroups.write(updated);
+  };
+
+  const handleUpdateLoGroup = (id: string, updates: Partial<Omit<LoGroup, "id" | "createdAt">>) => {
+    const updated = loGroups.map((g) => (g.id === id ? { ...g, ...updates } : g));
+    setLoGroups(updated);
+    store.loGroups.write(updated);
+  };
+
+  const handleDeleteLoGroup = (id: string) => {
+    const updated = loGroups.filter((g) => g.id !== id);
+    setLoGroups(updated);
+    store.loGroups.write(updated);
   };
 
   const handleUpdateContact = (contactId: string, updates: Partial<Contact>) => {
@@ -1998,6 +2108,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleBulkDeleteTask,
         handleUpdateContact,
         handleCreateTask,
+        handleBulkCreateTasks,
+        loGroups,
+        handleCreateLoGroup,
+        handleUpdateLoGroup,
+        handleDeleteLoGroup,
         handleCreateSegment,
         handleUpdateSegment,
         handleDeleteSegment,
