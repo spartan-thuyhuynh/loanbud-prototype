@@ -58,7 +58,7 @@ export function ExtraWorkflows({ contactId }: ExtraWorkflowsProps) {
             <p className="text-xs">Not enrolled in any workflow</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {contexts.map((ctx) => (
               <div key={ctx.enrollment.id} className="p-3 border border-border rounded-xl bg-background">
                 <div className="flex items-center gap-1.5 mb-1.5">

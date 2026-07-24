@@ -124,6 +124,22 @@ export interface Contact {
   smsOptOut?: ChannelOptOut;
   /** V2 (RFC-008): Do-Not-Call flag — surfaced as a warn-and-choose count for bulk CALL tasks. */
   isDoNotCall?: boolean;
+  /** V2 (RFC-009): attribution taxonomy classification — id of the deepest AttributionNode this contact resolves to. */
+  attributionNodeId?: string;
+}
+
+/** V2 (RFC-009): one level of the attribution pyramid (Channel > Platform > Campaign > Ad Set > Creative). */
+export type AttributionNodeKind = "channel" | "platform" | "campaign" | "ad_set" | "creative";
+
+/** V2 (RFC-009): a node in the attribution taxonomy tree (adjacency list; parentId null = top-level channel). */
+export interface AttributionNode {
+  id: string;
+  parentId: string | null;
+  level: 1 | 2 | 3 | 4 | 5;
+  kind: AttributionNodeKind;
+  name: string;
+  /** Phase-2 preview: node was auto-created from live UTM data, not curated by an admin. */
+  isAutoCreated?: boolean;
 }
 
 export interface EmailRecord {

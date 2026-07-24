@@ -62,7 +62,8 @@
     "createdAt": "2026-02-15T10:00:00.000Z",
     "filters": [
       { "field": "userType", "operator": "=", "value": "Partner", "logic": "and" }
-    ]
+    ],
+    "includedContactIds": ["1"]
   },
   {
     "id": "6",
@@ -75,6 +76,35 @@
     "createdAt": "2026-02-10T09:30:00.000Z",
     "filters": [
       { "field": "listingStatus", "operator": "=", "value": "On Hold", "logic": "and" }
-    ]
+    ],
+    "includedContactIds": ["1"]
+  },
+  {
+    "id": "7",
+    "name": "VIP Brokers - White Glove Outreach",
+    "contactCount": 87,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-12T15:00:00.000Z",
+    "lastUpdatedBy": "John Doe",
+    "createdBy": "John Doe",
+    "createdAt": "2026-03-01T09:00:00.000Z",
+    "filters": [
+      { "field": "listingStatus", "operator": "=", "value": "Declined", "logic": "and" }
+    ],
+    "includedContactIds": ["1"]
+  },
+  {
+    "id": "8",
+    "name": "Working Capital - High Intent Q2",
+    "contactCount": 214,
+    "status": "Active",
+    "lastUpdatedAt": "2026-04-11T12:30:00.000Z",
+    "lastUpdatedBy": "Sarah Chen",
+    "createdBy": "Sarah Chen",
+    "createdAt": "2026-03-05T11:00:00.000Z",
+    "filters": [
+      { "field": "userType", "operator": "=", "value": "Lender", "logic": "and" }
+    ],
+    "includedContactIds": ["1"]
   }
 ]

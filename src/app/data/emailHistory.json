@@ -1,5 +1,36 @@
 [
   {
+    "id": "eh-026",
+    "contactId": "1",
+    "contactName": "James Lee",
+    "subject": "Your working capital options \u2014 let's move fast",
+    "senderIdentity": "John Smith <john@loanbuds.com>",
+    "status": "Delivered",
+    "sequenceDay": 0,
+    "sentAt": "2026-05-04T09:15:00.000Z",
+    "channel": "email",
+    "direction": "outbound",
+    "workflowId": "wf-4",
+    "workflowName": "Working Capital Fast-Track",
+    "stepName": "Fast-Track Intro Email"
+  },
+  {
+    "id": "eh-027",
+    "contactId": "1",
+    "contactName": "James Lee",
+    "subject": "SMS",
+    "senderIdentity": "+15559876543",
+    "status": "Delivered",
+    "sequenceDay": 2,
+    "sentAt": "2026-05-05T15:30:00.000Z",
+    "channel": "sms",
+    "direction": "outbound",
+    "workflowId": "wf-4",
+    "workflowName": "Working Capital Fast-Track",
+    "stepName": "Day 2 SMS Nudge",
+    "body": "Hi James, following up on the working capital email \u2014 want me to send over the quick application link?"
+  },
+  {
     "id": "eh-001",
     "contactId": "1",
     "contactName": "James Lee",

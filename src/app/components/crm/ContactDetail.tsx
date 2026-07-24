@@ -39,6 +39,7 @@ import { TaskActionModal } from "@/app/components/email-workflows/TaskActionModa
 import { PauseAllCommsModal } from "./PauseAllCommsModal";
 import { ContactCommunicationsTab } from "./ContactCommunicationsTab";
 import { ExtraWorkflows } from "./ExtraWorkflows";
+import { attributionPathNodes } from "@/app/data/attributionTaxonomy";
 import {
   Select,
   SelectContent,
@@ -599,6 +600,24 @@ export function ContactDetail() {
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Email</p>
                   <span className="text-sm break-all">{contact.email}</span>
+                </div>
+                {/* V2 (RFC-009): attribution pyramid classification */}
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Attribution</p>
+                  {contact.attributionNodeId ? (
+                    <span className="text-sm flex flex-wrap items-center gap-1">
+                      {attributionPathNodes(contact.attributionNodeId).map((node, idx) => (
+                        <span key={node.id} className="inline-flex items-center gap-1">
+                          {idx > 0 && <span className="text-muted-foreground">&gt;</span>}
+                          <span className={idx === attributionPathNodes(contact.attributionNodeId!).length - 1 ? "font-medium" : ""}>
+                            {node.name}
+                          </span>
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="text-sm">N/A</span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

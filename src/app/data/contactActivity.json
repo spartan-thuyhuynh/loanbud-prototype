@@ -1,5 +1,76 @@
 [
   {
+    "id": "ca-035",
+    "contactId": "1",
+    "type": "enrollment_created",
+    "source": "Re-engagement Flow",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-05-02T08:45:00.000Z"
+  },
+  {
+    "id": "ca-036",
+    "contactId": "1",
+    "type": "enrollment_created",
+    "source": "Working Capital Fast-Track",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-05-04T09:10:00.000Z"
+  },
+  {
+    "id": "ca-037",
+    "contactId": "1",
+    "type": "enrollment_created",
+    "source": "SBA Loan Nurture",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-05-01T09:55:00.000Z"
+  },
+  {
+    "id": "ca-038",
+    "contactId": "1",
+    "type": "enrollment_created",
+    "source": "Quarterly Broker Check-in",
+    "sourceType": "flow",
+    "assignee": "Andy Officer",
+    "timestamp": "2026-05-05T08:20:00.000Z"
+  },
+  {
+    "id": "ca-039",
+    "contactId": "1",
+    "type": "task_completed",
+    "taskType": "Call",
+    "disposition": "Answered",
+    "note": "Confirmed interest in SBA 7(a). Wants eligibility checklist before booking a call.",
+    "source": "SBA Loan Nurture",
+    "sourceType": "flow",
+    "stepName": "Day 4 Voicemail Drop",
+    "assignee": "John Doe",
+    "timestamp": "2026-05-06T13:20:00.000Z"
+  },
+  {
+    "id": "ca-040",
+    "contactId": "1",
+    "type": "task_completed",
+    "taskType": "Call",
+    "disposition": "No Answer",
+    "note": "Left voicemail regarding working capital fast-track.",
+    "source": "Working Capital Fast-Track",
+    "sourceType": "flow",
+    "stepName": "Day 2 SMS Nudge",
+    "assignee": "John Doe",
+    "timestamp": "2026-05-05T15:45:00.000Z"
+  },
+  {
+    "id": "ca-041",
+    "contactId": "1",
+    "type": "status_changed",
+    "oldStatus": "New",
+    "newStatus": "Contacted",
+    "assignee": "John Doe",
+    "timestamp": "2026-05-03T11:15:00.000Z"
+  },
+  {
     "id": "ca-030",
     "contactId": "1",
     "type": "enrollment_created",

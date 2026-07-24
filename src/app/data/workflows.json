@@ -85,10 +85,10 @@
     "description": "Win back inactive partners with a structured touchpoint series",
     "segmentId": "2",
     "segmentName": "Email_checker_first[firstname]_test1",
-    "status": "draft",
+    "status": "active",
     "createdAt": "2026-04-10T14:30:00.000Z",
     "createdBy": "Admin",
-    "enrolledCount": 0,
+    "enrolledCount": 1,
     "steps": [
       {
         "id": "step-wf2-1",
@@ -148,7 +148,7 @@
     "status": "paused",
     "createdAt": "2026-03-20T11:00:00.000Z",
     "createdBy": "Admin",
-    "enrolledCount": 1,
+    "enrolledCount": 2,
     "steps": [
       {
         "id": "step-wf3-1",
@@ -198,6 +198,174 @@
         "senderIdentity": "Mike Johnson <mike@loanbuds.com>",
         "subject": "Your first month as a LoanBud partner — here's what's new",
         "body": "Hi {{first_name}},\n\nIt's been three weeks since you joined and we wanted to share some highlights.\n\nNew programs, updated rates, and exclusive referral bonuses are live. Check the portal for details.\n\nMike"
+      }
+    ]
+  },
+  {
+    "id": "wf-4",
+    "name": "Working Capital Fast-Track",
+    "description": "Accelerated outreach for high-intent working capital brokers",
+    "segmentId": "8",
+    "segmentName": "Working Capital - High Intent Q2",
+    "status": "active",
+    "createdAt": "2026-04-05T10:00:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 1,
+    "steps": [
+      {
+        "id": "step-wf4-1",
+        "name": "Fast-Track Intro Email",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-1",
+        "templateName": "New Listing Claim",
+        "senderIdentity": "John Smith <john@loanbuds.com>",
+        "subject": "Your working capital options — let's move fast",
+        "body": "Hi {{first_name}},\n\nBased on your recent activity, you're a great fit for our working capital program.\n\nWe can move quickly — reply and I'll get you pre-qualified this week.\n\nBest,\nJohn"
+      },
+      {
+        "id": "delay-wf4-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 2
+      },
+      {
+        "id": "step-wf4-2",
+        "name": "Day 2 SMS Nudge",
+        "order": 3,
+        "dayOffset": 2,
+        "actionType": "sms",
+        "smsTemplateId": "sms-1",
+        "smsTemplateName": "Day 2 Nudge",
+        "message": "Hi {{first_name}}, following up on the working capital email — want me to send over the quick application link?"
+      },
+      {
+        "id": "delay-wf4-2",
+        "name": "Wait",
+        "order": 4,
+        "dayOffset": 2,
+        "actionType": "delay",
+        "delayDays": 3
+      },
+      {
+        "id": "step-wf4-3",
+        "name": "Day 5 Rate Recap Email",
+        "order": 5,
+        "dayOffset": 5,
+        "actionType": "email",
+        "templateId": "tpl-3",
+        "templateName": "Rate Recap",
+        "senderIdentity": "John Smith <john@loanbuds.com>",
+        "subject": "Locked-in rates for your working capital request",
+        "body": "Hi {{first_name}},\n\nHere's a recap of the rates we discussed. These are available for a limited window.\n\nLet's get your application in before they change.\n\nJohn"
+      }
+    ]
+  },
+  {
+    "id": "wf-5",
+    "name": "SBA Loan Nurture",
+    "description": "Long-cycle nurture for SBA 7(a) prospects with a voicemail touchpoint",
+    "segmentId": "1",
+    "segmentName": "Leads from first marketing checkers",
+    "status": "active",
+    "createdAt": "2026-04-02T09:30:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 1,
+    "steps": [
+      {
+        "id": "step-wf5-1",
+        "name": "SBA Program Overview Email",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-4",
+        "templateName": "SBA Overview",
+        "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
+        "subject": "Is an SBA 7(a) loan right for your business?",
+        "body": "Hi {{first_name}},\n\nSBA 7(a) loans offer some of the best terms available for growing businesses.\n\nI've attached a quick overview. Let me know if you'd like to explore your eligibility.\n\nSarah"
+      },
+      {
+        "id": "delay-wf5-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 4
+      },
+      {
+        "id": "step-wf5-2",
+        "name": "Day 4 Voicemail Drop",
+        "order": 3,
+        "dayOffset": 4,
+        "actionType": "voicemail-reminder",
+        "note": "Drop the SBA intro voicemail. Mention the overview email and invite them to book an eligibility call.",
+        "reminderDaysBefore": 1
+      },
+      {
+        "id": "delay-wf5-2",
+        "name": "Wait",
+        "order": 4,
+        "dayOffset": 4,
+        "actionType": "delay",
+        "delayDays": 6
+      },
+      {
+        "id": "step-wf5-3",
+        "name": "Day 10 Eligibility Email",
+        "order": 5,
+        "dayOffset": 10,
+        "actionType": "email",
+        "templateId": "tpl-5",
+        "templateName": "SBA Eligibility Checklist",
+        "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
+        "subject": "Your SBA eligibility checklist — 5 minutes to review",
+        "body": "Hi {{first_name}},\n\nHere's a short checklist to see if you pre-qualify for an SBA 7(a) loan.\n\nReply with any questions and we'll walk through it together.\n\nSarah"
+      }
+    ]
+  },
+  {
+    "id": "wf-6",
+    "name": "Quarterly Broker Check-in",
+    "description": "Lightweight quarterly touchpoint to keep active brokers engaged",
+    "segmentId": "2",
+    "segmentName": "Email_checker_first[firstname]_test1",
+    "status": "active",
+    "createdAt": "2026-03-28T13:00:00.000Z",
+    "createdBy": "Admin",
+    "enrolledCount": 1,
+    "steps": [
+      {
+        "id": "step-wf6-1",
+        "name": "Quarterly Update Email",
+        "order": 1,
+        "dayOffset": 0,
+        "actionType": "email",
+        "templateId": "tpl-2",
+        "templateName": "Quarterly Update",
+        "senderIdentity": "John Smith <john@loanbuds.com>",
+        "subject": "Q2 rates and programs — your quarterly LoanBud update",
+        "body": "Hi {{first_name}},\n\nHere's what's new this quarter — updated rates, two new programs, and faster turnaround times.\n\nAs always, reach out anytime.\n\nJohn"
+      },
+      {
+        "id": "delay-wf6-1",
+        "name": "Wait",
+        "order": 2,
+        "dayOffset": 0,
+        "actionType": "delay",
+        "delayDays": 5
+      },
+      {
+        "id": "step-wf6-2",
+        "name": "Day 5 SMS Touch",
+        "order": 3,
+        "dayOffset": 5,
+        "actionType": "sms",
+        "smsTemplateId": "sms-2",
+        "smsTemplateName": "Quarterly SMS",
+        "message": "Hi {{first_name}}, quick quarterly check-in from LoanBud — anything we can help fund this quarter?"
       }
     ]
   }
