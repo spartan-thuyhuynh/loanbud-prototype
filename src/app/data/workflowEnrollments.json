@@ -81,5 +81,79 @@
       { "stepId": "delay-wf3-2", "status": "pending" },
       { "stepId": "step-wf3-3", "status": "pending" }
     ]
+  },
+  {
+    "id": "enroll-101",
+    "workflowId": "wf-2",
+    "contactId": "1",
+    "listingId": "lst-1-1",
+    "startDate": "2026-05-02T00:00:00.000Z",
+    "status": "active",
+    "stepProgress": [
+      { "stepId": "step-wf2-1", "status": "done", "completedAt": "2026-05-02T09:00:00.000Z" },
+      { "stepId": "delay-wf2-1", "status": "done", "completedAt": "2026-05-02T09:00:00.000Z" },
+      { "stepId": "step-wf2-2", "status": "pending" },
+      { "stepId": "delay-wf2-2", "status": "pending" },
+      { "stepId": "step-wf2-3", "status": "pending" }
+    ]
+  },
+  {
+    "id": "enroll-102",
+    "workflowId": "wf-3",
+    "contactId": "1",
+    "listingId": "lst-1-1",
+    "startDate": "2026-04-18T00:00:00.000Z",
+    "status": "paused",
+    "pauseReason": "Contact traveling — resume after May 15",
+    "stepProgress": [
+      { "stepId": "step-wf3-1", "status": "done", "completedAt": "2026-04-18T10:00:00.000Z" },
+      { "stepId": "delay-wf3-1", "status": "done", "completedAt": "2026-04-18T10:00:00.000Z" },
+      { "stepId": "step-wf3-2", "status": "done", "completedAt": "2026-04-25T14:30:00.000Z" },
+      { "stepId": "delay-wf3-2", "status": "done", "completedAt": "2026-04-25T14:30:00.000Z" },
+      { "stepId": "step-wf3-3", "status": "pending" }
+    ]
+  },
+  {
+    "id": "enroll-103",
+    "workflowId": "wf-4",
+    "contactId": "1",
+    "listingId": "lst-1-1",
+    "startDate": "2026-05-04T00:00:00.000Z",
+    "status": "active",
+    "stepProgress": [
+      { "stepId": "step-wf4-1", "status": "done", "completedAt": "2026-05-04T09:15:00.000Z" },
+      { "stepId": "delay-wf4-1", "status": "done", "completedAt": "2026-05-04T09:15:00.000Z" },
+      { "stepId": "step-wf4-2", "status": "pending" },
+      { "stepId": "delay-wf4-2", "status": "pending" },
+      { "stepId": "step-wf4-3", "status": "pending" }
+    ]
+  },
+  {
+    "id": "enroll-104",
+    "workflowId": "wf-5",
+    "contactId": "1",
+    "listingId": "lst-1-2",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "status": "active",
+    "stepProgress": [
+      { "stepId": "step-wf5-1", "status": "done", "completedAt": "2026-05-01T10:00:00.000Z" },
+      { "stepId": "delay-wf5-1", "status": "done", "completedAt": "2026-05-01T10:00:00.000Z" },
+      { "stepId": "step-wf5-2", "status": "pending" },
+      { "stepId": "delay-wf5-2", "status": "pending" },
+      { "stepId": "step-wf5-3", "status": "pending" }
+    ]
+  },
+  {
+    "id": "enroll-105",
+    "workflowId": "wf-6",
+    "contactId": "1",
+    "listingId": "lst-1-1",
+    "startDate": "2026-05-05T00:00:00.000Z",
+    "status": "active",
+    "stepProgress": [
+      { "stepId": "step-wf6-1", "status": "done", "completedAt": "2026-05-05T08:30:00.000Z" },
+      { "stepId": "delay-wf6-1", "status": "done", "completedAt": "2026-05-05T08:30:00.000Z" },
+      { "stepId": "step-wf6-2", "status": "pending" }
+    ]
   }
 ]

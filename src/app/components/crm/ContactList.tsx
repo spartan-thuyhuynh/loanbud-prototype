@@ -3,6 +3,13 @@ import { Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAppData } from "@/app/contexts/AppDataContext";
 import { useNavigate } from "react-router";
+import { AttributionFilterPopover } from "./AttributionFilterPopover";
+import {
+  attributionDescendantIds,
+  attributionNodeById,
+  attributionPathLabel,
+  attributionPathNodes,
+} from "@/app/data/attributionTaxonomy";
 
 type ActiveView = "all" | "broker" | "lender" | "partner";
 
@@ -18,6 +25,8 @@ export function ContactList() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeView, setActiveView] = useState<ActiveView>("all");
+  // V2 (RFC-009): hierarchical attribution filter — selected pyramid nodes
+  const [attributionIds, setAttributionIds] = useState<string[]>([]);
 
   const filteredContacts = useMemo(() => {
     let result = contacts;
@@ -36,8 +45,29 @@ export function ContactList() {
       result = result.filter((c) => c.userType.toLowerCase() === activeView);
     }
 
+    if (attributionIds.length > 0) {
+      // descendant-inclusive: selecting "Partnership" matches every contact
+      // classified anywhere under that branch (BizBuySell API + Checkbox, ...)
+      const expanded = attributionDescendantIds(attributionIds);
+      result = result.filter(
+        (c) => c.attributionNodeId != null && expanded.has(c.attributionNodeId),
+      );
+    }
+
     return result;
-  }, [contacts, searchTerm, activeView]);
+  }, [contacts, searchTerm, activeView, attributionIds]);
+
+  // per-node contact counts (descendant-inclusive) for the filter tree badges
+  const attributionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of contacts) {
+      if (!c.attributionNodeId) continue;
+      for (const node of attributionPathNodes(c.attributionNodeId)) {
+        counts.set(node.id, (counts.get(node.id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [contacts]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -83,15 +113,12 @@ export function ContactList() {
               style={{ height: "38px" }}
             />
           </div>
-          <Button
-            variant="outline"
-            className="px-3 py-1.5 text-sm"
-            onClick={() => {
-              // Handle add contact button click
-            }}
-          >
-            Apply Filters
-          </Button>
+          <AttributionFilterPopover
+            selectedIds={attributionIds}
+            onChange={setAttributionIds}
+            countsByNodeId={attributionCounts}
+            triggerLabel="Apply Filters"
+          />
           <Button
             variant="default"
             className="px-3 py-1.5 text-sm"
@@ -128,6 +155,12 @@ export function ContactList() {
                   style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
                 >
                   Company
+                </th>
+                <th
+                  className="px-6 py-4 text-left text-sm text-muted-foreground"
+                  style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
+                >
+                  Attribution
                 </th>
                 <th
                   className="px-6 py-4 text-left text-sm text-muted-foreground"
@@ -173,6 +206,18 @@ export function ContactList() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm">{contact.listingName}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {contact.attributionNodeId ? (
+                      <span
+                        className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs whitespace-nowrap"
+                        title={attributionPathLabel(contact.attributionNodeId)}
+                      >
+                        {attributionNodeById(contact.attributionNodeId)?.name ?? "N/A"}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">N/A</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm  text-blue-600">

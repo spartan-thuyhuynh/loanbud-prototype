@@ -8,8 +8,16 @@
     "listingName": "Working Capital",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-1-1", "name": "Working Capital", "status": "New" },
-      { "id": "lst-1-2", "name": "SBA 7(a)", "status": "New" }
+      {
+        "id": "lst-1-1",
+        "name": "Working Capital",
+        "status": "New"
+      },
+      {
+        "id": "lst-1-2",
+        "name": "SBA 7(a)",
+        "status": "New"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -24,7 +32,10 @@
     "state": "NY",
     "zipCode": "10001",
     "linkedApplicationId": "app-001",
-    "companies": ["Maple Street Capital"]
+    "companies": [
+      "Maple Street Capital"
+    ],
+    "attributionNodeId": "bbs-api-leads"
   },
   {
     "id": "2",
@@ -35,8 +46,16 @@
     "listingName": "Equipment Financing",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-2-1", "name": "Equipment Financing", "status": "Submitted" },
-      { "id": "lst-2-2", "name": "Bridge Loan", "status": "New" }
+      {
+        "id": "lst-2-1",
+        "name": "Equipment Financing",
+        "status": "Submitted"
+      },
+      {
+        "id": "lst-2-2",
+        "name": "Bridge Loan",
+        "status": "New"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -51,7 +70,11 @@
     "state": "CA",
     "zipCode": "94105",
     "linkedApplicationId": "app-002",
-    "companies": ["Pacific Bridge LLC", "Bay Area Ventures"]
+    "companies": [
+      "Pacific Bridge LLC",
+      "Bay Area Ventures"
+    ],
+    "attributionNodeId": "loanbud-io"
   },
   {
     "id": "3",
@@ -62,8 +85,16 @@
     "listingName": "Real Estate Bridge ",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-3-1", "name": "Real Estate Bridge", "status": "New" },
-      { "id": "lst-3-2", "name": "Working Capital", "status": "Draft" }
+      {
+        "id": "lst-3-1",
+        "name": "Real Estate Bridge",
+        "status": "New"
+      },
+      {
+        "id": "lst-3-2",
+        "name": "Working Capital",
+        "status": "Draft"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -77,7 +108,10 @@
     "city": "Miami",
     "state": "FL",
     "zipCode": "33101",
-    "companies": ["Oak Bridge Realty"]
+    "companies": [
+      "Oak Bridge Realty"
+    ],
+    "attributionNodeId": "bbs-checkbox-leads"
   },
   {
     "id": "4",
@@ -88,7 +122,11 @@
     "listingName": "SBA 7(a)",
     "listingStatus": "Draft",
     "listings": [
-      { "id": "lst-4-1", "name": "SBA 7(a)", "status": "Draft" }
+      {
+        "id": "lst-4-1",
+        "name": "SBA 7(a)",
+        "status": "Draft"
+      }
     ],
     "userType": "Partner",
     "optedOut": true,
@@ -102,8 +140,17 @@
     "city": "Chicago",
     "state": "IL",
     "zipCode": "60601",
-    "emailOptOut": { "optedOut": true, "source": "email-unsubscribe", "optedOutAt": "2024-02-18T09:00:00.000Z" },
-    "smsOptOut": { "optedOut": true, "source": "sms-stop", "optedOutAt": "2024-02-15T10:00:00.000Z" }
+    "emailOptOut": {
+      "optedOut": true,
+      "source": "email-unsubscribe",
+      "optedOutAt": "2024-02-18T09:00:00.000Z"
+    },
+    "smsOptOut": {
+      "optedOut": true,
+      "source": "sms-stop",
+      "optedOutAt": "2024-02-15T10:00:00.000Z"
+    },
+    "attributionNodeId": "sendgrid-campaigns"
   },
   {
     "id": "5",
@@ -114,7 +161,11 @@
     "listingName": "Merchant Cash Advance",
     "listingStatus": "On Hold",
     "listings": [
-      { "id": "lst-5-1", "name": "Merchant Cash Advance", "status": "On Hold" }
+      {
+        "id": "lst-5-1",
+        "name": "Merchant Cash Advance",
+        "status": "On Hold"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -128,7 +179,8 @@
     "city": "Atlanta",
     "state": "GA",
     "zipCode": "30301",
-    "isDoNotCall": true
+    "isDoNotCall": true,
+    "attributionNodeId": "google-ads"
   },
   {
     "id": "6",
@@ -139,7 +191,11 @@
     "listingName": "Construction Loan",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-6-1", "name": "Construction Loan", "status": "New" }
+      {
+        "id": "lst-6-1",
+        "name": "Construction Loan",
+        "status": "New"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -152,7 +208,8 @@
     "address": "2200 Desert Road",
     "city": "Phoenix",
     "state": "AZ",
-    "zipCode": "85001"
+    "zipCode": "85001",
+    "attributionNodeId": "meta-bf-bo-video"
   },
   {
     "id": "7",
@@ -163,7 +220,11 @@
     "listingName": "Inventory Financing",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-7-1", "name": "Inventory Financing", "status": "Submitted" }
+      {
+        "id": "lst-7-1",
+        "name": "Inventory Financing",
+        "status": "Submitted"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -177,7 +238,12 @@
     "city": "Houston",
     "state": "TX",
     "zipCode": "77001",
-    "smsOptOut": { "optedOut": true, "source": "sms-stop", "optedOutAt": "2024-03-20T11:00:00.000Z" }
+    "smsOptOut": {
+      "optedOut": true,
+      "source": "sms-stop",
+      "optedOutAt": "2024-03-20T11:00:00.000Z"
+    },
+    "attributionNodeId": "organic-search"
   },
   {
     "id": "8",
@@ -188,7 +254,11 @@
     "listingName": "SBA 504",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-8-1", "name": "SBA 504", "status": "New" }
+      {
+        "id": "lst-8-1",
+        "name": "SBA 504",
+        "status": "New"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -201,7 +271,8 @@
     "address": "1100 Sunset Blvd",
     "city": "Los Angeles",
     "state": "CA",
-    "zipCode": "90012"
+    "zipCode": "90012",
+    "attributionNodeId": "wordpress-site"
   },
   {
     "id": "9",
@@ -212,7 +283,11 @@
     "listingName": "Working Capital",
     "listingStatus": "Draft",
     "listings": [
-      { "id": "lst-9-1", "name": "Working Capital", "status": "Draft" }
+      {
+        "id": "lst-9-1",
+        "name": "Working Capital",
+        "status": "Draft"
+      }
     ],
     "userType": "Broker",
     "optedOut": true,
@@ -226,8 +301,17 @@
     "city": "Boston",
     "state": "MA",
     "zipCode": "02101",
-    "emailOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-02-28T09:00:00.000Z" },
-    "smsOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-02-28T09:00:00.000Z" }
+    "emailOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-02-28T09:00:00.000Z"
+    },
+    "smsOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-02-28T09:00:00.000Z"
+    },
+    "attributionNodeId": "bbs-api-leads"
   },
   {
     "id": "10",
@@ -238,7 +322,11 @@
     "listingName": "Equipment Lease",
     "listingStatus": "On Hold",
     "listings": [
-      { "id": "lst-10-1", "name": "Equipment Lease", "status": "On Hold" }
+      {
+        "id": "lst-10-1",
+        "name": "Equipment Lease",
+        "status": "On Hold"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -252,7 +340,8 @@
     "city": "Philadelphia",
     "state": "PA",
     "zipCode": "19103",
-    "isDoNotCall": true
+    "isDoNotCall": true,
+    "attributionNodeId": "meta-aa-comeback"
   },
   {
     "id": "11",
@@ -263,7 +352,11 @@
     "listingName": "Invoice Factoring",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-11-1", "name": "Invoice Factoring", "status": "Submitted" }
+      {
+        "id": "lst-11-1",
+        "name": "Invoice Factoring",
+        "status": "Submitted"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -276,7 +369,8 @@
     "address": "850 Main Street",
     "city": "Dallas",
     "state": "TX",
-    "zipCode": "75201"
+    "zipCode": "75201",
+    "attributionNodeId": "bbs-checkbox-leads"
   },
   {
     "id": "12",
@@ -287,7 +381,11 @@
     "listingName": "Commercial Mortgage",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-12-1", "name": "Commercial Mortgage", "status": "New" }
+      {
+        "id": "lst-12-1",
+        "name": "Commercial Mortgage",
+        "status": "New"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -300,7 +398,8 @@
     "city": "Atlanta",
     "state": "GA",
     "zipCode": "30308",
-    "isDoNotCall": true
+    "isDoNotCall": true,
+    "attributionNodeId": "events"
   },
   {
     "id": "13",
@@ -311,7 +410,11 @@
     "listingName": "Business Line of Credit",
     "listingStatus": "Draft",
     "listings": [
-      { "id": "lst-13-1", "name": "Business Line of Credit", "status": "Draft" }
+      {
+        "id": "lst-13-1",
+        "name": "Business Line of Credit",
+        "status": "Draft"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -324,7 +427,8 @@
     "address": "555 Mission Street",
     "city": "San Francisco",
     "state": "CA",
-    "zipCode": "94105"
+    "zipCode": "94105",
+    "attributionNodeId": "loanbud-io"
   },
   {
     "id": "14",
@@ -335,7 +439,11 @@
     "listingName": "Working Capital",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-14-1", "name": "Working Capital", "status": "Submitted" }
+      {
+        "id": "lst-14-1",
+        "name": "Working Capital",
+        "status": "Submitted"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -348,7 +456,8 @@
     "address": "1414 Wacker Drive",
     "city": "Chicago",
     "state": "IL",
-    "zipCode": "60602"
+    "zipCode": "60602",
+    "attributionNodeId": "meta-bf-bo-video"
   },
   {
     "id": "15",
@@ -359,7 +468,11 @@
     "listingName": "Startup Loan",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-15-1", "name": "Startup Loan", "status": "New" }
+      {
+        "id": "lst-15-1",
+        "name": "Startup Loan",
+        "status": "New"
+      }
     ],
     "userType": "Lender",
     "optedOut": true,
@@ -373,8 +486,17 @@
     "city": "Denver",
     "state": "CO",
     "zipCode": "80203",
-    "emailOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-03-01T08:00:00.000Z" },
-    "smsOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-03-01T08:00:00.000Z" }
+    "emailOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-03-01T08:00:00.000Z"
+    },
+    "smsOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-03-01T08:00:00.000Z"
+    },
+    "attributionNodeId": "cold-call"
   },
   {
     "id": "16",
@@ -385,7 +507,11 @@
     "listingName": "Acquisition Finance",
     "listingStatus": "On Hold",
     "listings": [
-      { "id": "lst-16-1", "name": "Acquisition Finance", "status": "On Hold" }
+      {
+        "id": "lst-16-1",
+        "name": "Acquisition Finance",
+        "status": "On Hold"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -399,7 +525,8 @@
     "city": "Charlotte",
     "state": "NC",
     "zipCode": "28202",
-    "isDoNotCall": true
+    "isDoNotCall": true,
+    "attributionNodeId": "sendgrid-campaigns"
   },
   {
     "id": "17",
@@ -410,7 +537,11 @@
     "listingName": "SBA 7(a)",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-17-1", "name": "SBA 7(a)", "status": "Submitted" }
+      {
+        "id": "lst-17-1",
+        "name": "SBA 7(a)",
+        "status": "Submitted"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -423,7 +554,8 @@
     "address": "300 Pine Street",
     "city": "Seattle",
     "state": "WA",
-    "zipCode": "98101"
+    "zipCode": "98101",
+    "attributionNodeId": "meta-bf-retargeting"
   },
   {
     "id": "18",
@@ -434,7 +566,11 @@
     "listingName": "Bridge Loan",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-18-1", "name": "Bridge Loan", "status": "New" }
+      {
+        "id": "lst-18-1",
+        "name": "Bridge Loan",
+        "status": "New"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -446,7 +582,8 @@
     "address": "1800 Congress Ave",
     "city": "Austin",
     "state": "TX",
-    "zipCode": "78701"
+    "zipCode": "78701",
+    "attributionNodeId": "organic-social"
   },
   {
     "id": "19",
@@ -457,7 +594,11 @@
     "listingName": "Asset Based Loan",
     "listingStatus": "Draft",
     "listings": [
-      { "id": "lst-19-1", "name": "Asset Based Loan", "status": "Draft" }
+      {
+        "id": "lst-19-1",
+        "name": "Asset Based Loan",
+        "status": "Draft"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -470,7 +611,8 @@
     "address": "245 Central Ave",
     "city": "Albuquerque",
     "state": "NM",
-    "zipCode": "87102"
+    "zipCode": "87102",
+    "attributionNodeId": "partnership"
   },
   {
     "id": "20",
@@ -481,7 +623,11 @@
     "listingName": "Merchant Cash Advance",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-20-1", "name": "Merchant Cash Advance", "status": "Submitted" }
+      {
+        "id": "lst-20-1",
+        "name": "Merchant Cash Advance",
+        "status": "Submitted"
+      }
     ],
     "userType": "Broker",
     "optedOut": true,
@@ -495,8 +641,17 @@
     "city": "Newark",
     "state": "NJ",
     "zipCode": "07102",
-    "emailOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-02-25T07:30:00.000Z" },
-    "smsOptOut": { "optedOut": true, "source": "manual", "optedOutAt": "2024-02-25T07:30:00.000Z" }
+    "emailOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-02-25T07:30:00.000Z"
+    },
+    "smsOptOut": {
+      "optedOut": true,
+      "source": "manual",
+      "optedOutAt": "2024-02-25T07:30:00.000Z"
+    },
+    "attributionNodeId": "bbs-api-leads"
   },
   {
     "id": "21",
@@ -507,7 +662,11 @@
     "listingName": "Equipment Financing",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-21-1", "name": "Equipment Financing", "status": "New" }
+      {
+        "id": "lst-21-1",
+        "name": "Equipment Financing",
+        "status": "New"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -520,7 +679,8 @@
     "address": "700 Monument Ave",
     "city": "Richmond",
     "state": "VA",
-    "zipCode": "23219"
+    "zipCode": "23219",
+    "attributionNodeId": "crm-manual-entry"
   },
   {
     "id": "22",
@@ -531,7 +691,11 @@
     "listingName": "Working Capital",
     "listingStatus": "On Hold",
     "listings": [
-      { "id": "lst-22-1", "name": "Working Capital", "status": "On Hold" }
+      {
+        "id": "lst-22-1",
+        "name": "Working Capital",
+        "status": "On Hold"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -544,7 +708,8 @@
     "address": "520 St. Charles Ave",
     "city": "New Orleans",
     "state": "LA",
-    "zipCode": "70130"
+    "zipCode": "70130",
+    "attributionNodeId": "transworld"
   },
   {
     "id": "23",
@@ -555,7 +720,11 @@
     "listingName": "SBA 504",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-23-1", "name": "SBA 504", "status": "Submitted" }
+      {
+        "id": "lst-23-1",
+        "name": "SBA 504",
+        "status": "Submitted"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -568,7 +737,8 @@
     "address": "1 Market Street",
     "city": "Portland",
     "state": "OR",
-    "zipCode": "97201"
+    "zipCode": "97201",
+    "attributionNodeId": "bbs-checkbox-leads"
   },
   {
     "id": "24",
@@ -579,7 +749,11 @@
     "listingName": "Construction Loan",
     "listingStatus": "Draft",
     "listings": [
-      { "id": "lst-24-1", "name": "Construction Loan", "status": "Draft" }
+      {
+        "id": "lst-24-1",
+        "name": "Construction Loan",
+        "status": "Draft"
+      }
     ],
     "userType": "Lender",
     "optedOut": false,
@@ -592,7 +766,8 @@
     "address": "400 Broad Street",
     "city": "Nashville",
     "state": "TN",
-    "zipCode": "37201"
+    "zipCode": "37201",
+    "attributionNodeId": "apply-lumba"
   },
   {
     "id": "25",
@@ -603,7 +778,11 @@
     "listingName": "Real Estate Bridge",
     "listingStatus": "New",
     "listings": [
-      { "id": "lst-25-1", "name": "Real Estate Bridge", "status": "New" }
+      {
+        "id": "lst-25-1",
+        "name": "Real Estate Bridge",
+        "status": "New"
+      }
     ],
     "userType": "Broker",
     "optedOut": false,
@@ -615,7 +794,8 @@
     "address": "210 Union Square",
     "city": "San Jose",
     "state": "CA",
-    "zipCode": "95110"
+    "zipCode": "95110",
+    "attributionNodeId": "meta-bf-bo-carousel"
   },
   {
     "id": "26",
@@ -626,7 +806,11 @@
     "listingName": "Inventory Financing",
     "listingStatus": "Submitted",
     "listings": [
-      { "id": "lst-26-1", "name": "Inventory Financing", "status": "Submitted" }
+      {
+        "id": "lst-26-1",
+        "name": "Inventory Financing",
+        "status": "Submitted"
+      }
     ],
     "userType": "Partner",
     "optedOut": false,
@@ -639,6 +823,7 @@
     "address": "99 Washington Street",
     "city": "Indianapolis",
     "state": "IN",
-    "zipCode": "46204"
+    "zipCode": "46204",
+    "attributionNodeId": "partnership"
   }
 ]
