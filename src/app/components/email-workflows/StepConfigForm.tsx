@@ -116,7 +116,7 @@ export function EmailPreview({ subject, body }: { subject: string; body: string 
         </div>
         <div>
           <span className="text-xs font-medium text-muted-foreground">Body</span>
-          <p className="text-sm text-foreground whitespace-pre-wrap font-mono mt-0.5 leading-relaxed">{body}</p>
+          <div className="prose prose-sm max-w-none text-sm text-foreground mt-0.5 leading-relaxed" dangerouslySetInnerHTML={{ __html: body }} />
         </div>
       </div>
     </div>
