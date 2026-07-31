@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup, TemplateFolder } from "../types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
@@ -10,6 +10,7 @@ import workflowsJson from "./workflows.json";
 import workflowEnrollmentsJson from "./workflowEnrollments.json";
 import contactActivityJson from "./contactActivity.json";
 import adminEmailTemplatesJson from "./adminEmailTemplates.json";
+import templateFoldersJson from "./templateFolders.json";
 import smsTemplatesJson from "./smsTemplates.json";
 import voicemailScriptsJson from "./voicemailScripts.json";
 import voicemailSettingsJson from "./voicemailSettings.json";
@@ -26,10 +27,11 @@ const KEYS = {
   tasks: "loanbudcrm:tasks",
   applications: "loanbudcrm:applications",
   businessAcquisitions: "loanbudcrm:businessAcquisitions",
-  workflows: "loanbudcrm:v4:workflows",
+  workflows: "loanbudcrm:v5:workflows",
   workflowEnrollments: "loanbudcrm:v5:workflowEnrollments",
   contactActivity: "loanbudcrm:v2:contactActivity",
-  adminEmailTemplates: "loanbudcrm:v2:adminEmailTemplates",
+  adminEmailTemplates: "loanbudcrm:v5:adminEmailTemplates",
+  templateFolders: "loanbudcrm:v1:templateFolders",
   smsTemplates: "loanbudcrm:v2:smsTemplates",
   voicemailScripts: "loanbudcrm:v2:voicemailScripts",
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
@@ -37,7 +39,6 @@ const KEYS = {
   notifications: "loanbudcrm:notifications",
   loGroups: "loanbudcrm:loGroups",
   notificationPrefs: "loanbudcrm:v2:notificationPrefs",
-  emailCategories: "loanbudcrm:v2:emailCategories",
   smsCategories: "loanbudcrm:v2:smsCategories",
   voicemailCategories: "loanbudcrm:v2:voicemailCategories",
 } as const;
@@ -191,6 +192,15 @@ export const store = {
       ),
     write: (data: AdminEmailTemplate[]) => write(KEYS.adminEmailTemplates, data),
   },
+  templateFolders: {
+    read: () =>
+      read<TemplateFolder>(
+        KEYS.templateFolders,
+        templateFoldersJson as TemplateFolder[],
+        ["createdAt"],
+      ),
+    write: (data: TemplateFolder[]) => write(KEYS.templateFolders, data),
+  },
   smsTemplates: {
     read: () =>
       read<SmsTemplate>(
@@ -262,10 +272,6 @@ export const store = {
       },
     ),
     write: (data: NotificationPreferences) => writeObject(KEYS.notificationPrefs, data),
-  },
-  emailCategories: {
-    read: () => readStringArray(KEYS.emailCategories, ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"]),
-    write: (data: string[]) => writeStringArray(KEYS.emailCategories, data),
   },
   smsCategories: {
     read: () => readStringArray(KEYS.smsCategories, ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"]),

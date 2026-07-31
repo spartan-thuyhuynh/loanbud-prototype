@@ -1,0 +1,7 @@
+[
+  { "id": "fld-initial-outreach", "name": "Initial Outreach", "parentId": null, "visibleToLoanOfficers": true, "createdAt": "2026-04-01T09:00:00.000Z" },
+  { "id": "fld-follow-up", "name": "Follow-up", "parentId": null, "visibleToLoanOfficers": true, "createdAt": "2026-04-01T09:00:00.000Z" },
+  { "id": "fld-nurture", "name": "Nurture", "parentId": null, "visibleToLoanOfficers": true, "createdAt": "2026-04-01T09:00:00.000Z" },
+  { "id": "fld-re-engagement", "name": "Re-engagement", "parentId": null, "visibleToLoanOfficers": true, "createdAt": "2026-04-01T09:00:00.000Z" },
+  { "id": "fld-custom", "name": "Custom", "parentId": null, "visibleToLoanOfficers": true, "createdAt": "2026-04-01T09:00:00.000Z" }
+]

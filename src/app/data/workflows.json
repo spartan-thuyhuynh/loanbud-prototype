@@ -20,7 +20,7 @@
         "templateName": "New Listing Claim",
         "senderIdentity": "John Smith <john@loanbuds.com>",
         "subject": "Claim Your Listing - Fast Approval Available",
-        "body": "Hi {{first_name}},\n\nI noticed your listing and wanted to reach out personally.\n\nWe specialize in fast approvals and competitive rates.\n\nBest regards,\nThe LoanBud Team"
+        "body": "<p>Hi {{contact.first_name}},</p><p>I noticed your listing and wanted to reach out personally.</p><p>We specialize in fast approvals and competitive rates.</p><p>Best regards,<br>The LoanBud Team</p>"
       },
       {
         "id": "delay-wf1-1",
@@ -75,7 +75,7 @@
         "templateName": "Two-Week Follow-up",
         "senderIdentity": "John Smith <john@loanbuds.com>",
         "subject": "Still here to help — next steps for your listing",
-        "body": "Hi {{first_name}},\n\nIt's been two weeks since we first connected. I wanted to make sure you have everything you need to move forward.\n\nReply to this email or give us a call — we'd love to help you get funded.\n\nBest,\nJohn"
+        "body": "<p>Hi {{contact.first_name}},</p><p>It's been two weeks since we first connected. I wanted to make sure you have everything you need to move forward.</p><p>Reply to this email or give us a call — we'd love to help you get funded.</p><p>Best,<br>John</p>"
       }
     ]
   },
@@ -100,7 +100,7 @@
         "templateName": "Day 3 Follow-up",
         "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
         "subject": "We miss you — let's reconnect",
-        "body": "Hi {{first_name}},\n\nWe haven't heard from you in a while and wanted to reconnect.\n\nWe have some exciting new programs that might be a great fit for you.\n\nBest,\nLoanBud Team"
+        "body": "<p>Hi {{contact.first_name}},</p><p>We haven't heard from you in a while and wanted to reconnect.</p><p>We have some exciting new programs that might be a great fit for you.</p><p>Best,<br>LoanBud Team</p>"
       },
       {
         "id": "delay-wf2-1",
@@ -160,7 +160,7 @@
         "templateName": "Partner Intro",
         "senderIdentity": "Mike Johnson <mike@loanbuds.com>",
         "subject": "Welcome to the LoanBud Partner Network",
-        "body": "Hi {{first_name}},\n\nThank you for joining our partner network. We're excited to work with you.\n\nAs a partner you'll receive priority support and early access to new programs.\n\nLet's connect soon.\n\nMike"
+        "body": "<p>Hi {{contact.first_name}},</p><p>Thank you for joining our partner network. We're excited to work with you.</p><p>As a partner you'll receive priority support and early access to new programs.</p><p>Let's connect soon.</p><p>Mike</p>"
       },
       {
         "id": "delay-wf3-1",
@@ -197,7 +197,7 @@
         "templateName": "Monthly Partner Update",
         "senderIdentity": "Mike Johnson <mike@loanbuds.com>",
         "subject": "Your first month as a LoanBud partner — here's what's new",
-        "body": "Hi {{first_name}},\n\nIt's been three weeks since you joined and we wanted to share some highlights.\n\nNew programs, updated rates, and exclusive referral bonuses are live. Check the portal for details.\n\nMike"
+        "body": "<p>Hi {{contact.first_name}},</p><p>It's been three weeks since you joined and we wanted to share some highlights.</p><p>New programs, updated rates, and exclusive referral bonuses are live. Check the portal for details.</p><p>Mike</p>"
       }
     ]
   },
@@ -222,7 +222,7 @@
         "templateName": "New Listing Claim",
         "senderIdentity": "John Smith <john@loanbuds.com>",
         "subject": "Your working capital options — let's move fast",
-        "body": "Hi {{first_name}},\n\nBased on your recent activity, you're a great fit for our working capital program.\n\nWe can move quickly — reply and I'll get you pre-qualified this week.\n\nBest,\nJohn"
+        "body": "<p>Hi {{contact.first_name}},</p><p>Based on your recent activity, you're a great fit for our working capital program.</p><p>We can move quickly — reply and I'll get you pre-qualified this week.</p><p>Best,<br>John</p>"
       },
       {
         "id": "delay-wf4-1",
@@ -260,7 +260,7 @@
         "templateName": "Rate Recap",
         "senderIdentity": "John Smith <john@loanbuds.com>",
         "subject": "Locked-in rates for your working capital request",
-        "body": "Hi {{first_name}},\n\nHere's a recap of the rates we discussed. These are available for a limited window.\n\nLet's get your application in before they change.\n\nJohn"
+        "body": "<p>Hi {{contact.first_name}},</p><p>Here's a recap of the rates we discussed. These are available for a limited window.</p><p>Let's get your application in before they change.</p><p>John</p>"
       }
     ]
   },
@@ -285,7 +285,7 @@
         "templateName": "SBA Overview",
         "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
         "subject": "Is an SBA 7(a) loan right for your business?",
-        "body": "Hi {{first_name}},\n\nSBA 7(a) loans offer some of the best terms available for growing businesses.\n\nI've attached a quick overview. Let me know if you'd like to explore your eligibility.\n\nSarah"
+        "body": "<p>Hi {{contact.first_name}},</p><p>SBA 7(a) loans offer some of the best terms available for growing businesses.</p><p>I've attached a quick overview. Let me know if you'd like to explore your eligibility.</p><p>Sarah</p>"
       },
       {
         "id": "delay-wf5-1",
@@ -322,7 +322,7 @@
         "templateName": "SBA Eligibility Checklist",
         "senderIdentity": "Sarah Lee <sarah@loanbuds.com>",
         "subject": "Your SBA eligibility checklist — 5 minutes to review",
-        "body": "Hi {{first_name}},\n\nHere's a short checklist to see if you pre-qualify for an SBA 7(a) loan.\n\nReply with any questions and we'll walk through it together.\n\nSarah"
+        "body": "<p>Hi {{contact.first_name}},</p><p>Here's a short checklist to see if you pre-qualify for an SBA 7(a) loan.</p><p>Reply with any questions and we'll walk through it together.</p><p>Sarah</p>"
       }
     ]
   },
@@ -347,7 +347,7 @@
         "templateName": "Quarterly Update",
         "senderIdentity": "John Smith <john@loanbuds.com>",
         "subject": "Q2 rates and programs — your quarterly LoanBud update",
-        "body": "Hi {{first_name}},\n\nHere's what's new this quarter — updated rates, two new programs, and faster turnaround times.\n\nAs always, reach out anytime.\n\nJohn"
+        "body": "<p>Hi {{contact.first_name}},</p><p>Here's what's new this quarter — updated rates, two new programs, and faster turnaround times.</p><p>As always, reach out anytime.</p><p>John</p>"
       },
       {
         "id": "delay-wf6-1",

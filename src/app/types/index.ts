@@ -452,14 +452,25 @@ export interface ContactActivityRecord {
 
 // ── Admin Configuration Types ─────────────────────────────────────────────────
 
-export type EmailTemplateCategory = string;
+export interface TemplateFolder {
+  id: string;
+  name: string;
+  parentId: string | null;        // null = top-level
+  visibleToLoanOfficers: boolean;
+  createdAt: Date;
+}
+
+export type UnlayerDesign = { body: { rows: unknown[]; [k: string]: unknown }; [k: string]: unknown };
 
 export interface AdminEmailTemplate {
   id: string;
   name: string;
   subject: string;
   body: string;
-  category: EmailTemplateCategory;
+  /** Unlayer design JSON (present once saved via the visual builder); null for legacy HTML-only seeds. */
+  design?: UnlayerDesign | null;
+  folderId: string | null;               // null = Uncategorized
+  visibleToLoanOfficers: boolean | null; // override: null = inherit
   senderType: "brand" | "loan-officer";
   variables: string[];
   createdAt: Date;

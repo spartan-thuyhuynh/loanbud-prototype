@@ -775,7 +775,7 @@ export function WorkflowContactPanel({ open, contactId, enrollmentId, workflowId
                                 {step.body && (
                                   <div className="pt-1 border-t border-border">
                                     <p className="text-muted-foreground mb-1 font-medium">Body:</p>
-                                    <p className="text-foreground leading-relaxed whitespace-pre-wrap">{step.body}</p>
+                                    <div className="prose prose-sm max-w-none text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: step.body }} />
                                   </div>
                                 )}
                                 {step.note && (

@@ -16,6 +16,7 @@ import {
   WorkflowBoard,
 } from "./components/email-workflows";
 import { SegmentDetail } from "./components/email-workflows/SegmentDetail";
+import { EmailTemplateEditorPage } from "./components/email-workflows/settings/EmailTemplateEditorPage";
 import { PlaceholderView } from "./components/ui/PlaceholderView";
 import { VersionRoute } from "./components/ui/VersionRoute";
 // V2 components
@@ -168,6 +169,8 @@ export const router = createBrowserRouter(
             ),
           },
           { path: "templates", element: <TemplatesView /> },
+          { path: "templates/new", element: <EmailTemplateEditorPage /> },
+          { path: "templates/:id", element: <EmailTemplateEditorPage /> },
           { path: "history", element: <EmailHistory /> },
           { path: "tasks", element: <TaskQueue /> },
           // V2-only routes
