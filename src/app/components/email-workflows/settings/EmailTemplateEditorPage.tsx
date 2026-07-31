@@ -13,6 +13,11 @@ import { FieldLabel } from "./TemplateTabShared";
 
 export function EmailTemplateEditorPage() {
   const { id } = useParams();
+  return <EmailTemplateEditorPageInner key={id ?? "new"} />;
+}
+
+function EmailTemplateEditorPageInner() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const {
     adminEmailTemplates, templateFolders, currentUserRole,
@@ -71,7 +76,7 @@ export function EmailTemplateEditorPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">No folder (Uncategorized)</SelectItem>
-                {folderOptions.map((f) => <SelectItem key={f.id} value={f.id}>{"  ".repeat(f.depth)}{f.name}</SelectItem>)}
+                {folderOptions.map((f) => <SelectItem key={f.id} value={f.id}>{"  ".repeat(f.depth)}{f.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -83,9 +88,11 @@ export function EmailTemplateEditorPage() {
               : <HtmlEditor value={body} onChange={setBody} editorRef={editorRef} />}
           </div>
         </div>
-        <div className="w-72 shrink-0">
-          <PlaceholdersPanel onInsert={(token) => { if (!readOnly) editorRef.current?.insertText(token); }} />
-        </div>
+        {!readOnly && (
+          <div className="w-72 shrink-0">
+            <PlaceholdersPanel onInsert={(token) => editorRef.current?.insertText(token)} />
+          </div>
+        )}
       </div>
     </div>
   );
