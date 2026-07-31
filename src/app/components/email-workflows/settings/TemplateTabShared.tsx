@@ -41,10 +41,12 @@ interface TemplateSidebarShellProps {
   newLabel: string;
   onNew: () => void;
   onCategories: () => void;
+  categoriesLabel?: string;
   isEmpty: boolean;
   emptyIcon: React.ReactNode;
   emptyText: string;
   children: React.ReactNode;
+  hideActions?: boolean;
 }
 
 export function TemplateSidebarShell({
@@ -52,24 +54,28 @@ export function TemplateSidebarShell({
   newLabel,
   onNew,
   onCategories,
+  categoriesLabel = "Template Categories",
   isEmpty,
   emptyIcon,
   emptyText,
   children,
+  hideActions = false,
 }: TemplateSidebarShellProps) {
   return (
     <div className="w-64 border-r border-border flex flex-col shrink-0 bg-muted/20">
       {header}
-      <div className="px-3 py-3 border-b border-border space-y-2">
-        <Button className="w-full" onClick={onNew}>
-          <Plus className="w-3.5 h-3.5 mr-1.5" />
-          {newLabel}
-        </Button>
-        <Button className="w-full" variant="outline" onClick={onCategories}>
-          <Tag className="w-3.5 h-3.5 mr-1.5" />
-          Template Categories
-        </Button>
-      </div>
+      {!hideActions && (
+        <div className="px-3 py-3 border-b border-border space-y-2">
+          <Button className="w-full" onClick={onNew}>
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            {newLabel}
+          </Button>
+          <Button className="w-full" variant="outline" onClick={onCategories}>
+            <Tag className="w-3.5 h-3.5 mr-1.5" />
+            {categoriesLabel}
+          </Button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto py-1">
         {isEmpty && (
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
@@ -118,6 +124,7 @@ interface TemplateDetailHeaderProps {
   onDelete: () => void;
   onRequestDelete: (id: string) => void;
   onCancelDelete: () => void;
+  readOnly?: boolean;
 }
 
 export function TemplateDetailHeader({
@@ -129,6 +136,7 @@ export function TemplateDetailHeader({
   onDelete,
   onRequestDelete,
   onCancelDelete,
+  readOnly = false,
 }: TemplateDetailHeaderProps) {
   return (
     <div className="px-6 py-4 flex items-center justify-between shrink-0">
@@ -136,27 +144,29 @@ export function TemplateDetailHeader({
         <h2 className="text-base font-semibold text-foreground">{name}</h2>
         <div className="flex items-center gap-1.5 mt-0.5">{subtitle}</div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          <Pencil className="w-3.5 h-3.5 mr-1.5" />
-          Edit
-        </Button>
-        {confirmDeleteId === itemId ? (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-destructive font-medium">Delete?</span>
-            <Button variant="destructive" size="sm" className="h-7 text-xs px-2.5" onClick={onDelete}>Yes</Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={onCancelDelete}>No</Button>
-          </div>
-        ) : (
-          <button
-            onClick={() => onRequestDelete(itemId)}
-            className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={onEdit}>
+            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+            Edit
+          </Button>
+          {confirmDeleteId === itemId ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-destructive font-medium">Delete?</span>
+              <Button variant="destructive" size="sm" className="h-7 text-xs px-2.5" onClick={onDelete}>Yes</Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={onCancelDelete}>No</Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onRequestDelete(itemId)}
+              className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
