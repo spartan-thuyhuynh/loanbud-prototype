@@ -1,11 +1,13 @@
 import { createContext, useContext, useState } from "react";
 import { toast } from "sonner";
-import type { Contact, ChannelOptOut, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup } from "../types";
+import type { Contact, ChannelOptOut, EmailRecord, Task, TaskItem, Application, BusinessAcquisitionRecord, Segment, FilterRule, Workflow, WorkflowEnrollment, WorkflowStep, WorkflowStepProgress, ContactActivityRecord, CustomWorkflowStep, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup, TemplateFolder } from "../types";
 import { store } from "../data/store";
 import { computeDayOffsets, mergeSteps, nextFractionalOrder } from "../lib/workflowUtils";
 import { getDefaultOutcomeRules } from "../lib/taskTypeRegistry";
 import { getMatchedListings } from "../lib/segmentUtils";
 import { computeBulkAssignments, type BulkAssignmentResult } from "../lib/bulkTaskUtils";
+import { CURRENT_USER_ROLE, type TeamRole } from "../config/team";
+import { getDescendantFolderIds } from "../components/email-workflows/settings/templateVisibility";
 
 // ── Legacy ID migration helpers ───────────────────────────────────────────────
 // Old tasks used the pattern: taskitem-call-${enrollmentId}-${stepId}
@@ -104,6 +106,15 @@ interface AppDataContextValue {
   voicemailScripts: VoicemailScript[];
   voicemailSettings: VoicemailSettings;
   senderIdentities: SenderIdentity[];
+  templateFolders: TemplateFolder[];
+  currentUserRole: TeamRole;
+  handleSetCurrentUserRole: (role: TeamRole) => void;
+  handleCreateFolder: (name: string, parentId: string | null) => void;
+  handleRenameFolder: (id: string, name: string) => void;
+  handleMoveFolder: (id: string, newParentId: string | null) => void;
+  handleSetFolderVisibility: (id: string, visibleToLoanOfficers: boolean) => void;
+  handleDeleteFolder: (id: string) => void;
+  handleSetTemplateVisibility: (id: string, visibleToLoanOfficers: boolean | null) => void;
   // Template categories
   emailCategories: string[];
   smsCategories: string[];
@@ -176,6 +187,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.voicemailSettings.read()[0] ?? { providerName: "", fromPhoneNumber: "", ringlessEnabled: false, defaultGreeting: "", recordingEnabled: false },
   );
   const [senderIdentities, setSenderIdentities] = useState<SenderIdentity[]>(store.senderIdentities.read());
+  const [templateFolders, setTemplateFolders] = useState<TemplateFolder[]>(store.templateFolders.read());
+  const [currentUserRole, setCurrentUserRole] = useState<TeamRole>(CURRENT_USER_ROLE);
   const [emailCategories, setEmailCategories] = useState<string[]>(store.emailCategories.read());
   const [smsCategories, setSmsCategories] = useState<string[]>(store.smsCategories.read());
   const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
@@ -1936,6 +1949,66 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.adminEmailTemplates.write(updated);
   };
 
+  const persistFolders = (updated: TemplateFolder[]) => {
+    setTemplateFolders(updated);
+    store.templateFolders.write(updated);
+  };
+
+  const handleSetCurrentUserRole = (role: TeamRole) => setCurrentUserRole(role);
+
+  const handleCreateFolder = (name: string, parentId: string | null) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const created: TemplateFolder = {
+      id: `fld-${Date.now()}`,
+      name: trimmed,
+      parentId,
+      visibleToLoanOfficers: true,
+      createdAt: new Date(),
+    };
+    persistFolders([...templateFolders, created]);
+  };
+
+  const handleRenameFolder = (id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    persistFolders(templateFolders.map((f) => (f.id === id ? { ...f, name: trimmed } : f)));
+  };
+
+  const handleMoveFolder = (id: string, newParentId: string | null) => {
+    if (id === newParentId) return; // no self-parent
+    if (newParentId !== null && getDescendantFolderIds(id, templateFolders).includes(newParentId)) return; // no cycle
+    persistFolders(templateFolders.map((f) => (f.id === id ? { ...f, parentId: newParentId } : f)));
+  };
+
+  const handleSetFolderVisibility = (id: string, visibleToLoanOfficers: boolean) => {
+    persistFolders(templateFolders.map((f) => (f.id === id ? { ...f, visibleToLoanOfficers } : f)));
+  };
+
+  const handleDeleteFolder = (id: string) => {
+    const target = templateFolders.find((f) => f.id === id);
+    if (!target) return;
+    // Promote direct subfolders to the deleted folder's parent.
+    const remaining = templateFolders
+      .filter((f) => f.id !== id)
+      .map((f) => (f.parentId === id ? { ...f, parentId: target.parentId } : f));
+    persistFolders(remaining);
+    // Move this folder's direct templates to Uncategorized (folderId null).
+    const updatedTemplates = adminEmailTemplates.map((t) =>
+      t.folderId === id ? { ...t, folderId: null } : t,
+    );
+    setAdminEmailTemplates(updatedTemplates);
+    store.adminEmailTemplates.write(updatedTemplates);
+  };
+
+  const handleSetTemplateVisibility = (id: string, visibleToLoanOfficers: boolean | null) => {
+    const updated = adminEmailTemplates.map((t) =>
+      t.id === id ? { ...t, visibleToLoanOfficers } : t,
+    );
+    setAdminEmailTemplates(updated);
+    store.adminEmailTemplates.write(updated);
+  };
+
   const handleCreateSmsTemplate = (t: Omit<SmsTemplate, "id" | "createdAt" | "updatedAt">) => {
     const now = new Date();
     const created: SmsTemplate = {
@@ -2139,6 +2212,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         voicemailScripts,
         voicemailSettings,
         senderIdentities,
+        templateFolders,
+        currentUserRole,
+        handleSetCurrentUserRole,
+        handleCreateFolder,
+        handleRenameFolder,
+        handleMoveFolder,
+        handleSetFolderVisibility,
+        handleDeleteFolder,
+        handleSetTemplateVisibility,
         handleCreateAdminEmailTemplate,
         handleUpdateAdminEmailTemplate,
         handleDeleteAdminEmailTemplate,
