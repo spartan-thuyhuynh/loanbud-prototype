@@ -393,46 +393,48 @@ export function EmailTemplateFolderTree({
     );
   }
 
-  if (!isAdmin) {
-    return (
-      <>
-        {rootFolders.map((f) => renderFolder(f.id, 0))}
-        {uncategorized.length > 0 && (
-          <div>
-            <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Uncategorized</div>
-            {uncategorized.map((t) => renderTemplate(t, 1))}
-          </div>
-        )}
-      </>
-    );
-  }
-
+  // A single DndProvider must wrap BOTH branches below: FolderNode/TemplateNode call
+  // useDrag/useDrop unconditionally (isAdmin only gates whether refs are attached),
+  // so react-dnd's useDragDropManager() needs a provider ancestor on the LO path too,
+  // or it throws "Expected drag drop context" the instant a folder/template renders.
   return (
     <DndProvider backend={HTML5Backend}>
-      <RootDropZone onMoveTemplate={onMoveTemplate} onMoveFolder={onMoveFolder}>
-        <div className="px-3 pt-1 pb-2">
-          {creatingRoot ? (
-            <InlineNameInput
-              placeholder="Folder name"
-              depth={0}
-              onCommit={(name) => { onCreateFolder(name, null); setCreatingRoot(false); }}
-              onCancel={() => setCreatingRoot(false)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCreatingRoot(true)}
-              className="w-full flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-1 py-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Folder
-            </button>
+      {!isAdmin ? (
+        <>
+          {rootFolders.map((f) => renderFolder(f.id, 0))}
+          {uncategorized.length > 0 && (
+            <div>
+              <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Uncategorized</div>
+              {uncategorized.map((t) => renderTemplate(t, 1))}
+            </div>
           )}
-        </div>
-        {rootFolders.map((f) => renderFolder(f.id, 0))}
-        <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Uncategorized</div>
-        {uncategorized.map((t) => renderTemplate(t, 1))}
-      </RootDropZone>
+        </>
+      ) : (
+        <RootDropZone onMoveTemplate={onMoveTemplate} onMoveFolder={onMoveFolder}>
+          <div className="px-3 pt-1 pb-2">
+            {creatingRoot ? (
+              <InlineNameInput
+                placeholder="Folder name"
+                depth={0}
+                onCommit={(name) => { onCreateFolder(name, null); setCreatingRoot(false); }}
+                onCancel={() => setCreatingRoot(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCreatingRoot(true)}
+                className="w-full flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-1 py-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New Folder
+              </button>
+            )}
+          </div>
+          {rootFolders.map((f) => renderFolder(f.id, 0))}
+          <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Uncategorized</div>
+          {uncategorized.map((t) => renderTemplate(t, 1))}
+        </RootDropZone>
+      )}
     </DndProvider>
   );
 }
