@@ -1,4 +1,4 @@
-import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup } from "../types";
+import type { Contact, EmailRecord, Task, Segment, TaskItem, Application, BusinessAcquisitionRecord, Workflow, WorkflowEnrollment, ContactActivityRecord, AdminEmailTemplate, SmsTemplate, VoicemailScript, VoicemailSettings, SenderIdentity, Notification, NotificationPreferences, LoGroup, TemplateFolder } from "../types";
 import contactsJson from "./contacts.json";
 import segmentsJson from "./segments.json";
 import taskItemsJson from "./taskItems.json";
@@ -10,6 +10,7 @@ import workflowsJson from "./workflows.json";
 import workflowEnrollmentsJson from "./workflowEnrollments.json";
 import contactActivityJson from "./contactActivity.json";
 import adminEmailTemplatesJson from "./adminEmailTemplates.json";
+import templateFoldersJson from "./templateFolders.json";
 import smsTemplatesJson from "./smsTemplates.json";
 import voicemailScriptsJson from "./voicemailScripts.json";
 import voicemailSettingsJson from "./voicemailSettings.json";
@@ -29,7 +30,8 @@ const KEYS = {
   workflows: "loanbudcrm:v4:workflows",
   workflowEnrollments: "loanbudcrm:v5:workflowEnrollments",
   contactActivity: "loanbudcrm:v2:contactActivity",
-  adminEmailTemplates: "loanbudcrm:v2:adminEmailTemplates",
+  adminEmailTemplates: "loanbudcrm:v3:adminEmailTemplates",
+  templateFolders: "loanbudcrm:v1:templateFolders",
   smsTemplates: "loanbudcrm:v2:smsTemplates",
   voicemailScripts: "loanbudcrm:v2:voicemailScripts",
   voicemailSettings: "loanbudcrm:v2:voicemailSettings",
@@ -190,6 +192,15 @@ export const store = {
         ["createdAt", "updatedAt"],
       ),
     write: (data: AdminEmailTemplate[]) => write(KEYS.adminEmailTemplates, data),
+  },
+  templateFolders: {
+    read: () =>
+      read<TemplateFolder>(
+        KEYS.templateFolders,
+        templateFoldersJson as TemplateFolder[],
+        ["createdAt"],
+      ),
+    write: (data: TemplateFolder[]) => write(KEYS.templateFolders, data),
   },
   smsTemplates: {
     read: () =>

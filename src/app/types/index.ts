@@ -452,14 +452,21 @@ export interface ContactActivityRecord {
 
 // ── Admin Configuration Types ─────────────────────────────────────────────────
 
-export type EmailTemplateCategory = string;
+export interface TemplateFolder {
+  id: string;
+  name: string;
+  parentId: string | null;        // null = top-level
+  visibleToLoanOfficers: boolean;
+  createdAt: Date;
+}
 
 export interface AdminEmailTemplate {
   id: string;
   name: string;
   subject: string;
   body: string;
-  category: EmailTemplateCategory;
+  folderId: string | null;               // null = Uncategorized
+  visibleToLoanOfficers: boolean | null; // override: null = inherit
   senderType: "brand" | "loan-officer";
   variables: string[];
   createdAt: Date;
