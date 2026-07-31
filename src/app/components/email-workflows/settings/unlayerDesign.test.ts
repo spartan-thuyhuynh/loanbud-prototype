@@ -9,5 +9,9 @@ describe("htmlToUnlayerDesign", () => {
     const content = (d.body.rows[0] as any).columns[0].contents[0];
     expect(content.type).toBe("html");
     expect(content.values.html).toBe("<p>Hi</p>");
+    expect((d.body.rows[0] as any).cells).toEqual([1]);
+    expect(d.schemaVersion).toBe(16);
+    expect(d.counters).toBeDefined();
+    expect((d.body as any).values).toBeDefined();
   });
 });
