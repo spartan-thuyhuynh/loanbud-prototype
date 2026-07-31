@@ -31,6 +31,7 @@ function EmailTemplateEditorPageInner() {
   const [name, setName] = useState(existing?.name ?? "");
   const [subject, setSubject] = useState(existing?.subject ?? "");
   const [folderId, setFolderId] = useState<string | null>(existing?.folderId ?? null);
+  const [editorReady, setEditorReady] = useState(false);
   const unlayerRef = useRef<UnlayerEditorHandle | null>(null);
 
   const initialDesign = existing?.design ?? htmlToUnlayerDesign(existing?.body ?? "<p></p>");
@@ -39,21 +40,25 @@ function EmailTemplateEditorPageInner() {
 
   const save = async () => {
     if (!name.trim() || !subject.trim()) { toast.error("Name and subject are required."); return; }
-    const { design, html } = await unlayerRef.current!.save();
-    const variables = [...new Set([...extractPlaceholders(subject), ...extractPlaceholders(html)])];
-    const payload = {
-      name,
-      subject,
-      folderId,
-      body: html,
-      design,
-      visibleToLoanOfficers: existing?.visibleToLoanOfficers ?? null,
-      senderType: existing?.senderType ?? "brand" as const,
-      variables,
-    };
-    if (existing) { handleUpdateAdminEmailTemplate(existing.id, payload); toast.success("Template updated."); }
-    else { handleCreateAdminEmailTemplate(payload); toast.success("Template created."); }
-    back();
+    try {
+      const { design, html } = await unlayerRef.current!.save();
+      const variables = [...new Set([...extractPlaceholders(subject), ...extractPlaceholders(html)])];
+      const payload = {
+        name,
+        subject,
+        folderId,
+        body: html,
+        design,
+        visibleToLoanOfficers: existing?.visibleToLoanOfficers ?? null,
+        senderType: existing?.senderType ?? "brand" as const,
+        variables,
+      };
+      if (existing) { handleUpdateAdminEmailTemplate(existing.id, payload); toast.success("Template updated."); }
+      else { handleCreateAdminEmailTemplate(payload); toast.success("Template created."); }
+      back();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save template.");
+    }
   };
 
   // Flat, depth-annotated folders for the select.
@@ -73,7 +78,7 @@ function EmailTemplateEditorPageInner() {
         {!readOnly && (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={back}>Cancel</Button>
-            <Button size="sm" onClick={() => void save()}><Save className="w-4 h-4 mr-1.5" />Save</Button>
+            <Button size="sm" disabled={!editorReady} onClick={() => void save()}><Save className="w-4 h-4 mr-1.5" />Save</Button>
           </div>
         )}
       </div>
@@ -81,7 +86,7 @@ function EmailTemplateEditorPageInner() {
         <div className="flex-1 min-w-0">
           {readOnly
             ? <div className="prose prose-sm max-w-none h-full overflow-y-auto p-6" dangerouslySetInnerHTML={{ __html: existing?.body ?? "" }} />
-            : <UnlayerEditor initialDesign={initialDesign} editorRef={unlayerRef} />}
+            : <UnlayerEditor initialDesign={initialDesign} editorRef={unlayerRef} onReady={() => setEditorReady(true)} />}
         </div>
         {!readOnly && (
           <div className="w-80 shrink-0 border-l border-border overflow-y-auto p-4 space-y-4">

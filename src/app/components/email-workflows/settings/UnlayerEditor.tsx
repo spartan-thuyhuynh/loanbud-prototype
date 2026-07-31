@@ -11,9 +11,11 @@ export interface UnlayerEditorHandle {
 export default function UnlayerEditor({
   initialDesign,
   editorRef,
+  onReady,
 }: {
   initialDesign: UnlayerDesign;
   editorRef?: React.MutableRefObject<UnlayerEditorHandle | null>;
+  onReady?: () => void;
 }) {
   const ref = useRef<EditorRef>(null);
 
@@ -21,8 +23,12 @@ export default function UnlayerEditor({
     editorRef,
     () => ({
       save: () =>
-        new Promise((resolve) => {
-          ref.current?.editor?.exportHtml((data) => {
+        new Promise((resolve, reject) => {
+          if (!ref.current?.editor) {
+            reject(new Error("Editor is still loading"));
+            return;
+          }
+          ref.current.editor.exportHtml((data) => {
             resolve({ design: data.design as unknown as UnlayerDesign, html: data.html });
           });
         }),
@@ -36,7 +42,10 @@ export default function UnlayerEditor({
         ref={ref}
         // `onReady` receives the live editor instance directly, so we don't
         // need to rely on `ref.current` being populated yet.
-        onReady={(unlayer) => unlayer.loadDesign(initialDesign as never)}
+        onReady={(unlayer) => {
+          unlayer.loadDesign(initialDesign as never);
+          onReady?.();
+        }}
         minHeight="100%"
         style={{ flex: 1 }}
       />

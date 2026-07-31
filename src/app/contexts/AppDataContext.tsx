@@ -1905,7 +1905,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   function extractVariables(text: string): string[] {
-    return [...new Set([...text.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))];
+    return [...new Set([...text.matchAll(/\{\{([\w.]+)\}\}/g)].map((m) => m[1]))];
   }
 
   const handleCreateAdminEmailTemplate = (t: Omit<AdminEmailTemplate, "id" | "createdAt" | "updatedAt">) => {
