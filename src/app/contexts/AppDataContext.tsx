@@ -114,6 +114,7 @@ interface AppDataContextValue {
   handleMoveFolder: (id: string, newParentId: string | null) => void;
   handleSetFolderVisibility: (id: string, visibleToLoanOfficers: boolean) => void;
   handleDeleteFolder: (id: string) => void;
+  handleMoveTemplateToFolder: (templateId: string, folderId: string | null) => void;
   // Template categories
   smsCategories: string[];
   voicemailCategories: string[];
@@ -1995,6 +1996,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.adminEmailTemplates.write(updatedTemplates);
   };
 
+  const handleMoveTemplateToFolder = (templateId: string, folderId: string | null) => {
+    const updated = adminEmailTemplates.map((t) => (t.id === templateId ? { ...t, folderId } : t));
+    setAdminEmailTemplates(updated);
+    store.adminEmailTemplates.write(updated);
+  };
+
   const handleCreateSmsTemplate = (t: Omit<SmsTemplate, "id" | "createdAt" | "updatedAt">) => {
     const now = new Date();
     const created: SmsTemplate = {
@@ -2186,6 +2193,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleMoveFolder,
         handleSetFolderVisibility,
         handleDeleteFolder,
+        handleMoveTemplateToFolder,
         handleCreateAdminEmailTemplate,
         handleUpdateAdminEmailTemplate,
         handleDeleteAdminEmailTemplate,
