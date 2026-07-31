@@ -31,12 +31,19 @@ export function canRoleSeeFolder(folder: TemplateFolder, folders: TemplateFolder
   return isFolderVisibleToLO(folder.id, folders);
 }
 
-/** All descendant folder ids (excludes the folder itself). */
-export function getDescendantFolderIds(folderId: string, folders: TemplateFolder[]): string[] {
+/** All descendant folder ids (excludes the folder itself). Cycle-safe. */
+export function getDescendantFolderIds(
+  folderId: string,
+  folders: TemplateFolder[],
+  visited: Set<string> = new Set<string>()
+): string[] {
+  if (visited.has(folderId)) return [];
+  visited.add(folderId);
   const out: string[] = [];
   const children = folders.filter((f) => f.parentId === folderId);
   for (const child of children) {
-    out.push(child.id, ...getDescendantFolderIds(child.id, folders));
+    if (visited.has(child.id)) continue;
+    out.push(child.id, ...getDescendantFolderIds(child.id, folders, visited));
   }
   return out;
 }

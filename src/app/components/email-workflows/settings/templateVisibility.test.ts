@@ -67,6 +67,9 @@ describe("role gating", () => {
   it("loan_officer sees a visible template", () => {
     expect(canRoleSeeTemplate(tpl({ folderId: "a1" }), folders, "loan_officer")).toBe(true);
   });
+  it("loan_officer does not see a hidden folder", () => {
+    expect(canRoleSeeFolder(folders[2], folders, "loan_officer")).toBe(false);
+  });
 });
 
 describe("getDescendantFolderIds", () => {
@@ -75,5 +78,14 @@ describe("getDescendantFolderIds", () => {
   });
   it("returns [] for a leaf", () => {
     expect(getDescendantFolderIds("a1", folders)).toEqual([]);
+  });
+  it("terminates and returns no duplicates for a cyclic folder graph", () => {
+    const cyclicFolders: TemplateFolder[] = [
+      { id: "x", name: "X", parentId: "y", visibleToLoanOfficers: true, createdAt: new Date() },
+      { id: "y", name: "Y", parentId: "x", visibleToLoanOfficers: true, createdAt: new Date() },
+    ];
+    const result = getDescendantFolderIds("x", cyclicFolders);
+    expect(result).toEqual(["y"]);
+    expect(new Set(result).size).toBe(result.length);
   });
 });
