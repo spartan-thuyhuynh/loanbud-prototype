@@ -40,7 +40,7 @@ interface TemplateSidebarShellProps {
   header?: React.ReactNode;
   newLabel: string;
   onNew: () => void;
-  onCategories: () => void;
+  onCategories?: () => void;
   categoriesLabel?: string;
   isEmpty: boolean;
   emptyIcon: React.ReactNode;
@@ -70,10 +70,12 @@ export function TemplateSidebarShell({
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             {newLabel}
           </Button>
-          <Button className="w-full" variant="outline" onClick={onCategories}>
-            <Tag className="w-3.5 h-3.5 mr-1.5" />
-            {categoriesLabel}
-          </Button>
+          {onCategories && (
+            <Button className="w-full" variant="outline" onClick={onCategories}>
+              <Tag className="w-3.5 h-3.5 mr-1.5" />
+              {categoriesLabel}
+            </Button>
+          )}
         </div>
       )}
       <div className="flex-1 overflow-y-auto py-1">

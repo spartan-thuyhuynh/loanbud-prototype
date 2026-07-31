@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, EyeOff, Folder as FolderIcon, Mail } from "lucide-react";
+import { EyeOff, Mail } from "lucide-react";
 import { toast } from "sonner";
 import type { AdminEmailTemplate } from "../../../types";
 import type { TeamRole } from "../../../config/team";
@@ -8,7 +8,7 @@ import { Badge } from "../../ui/badge";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Textarea } from "../../ui/textarea";
-import { FolderManagerModal } from "./FolderManagerModal";
+import { EmailTemplateFolderTree } from "./EmailTemplateFolderTree";
 import { canRoleSeeFolder, canRoleSeeTemplate, resolveTemplateVisibleToLO } from "./templateVisibility";
 import {
   DetailSection,
@@ -129,19 +129,18 @@ export function EmailTemplatesTab() {
     handleMoveFolder,
     handleSetFolderVisibility,
     handleDeleteFolder,
+    handleMoveTemplateToFolder,
   } = useAppData();
 
   const isAdmin = currentUserRole !== "loan_officer";
 
   const [selected, setSelected] = useState<AdminEmailTemplate | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [newForm, setNewForm] = useState(emptyForm);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState(emptyForm);
   const [editConfirmSave, setEditConfirmSave] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(templateFolders.map((f) => f.id)));
 
   useEffect(() => {
     if (selected && !canRoleSeeTemplate(selected, templateFolders, currentUserRole)) {
@@ -222,11 +221,6 @@ export function EmailTemplatesTab() {
   const visibleFolders = templateFolders.filter((f) => canRoleSeeFolder(f, templateFolders, currentUserRole));
   const visibleTemplates = adminEmailTemplates.filter((t) => canRoleSeeTemplate(t, templateFolders, currentUserRole));
 
-  const rootFolders = visibleFolders.filter((f) => f.parentId === null);
-  const childrenOf = (id: string) => visibleFolders.filter((f) => f.parentId === id);
-  const templatesInFolder = (id: string) => visibleTemplates.filter((t) => t.folderId === id);
-  const uncategorized = visibleTemplates.filter((t) => t.folderId === null);
-
   // Flat, depth-annotated list of ALL folders (unfiltered) for the form's folder select.
   const allFoldersWithDepth = (() => {
     const out: { id: string; name: string; depth: number }[] = [];
@@ -239,62 +233,6 @@ export function EmailTemplatesTab() {
     walk(null, 0);
     return out;
   })();
-
-  const toggleExpanded = (folderId: string) => {
-    setExpanded((s) => {
-      const n = new Set(s);
-      if (n.has(folderId)) n.delete(folderId); else n.add(folderId);
-      return n;
-    });
-  };
-
-  function renderTemplateRow(t: AdminEmailTemplate, depth: number) {
-    const isActive = selected?.id === t.id;
-    const loHidden = isAdmin && !resolveTemplateVisibleToLO(t, templateFolders);
-    return (
-      <button
-        key={t.id}
-        onClick={() => { setSelected(t); setConfirmDeleteId(null); }}
-        className={`w-full text-left px-3 py-2.5 border-b border-border/40 last:border-b-0 transition-colors ${isActive ? "bg-background shadow-sm" : "hover:bg-background/60"}`}
-        style={{ paddingLeft: 12 + depth * 14 }}
-      >
-        <div className="flex items-center gap-1.5">
-          <p className={`text-sm font-medium truncate flex-1 ${isActive ? "text-primary" : "text-foreground"}`}>{t.name}</p>
-          {loHidden && <EyeOff className="w-3 h-3 text-muted-foreground/70 shrink-0" aria-label="Hidden from loan officers" />}
-        </div>
-        {t.subject && (
-          <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.subject}</p>
-        )}
-      </button>
-    );
-  }
-
-  function renderFolder(folderId: string, depth: number) {
-    const folder = visibleFolders.find((f) => f.id === folderId);
-    if (!folder) return null;
-    const open = expanded.has(folderId);
-    const loHidden = isAdmin && !canRoleSeeFolder(folder, templateFolders, "loan_officer");
-    return (
-      <div key={folderId}>
-        <button
-          onClick={() => toggleExpanded(folderId)}
-          className="w-full flex items-center gap-1.5 px-3 py-2 text-left hover:bg-background/60"
-          style={{ paddingLeft: 12 + depth * 14 }}
-        >
-          {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-          <FolderIcon className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground truncate flex-1">{folder.name}</span>
-          {loHidden && <EyeOff className="w-3 h-3 text-muted-foreground/70" aria-label="Hidden from loan officers" />}
-        </button>
-        {open && (
-          <>
-            {childrenOf(folderId).map((c) => renderFolder(c.id, depth + 1))}
-            {templatesInFolder(folderId).map((t) => renderTemplateRow(t, depth + 1))}
-          </>
-        )}
-      </div>
-    );
-  }
 
   const viewVariables = extractVariables(`${selected?.subject ?? ""} ${selected?.body ?? ""}`);
 
@@ -316,20 +254,24 @@ export function EmailTemplatesTab() {
           <TemplateSidebarShell
             newLabel="New Template"
             onNew={openNew}
-            onCategories={() => setFolderModalOpen(true)}
-            categoriesLabel="Manage Folders"
             isEmpty={visibleTemplates.length === 0 && visibleFolders.length === 0}
             emptyIcon={<Mail className="w-7 h-7 text-muted-foreground/30 mb-2" />}
             emptyText="No templates yet."
             hideActions={!isAdmin}
           >
-            {rootFolders.map((f) => renderFolder(f.id, 0))}
-            {uncategorized.length > 0 && (
-              <div>
-                <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Uncategorized</div>
-                {uncategorized.map((t) => renderTemplateRow(t, 1))}
-              </div>
-            )}
+            <EmailTemplateFolderTree
+              folders={templateFolders}
+              templates={adminEmailTemplates}
+              currentUserRole={currentUserRole}
+              selectedId={selected?.id ?? null}
+              onSelectTemplate={(t) => { setSelected(t); setConfirmDeleteId(null); }}
+              onMoveTemplate={handleMoveTemplateToFolder}
+              onMoveFolder={handleMoveFolder}
+              onCreateFolder={handleCreateFolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onSetFolderVisibility={handleSetFolderVisibility}
+            />
           </TemplateSidebarShell>
 
           {selected ? (
@@ -401,19 +343,6 @@ export function EmailTemplatesTab() {
       >
         <TemplateForm form={editForm} folders={allFoldersWithDepth} onChange={(u) => setEditForm((f) => ({ ...f, ...u }))} />
       </TemplateModalShell>
-
-      {isAdmin && (
-        <FolderManagerModal
-          open={folderModalOpen}
-          folders={templateFolders}
-          onOpenChange={setFolderModalOpen}
-          onCreate={handleCreateFolder}
-          onRename={handleRenameFolder}
-          onMove={handleMoveFolder}
-          onSetVisibility={handleSetFolderVisibility}
-          onDelete={handleDeleteFolder}
-        />
-      )}
     </>
   );
 }
