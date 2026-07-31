@@ -139,9 +139,12 @@ function TemplateRow({
         )}
       </td>
       <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{formatShortDate(template.updatedAt)}</td>
-      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+      <td className="px-3 py-2.5 text-right whitespace-nowrap relative">
         {isAdmin && (
-          <div className="hidden group-hover:inline-flex items-center gap-0.5" onClick={stop}>
+          <div
+            className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity bg-background/95 rounded"
+            onClick={stop}
+          >
             {confirmDelete ? (
               <>
                 <span className="text-xs text-destructive font-medium mr-1">Delete?</span>
@@ -299,7 +302,10 @@ function FolderGroupRow({
             <div className="flex-1" />
 
             {isAdmin && mode !== "confirmDelete" && (
-              <div className="hidden group-hover:flex items-center gap-0.5 shrink-0" onClick={stop}>
+              <div
+                className="flex items-center gap-0.5 shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity"
+                onClick={stop}
+              >
                 <button
                   type="button"
                   title="Add subfolder"
