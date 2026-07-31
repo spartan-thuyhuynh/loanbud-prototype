@@ -45,8 +45,9 @@ export function extractPlaceholders(text: string): string[] {
 }
 
 export function migratePlaceholders(text: string): string {
+  // Seed-scoped: only tokens present in LEGACY_MAP are rewritten; any other token passes through unchanged.
   return text.replace(TOKEN_RE, (_full, name: string) => {
-    const mapped = LEGACY_MAP[name] ?? (name.includes(".") ? name : name);
+    const mapped = LEGACY_MAP[name] ?? name;
     return `{{${mapped}}}`;
   });
 }

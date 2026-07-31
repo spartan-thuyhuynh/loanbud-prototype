@@ -119,7 +119,7 @@ function TemplateRow({
 
   return (
     <tr
-      ref={isAdmin ? (el) => dragRef(el) : undefined}
+      ref={isAdmin ? dragRef : undefined}
       onClick={onSelect}
       className={`group border-b border-border/40 last:border-b-0 cursor-pointer hover:bg-muted/40 transition-colors ${isDragging ? "opacity-50" : ""}`}
     >
@@ -451,7 +451,8 @@ export function EmailTemplateTable() {
   const goToTemplate = (t: AdminEmailTemplate) => navigate(`/email-workflows/templates/${t.id}`);
 
   function renderTemplate(t: AdminEmailTemplate, depth: number): ReactNode {
-    const loHidden = isAdmin && !resolveTemplateVisibleToLO(t, templateFolders);
+    const visibleToLO = resolveTemplateVisibleToLO(t, templateFolders);
+    const loHidden = isAdmin && !visibleToLO;
     return (
       <TemplateRow
         key={t.id}
@@ -459,7 +460,7 @@ export function EmailTemplateTable() {
         depth={depth}
         loHidden={loHidden}
         isAdmin={isAdmin}
-        isVisibleToLO={resolveTemplateVisibleToLO(t, templateFolders)}
+        isVisibleToLO={visibleToLO}
         onSelect={() => goToTemplate(t)}
         onDelete={() => { handleDeleteAdminEmailTemplate(t.id); toast.success("Email template deleted."); }}
       />
