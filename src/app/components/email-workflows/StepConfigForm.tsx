@@ -257,7 +257,7 @@ export function StepConfigRight({
             <SelectContent>
               {adminEmailTemplates.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
-                  {t.name} · {t.category}
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>
