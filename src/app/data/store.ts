@@ -39,7 +39,6 @@ const KEYS = {
   notifications: "loanbudcrm:notifications",
   loGroups: "loanbudcrm:loGroups",
   notificationPrefs: "loanbudcrm:v2:notificationPrefs",
-  emailCategories: "loanbudcrm:v2:emailCategories",
   smsCategories: "loanbudcrm:v2:smsCategories",
   voicemailCategories: "loanbudcrm:v2:voicemailCategories",
 } as const;
@@ -273,10 +272,6 @@ export const store = {
       },
     ),
     write: (data: NotificationPreferences) => writeObject(KEYS.notificationPrefs, data),
-  },
-  emailCategories: {
-    read: () => readStringArray(KEYS.emailCategories, ["Initial Outreach", "Follow-up", "Nurture", "Re-engagement", "Custom"]),
-    write: (data: string[]) => writeStringArray(KEYS.emailCategories, data),
   },
   smsCategories: {
     read: () => readStringArray(KEYS.smsCategories, ["Follow-up", "Reminder", "Appointment", "Alert", "Custom"]),

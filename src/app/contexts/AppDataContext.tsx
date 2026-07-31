@@ -116,13 +116,9 @@ interface AppDataContextValue {
   handleDeleteFolder: (id: string) => void;
   handleSetTemplateVisibility: (id: string, visibleToLoanOfficers: boolean | null) => void;
   // Template categories
-  emailCategories: string[];
   smsCategories: string[];
   voicemailCategories: string[];
   // Category handlers
-  handleAddEmailCategory: (name: string) => void;
-  handleDeleteEmailCategory: (name: string) => void;
-  handleRenameEmailCategory: (oldName: string, newName: string) => void;
   handleAddSmsCategory: (name: string) => void;
   handleDeleteSmsCategory: (name: string) => void;
   handleRenameSmsCategory: (oldName: string, newName: string) => void;
@@ -189,7 +185,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [senderIdentities, setSenderIdentities] = useState<SenderIdentity[]>(store.senderIdentities.read());
   const [templateFolders, setTemplateFolders] = useState<TemplateFolder[]>(store.templateFolders.read());
   const [currentUserRole, setCurrentUserRole] = useState<TeamRole>(CURRENT_USER_ROLE);
-  const [emailCategories, setEmailCategories] = useState<string[]>(store.emailCategories.read());
   const [smsCategories, setSmsCategories] = useState<string[]>(store.smsCategories.read());
   const [voicemailCategories, setVoicemailCategories] = useState<string[]>(store.voicemailCategories.read());
   const [notifications, setNotifications] = useState<Notification[]>(store.notifications.read());
@@ -2100,26 +2095,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     store.senderIdentities.write(updated);
   };
 
-  const handleAddEmailCategory = (name: string) => {
-    if (emailCategories.includes(name)) return;
-    const updated = [...emailCategories, name];
-    setEmailCategories(updated);
-    store.emailCategories.write(updated);
-  };
-
-  const handleDeleteEmailCategory = (name: string) => {
-    const updated = emailCategories.filter((c) => c !== name);
-    setEmailCategories(updated);
-    store.emailCategories.write(updated);
-  };
-
-  const handleRenameEmailCategory = (oldName: string, newName: string) => {
-    if (!newName || emailCategories.includes(newName)) return;
-    const updated = emailCategories.map((c) => (c === oldName ? newName : c));
-    setEmailCategories(updated);
-    store.emailCategories.write(updated);
-  };
-
   const handleAddSmsCategory = (name: string) => {
     if (smsCategories.includes(name)) return;
     const updated = [...smsCategories, name];
@@ -2236,12 +2211,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         handleUpdateSenderIdentity,
         handleDeleteSenderIdentity,
         handleSetDefaultSenderIdentity,
-        emailCategories,
         smsCategories,
         voicemailCategories,
-        handleAddEmailCategory,
-        handleDeleteEmailCategory,
-        handleRenameEmailCategory,
         handleAddSmsCategory,
         handleDeleteSmsCategory,
         handleRenameSmsCategory,

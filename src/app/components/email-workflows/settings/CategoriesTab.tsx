@@ -201,12 +201,8 @@ function CategorySection({
 
 export function CategoriesTab() {
   const {
-    emailCategories,
     smsCategories,
     voicemailCategories,
-    handleAddEmailCategory,
-    handleDeleteEmailCategory,
-    handleRenameEmailCategory,
     handleAddSmsCategory,
     handleDeleteSmsCategory,
     handleRenameSmsCategory,
@@ -217,13 +213,6 @@ export function CategoriesTab() {
 
   return (
     <div className="overflow-y-auto h-full px-8 py-6 space-y-8 max-w-xl">
-      <CategorySection
-        title="Email Template Categories"
-        categories={emailCategories}
-        onAdd={handleAddEmailCategory}
-        onDelete={handleDeleteEmailCategory}
-        onRename={handleRenameEmailCategory}
-      />
       <CategorySection
         title="SMS Template Categories"
         categories={smsCategories}
