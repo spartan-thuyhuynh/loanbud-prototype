@@ -475,6 +475,8 @@ export interface AdminEmailTemplate {
   variables: string[];
   createdAt: Date;
   updatedAt: Date;
+  /** System templates are managed in config but hidden from manual-send pickers. */
+  isSystem?: boolean;
 }
 
 export type SmsTemplateCategory = string;
