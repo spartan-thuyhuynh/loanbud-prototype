@@ -234,6 +234,15 @@ export function StepConfigRight({
   const selectedEmailTpl = adminEmailTemplates.find((t) => t.id === draft.templateId);
   const selectedSmsTpl = smsTemplates.find((t) => t.id === draft.smsTemplateId);
 
+  // Manual-send pickers exclude system templates from new selections, but an
+  // already-selected system template (from a prior save) must still render
+  // its name in the dropdown instead of going blank.
+  const selectableEmailTemplates = adminEmailTemplates.filter((t) => !t.isSystem);
+  const emailTemplateOptions =
+    selectedEmailTpl?.isSystem && !selectableEmailTemplates.some((t) => t.id === selectedEmailTpl.id)
+      ? [selectedEmailTpl, ...selectableEmailTemplates]
+      : selectableEmailTemplates;
+
   if (draft.actionType === "email") {
     return (
       <div className="space-y-4">
@@ -255,7 +264,7 @@ export function StepConfigRight({
               <SelectValue placeholder="— Select a template —" />
             </SelectTrigger>
             <SelectContent>
-              {adminEmailTemplates.map((t) => (
+              {emailTemplateOptions.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
                 </SelectItem>
