@@ -30,7 +30,7 @@ const KEYS = {
   workflows: "loanbudcrm:v5:workflows",
   workflowEnrollments: "loanbudcrm:v5:workflowEnrollments",
   contactActivity: "loanbudcrm:v2:contactActivity",
-  adminEmailTemplates: "loanbudcrm:v5:adminEmailTemplates",
+  adminEmailTemplates: "loanbudcrm:v6:adminEmailTemplates",
   templateFolders: "loanbudcrm:v1:templateFolders",
   smsTemplates: "loanbudcrm:v2:smsTemplates",
   voicemailScripts: "loanbudcrm:v2:voicemailScripts",

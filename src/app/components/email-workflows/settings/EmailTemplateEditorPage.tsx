@@ -6,6 +6,7 @@ import { useAppData } from "../../../contexts/AppDataContext";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Switch } from "../../ui/switch";
 import UnlayerEditor, { type UnlayerEditorHandle } from "./UnlayerEditor";
 import { PlaceholdersPanel } from "./PlaceholdersPanel";
 import { extractPlaceholders } from "./placeholderCatalog";
@@ -31,6 +32,10 @@ function EmailTemplateEditorPageInner() {
   const [name, setName] = useState(existing?.name ?? "");
   const [subject, setSubject] = useState(existing?.subject ?? "");
   const [folderId, setFolderId] = useState<string | null>(existing?.folderId ?? null);
+  const [visibility, setVisibility] = useState<"public" | "admin">(
+    existing?.visibleToLoanOfficers === false ? "admin" : "public"
+  );
+  const [isSystem, setIsSystem] = useState<boolean>(existing?.isSystem ?? false);
   const [editorReady, setEditorReady] = useState(false);
   const unlayerRef = useRef<UnlayerEditorHandle | null>(null);
 
@@ -49,7 +54,8 @@ function EmailTemplateEditorPageInner() {
         folderId,
         body: html,
         design,
-        visibleToLoanOfficers: existing?.visibleToLoanOfficers ?? null,
+        visibleToLoanOfficers: visibility === "public",
+        isSystem,
         senderType: existing?.senderType ?? "brand" as const,
         variables,
       };
@@ -103,7 +109,38 @@ function EmailTemplateEditorPageInner() {
               </Select>
             </div>
             <div className="space-y-1.5"><FieldLabel>Subject</FieldLabel><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+            <div className="space-y-1.5">
+              <FieldLabel>Visibility</FieldLabel>
+              <Select value={visibility} onValueChange={(v) => setVisibility(v as "public" | "admin")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="admin">Admin only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Admin only hides this template from loan officers.</p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <FieldLabel>System email</FieldLabel>
+                <Switch checked={isSystem} onCheckedChange={setIsSystem} />
+              </div>
+              <p className="text-xs text-muted-foreground">System templates can&apos;t be sent manually (hidden from Quick Email + workflow pickers).</p>
+            </div>
             <PlaceholdersPanel />
+          </div>
+        )}
+        {readOnly && (
+          <div className="w-80 shrink-0 border-l border-border overflow-y-auto p-4 space-y-4">
+            <h2 className="text-sm font-semibold text-foreground">Template settings</h2>
+            <div className="space-y-1.5">
+              <FieldLabel>Visibility</FieldLabel>
+              <p className="text-sm text-foreground">{visibility === "public" ? "Public" : "Admin only"}</p>
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel>System email</FieldLabel>
+              <p className="text-sm text-foreground">{isSystem ? "Yes" : "No"}</p>
+            </div>
           </div>
         )}
       </div>

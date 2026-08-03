@@ -26,6 +26,7 @@ const FONT_SIZES = ["10px", "12px", "14px", "16px", "18px", "20px", "24px"];
 
 export function QuickEmailModal({ toEmail, toName, onClose, initialSubject, onSend }: QuickEmailModalProps) {
   const { adminEmailTemplates } = useAppData();
+  const selectableEmailTemplates = adminEmailTemplates.filter((t) => !t.isSystem);
   const [sender, setSender] = useState(SENDER_OPTIONS[0].value);
   const [subject, setSubject] = useState(initialSubject ?? "");
   const [cc, setCc] = useState(false);
@@ -131,7 +132,7 @@ export function QuickEmailModal({ toEmail, toName, onClose, initialSubject, onSe
                     className="flex-1 text-sm bg-transparent focus:outline-none appearance-none pr-6 text-gray-700"
                   >
                     <option value="" disabled className="text-gray-400">Select template</option>
-                    {adminEmailTemplates.map((t) => (
+                    {selectableEmailTemplates.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
