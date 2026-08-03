@@ -6,8 +6,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   ChevronDown,
   ChevronRight,
-  Eye,
-  EyeOff,
   Folder as FolderIcon,
   Pencil,
   Plus,
@@ -16,11 +14,11 @@ import {
 import { toast } from "sonner";
 import type { AdminEmailTemplate, TemplateFolder } from "../../../types";
 import { useAppData } from "../../../contexts/AppDataContext";
+import { Badge } from "../../ui/badge";
 import {
   canRoleSeeFolder,
   canRoleSeeTemplate,
   getDescendantFolderIds,
-  resolveTemplateVisibleToLO,
 } from "./templateVisibility";
 
 // ── Drag types ───────────────────────────────────────────────────────────────
@@ -32,7 +30,7 @@ type TemplateDragItem = { kind: "template"; id: string };
 type FolderDragItem = { kind: "folder"; id: string };
 type DragItem = TemplateDragItem | FolderDragItem;
 
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 5;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -93,17 +91,13 @@ function InlineNameInput({
 function TemplateRow({
   template,
   depth,
-  loHidden,
   isAdmin,
-  isVisibleToLO,
   onSelect,
   onDelete,
 }: {
   template: AdminEmailTemplate;
   depth: number;
-  loHidden: boolean;
   isAdmin: boolean;
-  isVisibleToLO: boolean;
   onSelect: () => void;
   onDelete: () => void;
 }) {
@@ -126,18 +120,15 @@ function TemplateRow({
       <td className="px-3 py-2.5" style={{ paddingLeft: 12 + depth * 14 }}>
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-foreground truncate max-w-[260px]">{template.name}</p>
-          {loHidden && <EyeOff className="w-3 h-3 text-muted-foreground/70 shrink-0" aria-label="Hidden from loan officers" />}
+          {template.isSystem && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground shrink-0">
+              System
+            </Badge>
+          )}
         </div>
       </td>
       <td className="px-3 py-2.5 text-sm text-muted-foreground truncate max-w-[220px]">{template.subject}</td>
       <td className="px-3 py-2.5 text-sm text-muted-foreground whitespace-nowrap">{senderLabel(template.senderType)}</td>
-      <td className="px-3 py-2.5 text-sm whitespace-nowrap">
-        {isVisibleToLO ? (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Eye className="w-3 h-3" /> Visible</span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><EyeOff className="w-3 h-3" /> Hidden</span>
-        )}
-      </td>
       <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{formatShortDate(template.updatedAt)}</td>
       <td className="px-3 py-2.5 text-right whitespace-nowrap relative">
         {isAdmin && (
@@ -198,7 +189,6 @@ function FolderGroupRow({
   folder,
   depth,
   open,
-  loHidden,
   isAdmin,
   allFolders,
   onToggle,
@@ -207,12 +197,10 @@ function FolderGroupRow({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
-  onSetFolderVisibility,
 }: {
   folder: TemplateFolder;
   depth: number;
   open: boolean;
-  loHidden: boolean;
   isAdmin: boolean;
   allFolders: TemplateFolder[];
   onToggle: () => void;
@@ -221,7 +209,6 @@ function FolderGroupRow({
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
-  onSetFolderVisibility: (id: string, visible: boolean) => void;
 }) {
   const [mode, setMode] = useState<FolderRowMode>("idle");
 
@@ -297,7 +284,6 @@ function FolderGroupRow({
             >
               {folder.name}
             </span>
-            {loHidden && <EyeOff className="w-3 h-3 text-muted-foreground/70 shrink-0" aria-label="Hidden from loan officers" />}
 
             <div className="flex-1" />
 
@@ -321,14 +307,6 @@ function FolderGroupRow({
                   className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
                 >
                   <Pencil className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  title={folder.visibleToLoanOfficers ? "Visible to loan officers" : "Hidden from loan officers"}
-                  onClick={(e) => { stop(e); onSetFolderVisibility(folder.id, !folder.visibleToLoanOfficers); }}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                >
-                  {folder.visibleToLoanOfficers ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                 </button>
                 <button
                   type="button"
@@ -428,7 +406,6 @@ export function EmailTemplateTable() {
     handleCreateFolder,
     handleRenameFolder,
     handleMoveFolder,
-    handleSetFolderVisibility,
     handleDeleteFolder,
     handleMoveTemplateToFolder,
     handleDeleteAdminEmailTemplate,
@@ -457,16 +434,12 @@ export function EmailTemplateTable() {
   const goToTemplate = (t: AdminEmailTemplate) => navigate(`/email-workflows/templates/${t.id}`);
 
   function renderTemplate(t: AdminEmailTemplate, depth: number): ReactNode {
-    const visibleToLO = resolveTemplateVisibleToLO(t, templateFolders);
-    const loHidden = isAdmin && !visibleToLO;
     return (
       <TemplateRow
         key={t.id}
         template={t}
         depth={depth}
-        loHidden={loHidden}
         isAdmin={isAdmin}
-        isVisibleToLO={visibleToLO}
         onSelect={() => goToTemplate(t)}
         onDelete={() => { handleDeleteAdminEmailTemplate(t.id); toast.success("Email template deleted."); }}
       />
@@ -477,14 +450,12 @@ export function EmailTemplateTable() {
     const folder = visibleFolders.find((f) => f.id === folderId);
     if (!folder) return null;
     const open = expanded.has(folderId);
-    const loHidden = isAdmin && !canRoleSeeFolder(folder, templateFolders, "loan_officer");
     return (
       <FolderGroupRow
         key={folderId}
         folder={folder}
         depth={depth}
         open={open}
-        loHidden={loHidden}
         isAdmin={isAdmin}
         allFolders={templateFolders}
         onToggle={() => toggleExpanded(folderId)}
@@ -493,7 +464,6 @@ export function EmailTemplateTable() {
         onCreateFolder={handleCreateFolder}
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
-        onSetFolderVisibility={handleSetFolderVisibility}
       />
     );
   }
@@ -519,7 +489,6 @@ export function EmailTemplateTable() {
           <th className="px-3 py-2 font-medium">Name</th>
           <th className="px-3 py-2 font-medium">Subject</th>
           <th className="px-3 py-2 font-medium">Sender</th>
-          <th className="px-3 py-2 font-medium">Visible to LOs</th>
           <th className="px-3 py-2 font-medium">Updated</th>
           <th className="px-3 py-2 font-medium" />
         </tr>
