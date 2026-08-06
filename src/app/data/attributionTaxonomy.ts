@@ -1,57 +1,90 @@
 import type { AttributionNode } from "../types";
 
 /**
- * V2 (RFC-009): Attribution Source Hierarchy — the "lead source pyramid".
+ * V2 (RFC-009): Attribution Source Hierarchy — the "lead source pyramid",
+ * modelled on HubSpot's 10 contact traffic sources (the taxonomy marketing uses today).
  *
- * Channel (L1) > Platform (L2) > Campaign (L3) > Ad Set (L4) > Creative (L5).
- * L1/L2 (and the two BizBuySell L3 leaves) mirror the Phase-1 seed taxonomy;
- * the Meta Ads subtree below them is a Phase-2 preview: nodes auto-created
- * from live UTM data (`isAutoCreated`), showing how campaigns/ad sets/creatives
- * appear in the tree by themselves the first time a lead arrives from them.
+ * Source (L1) > Drill-down 1 (L2) > Drill-down 2 (L3) [> Ad Set (L4) > Creative (L5)].
+ * The 10 L1 sources match HubSpot exactly. The "ready now" sources — Email marketing,
+ * Referrals, Direct traffic, Offline sources — carry the CRM's existing leads; the
+ * web-tracked sources (Organic/Paid Search & Social, AI Referrals, Other campaigns)
+ * fill in as ad accounts + website tracking connect. The Meta Ads subtree under
+ * Paid social is a Phase-2 preview: nodes auto-created from live UTM data
+ * (`isAutoCreated`) — campaigns/ad sets/creatives appear by themselves as leads arrive.
  *
- * Static reference data (no localStorage) — in the real system this is the
- * `attribution_nodes` table, editable as data without code changes.
+ * Static reference data — in the real system this is the `attribution_nodes` table,
+ * editable as data without code changes.
  */
 export const ATTRIBUTION_NODES: AttributionNode[] = [
-  // ---- L1 channels (curated) ----
-  { id: "paid-search", parentId: null, level: 1, kind: "channel", name: "Paid Search" },
-  { id: "paid-social", parentId: null, level: 1, kind: "channel", name: "Paid Social" },
-  { id: "organic-search", parentId: null, level: 1, kind: "channel", name: "Organic Search" },
-  { id: "organic-social", parentId: null, level: 1, kind: "channel", name: "Organic Social" },
-  { id: "email", parentId: null, level: 1, kind: "channel", name: "Email" },
-  { id: "partnership", parentId: null, level: 1, kind: "channel", name: "Partnership" },
-  { id: "website", parentId: null, level: 1, kind: "channel", name: "Website" },
-  { id: "direct-manual", parentId: null, level: 1, kind: "channel", name: "Direct / Manual" },
-  { id: "events", parentId: null, level: 1, kind: "channel", name: "Events" },
+  // ---- L1: HubSpot's 10 contact traffic sources (channels) ----
+  { id: "organic-search", parentId: null, level: 1, kind: "channel", name: "Organic search" },
+  { id: "paid-search", parentId: null, level: 1, kind: "channel", name: "Paid search" },
+  { id: "email-marketing", parentId: null, level: 1, kind: "channel", name: "Email marketing" },
+  { id: "organic-social", parentId: null, level: 1, kind: "channel", name: "Organic social" },
+  { id: "referrals", parentId: null, level: 1, kind: "channel", name: "Referrals" },
+  { id: "paid-social", parentId: null, level: 1, kind: "channel", name: "Paid social" },
+  { id: "direct-traffic", parentId: null, level: 1, kind: "channel", name: "Direct traffic" },
+  { id: "ai-referrals", parentId: null, level: 1, kind: "channel", name: "AI Referrals" },
+  { id: "other-campaigns", parentId: null, level: 1, kind: "channel", name: "Other campaigns" },
+  { id: "offline-sources", parentId: null, level: 1, kind: "channel", name: "Offline sources" },
 
-  // ---- L2 platforms (curated) ----
-  { id: "google-ads", parentId: "paid-search", level: 2, kind: "platform", name: "Google Ads" },
-  { id: "bing-ads", parentId: "paid-search", level: 2, kind: "platform", name: "Bing Ads" },
-  { id: "meta-ads", parentId: "paid-social", level: 2, kind: "platform", name: "Meta Ads" },
-  { id: "tiktok-ads", parentId: "paid-social", level: 2, kind: "platform", name: "TikTok Ads" },
-  { id: "linkedin-ads", parentId: "paid-social", level: 2, kind: "platform", name: "LinkedIn Ads" },
-  { id: "sendgrid-campaigns", parentId: "email", level: 2, kind: "platform", name: "SendGrid campaigns" },
-  { id: "bizbuysell", parentId: "partnership", level: 2, kind: "platform", name: "BizBuySell" },
-  { id: "transworld", parentId: "partnership", level: 2, kind: "platform", name: "Transworld Business Advisors" },
-  { id: "loanbud-io", parentId: "website", level: 2, kind: "platform", name: "loanbud.io" },
-  { id: "apply-lumba", parentId: "website", level: 2, kind: "platform", name: "apply.lumba.com" },
-  { id: "wordpress-site", parentId: "website", level: 2, kind: "platform", name: "WordPress site" },
-  { id: "crm-manual-entry", parentId: "direct-manual", level: 2, kind: "platform", name: "CRM manual entry" },
-  { id: "cold-call", parentId: "direct-manual", level: 2, kind: "platform", name: "Cold call" },
+  // ==== READY NOW — sources the CRM already carries ==============================
 
-  // ---- L3 BizBuySell sub-designations (curated — the meeting's checkbox-vs-API split) ----
+  // Referrals — external sites & partners (BizBuySell lives here)
+  { id: "bizbuysell", parentId: "referrals", level: 2, kind: "platform", name: "BizBuySell" },
   { id: "bbs-api-leads", parentId: "bizbuysell", level: 3, kind: "campaign", name: "API leads" },
   { id: "bbs-checkbox-leads", parentId: "bizbuysell", level: 3, kind: "campaign", name: "Checkbox leads" },
+  { id: "transworld", parentId: "referrals", level: 2, kind: "platform", name: "Transworld Business Advisors" },
+  { id: "referral-partners", parentId: "referrals", level: 2, kind: "platform", name: "Referral partners" },
 
-  // ---- Phase-2 preview: Meta Ads subtree auto-created from UTM data ----
-  { id: "meta-black-friday", parentId: "meta-ads", level: 3, kind: "campaign", name: "black_friday_2026", isAutoCreated: true },
-  { id: "meta-abandoned-app", parentId: "meta-ads", level: 3, kind: "campaign", name: "abandoned_application_nurture", isAutoCreated: true },
-  { id: "meta-bf-bizowners", parentId: "meta-black-friday", level: 4, kind: "ad_set", name: "biz_owners_25_54_us", isAutoCreated: true },
-  { id: "meta-bf-retargeting", parentId: "meta-black-friday", level: 4, kind: "ad_set", name: "retargeting_site_visitors", isAutoCreated: true },
-  { id: "meta-bf-bo-video", parentId: "meta-bf-bizowners", level: 5, kind: "creative", name: "video_testimonial_v2", isAutoCreated: true },
-  { id: "meta-bf-bo-carousel", parentId: "meta-bf-bizowners", level: 5, kind: "creative", name: "carousel_rates_july", isAutoCreated: true },
-  { id: "meta-aa-dropoffs", parentId: "meta-abandoned-app", level: 4, kind: "ad_set", name: "appform_dropoffs_7d", isAutoCreated: true },
-  { id: "meta-aa-comeback", parentId: "meta-aa-dropoffs", level: 5, kind: "creative", name: "sms_comeback_offer", isAutoCreated: true },
+  // Email marketing — campaign (drill-down 1) > specific email (drill-down 2)
+  { id: "em-monthly-newsletter", parentId: "email-marketing", level: 2, kind: "campaign", name: "Monthly newsletter", userDefined: true },
+  { id: "em-nl-march", parentId: "em-monthly-newsletter", level: 3, kind: "creative", name: "March newsletter", userDefined: true },
+  { id: "em-rate-drop", parentId: "email-marketing", level: 2, kind: "campaign", name: "Rate-drop announcement", userDefined: true },
+
+  // Direct traffic — entrance page (drill-down 1)
+  { id: "dt-homepage", parentId: "direct-traffic", level: 2, kind: "platform", name: "Homepage (typed / bookmark)" },
+  { id: "dt-apply", parentId: "direct-traffic", level: 2, kind: "platform", name: "Apply page (untagged link)" },
+
+  // Offline sources — imports / API / manual / phone / events / website form fills
+  { id: "off-loanbud-io", parentId: "offline-sources", level: 2, kind: "platform", name: "loanbud.io form" },
+  { id: "off-loanbud-hub", parentId: "offline-sources", level: 2, kind: "platform", name: "LoanBud Hub form" },
+  { id: "off-wordpress", parentId: "offline-sources", level: 2, kind: "platform", name: "WordPress form" },
+  { id: "off-manual", parentId: "offline-sources", level: 2, kind: "platform", name: "Manual CRM entry" },
+  { id: "off-cold-call", parentId: "offline-sources", level: 2, kind: "platform", name: "Cold call" },
+  { id: "off-csv-import", parentId: "offline-sources", level: 2, kind: "platform", name: "Spreadsheet import" },
+  { id: "off-events", parentId: "offline-sources", level: 2, kind: "platform", name: "Trade shows & webinars" },
+
+  // ==== FILLS IN AS TRACKING CONNECTS — web-tracked sources ======================
+
+  // Paid social — Meta Ads subtree is a Phase-2 preview (auto-created from UTM data)
+  { id: "meta-ads", parentId: "paid-social", level: 2, kind: "platform", name: "Meta Ads" },
+  { id: "meta-black-friday", parentId: "meta-ads", level: 3, kind: "campaign", name: "black_friday_2026", isAutoCreated: true, userDefined: true },
+  { id: "meta-bf-bizowners", parentId: "meta-black-friday", level: 4, kind: "ad_set", name: "biz_owners_25_54_us", isAutoCreated: true, userDefined: true },
+  { id: "meta-bf-bo-video", parentId: "meta-bf-bizowners", level: 5, kind: "creative", name: "video_testimonial_v2", isAutoCreated: true, userDefined: true },
+  { id: "tiktok-ads", parentId: "paid-social", level: 2, kind: "platform", name: "TikTok Ads" },
+  { id: "linkedin-ads", parentId: "paid-social", level: 2, kind: "platform", name: "LinkedIn Ads" },
+
+  // Paid search — campaign (drill-down 1) > search term (drill-down 2)
+  { id: "google-ads", parentId: "paid-search", level: 2, kind: "platform", name: "Google Ads" },
+  { id: "bing-ads", parentId: "paid-search", level: 2, kind: "platform", name: "Bing Ads" },
+
+  // Organic search — search engine
+  { id: "os-google", parentId: "organic-search", level: 2, kind: "platform", name: "Google" },
+  { id: "os-bing", parentId: "organic-search", level: 2, kind: "platform", name: "Bing" },
+
+  // Organic social — social network
+  { id: "osoc-facebook", parentId: "organic-social", level: 2, kind: "platform", name: "Facebook" },
+  { id: "osoc-instagram", parentId: "organic-social", level: 2, kind: "platform", name: "Instagram" },
+  { id: "osoc-linkedin", parentId: "organic-social", level: 2, kind: "platform", name: "LinkedIn" },
+
+  // AI Referrals — AI platform
+  { id: "ai-chatgpt", parentId: "ai-referrals", level: 2, kind: "platform", name: "ChatGPT" },
+  { id: "ai-perplexity", parentId: "ai-referrals", level: 2, kind: "platform", name: "Perplexity" },
+  { id: "ai-gemini", parentId: "ai-referrals", level: 2, kind: "platform", name: "Google Gemini" },
+
+  // Other campaigns — tracked campaigns that aren't email / paid search / paid social
+  { id: "oc-webinar", parentId: "other-campaigns", level: 2, kind: "campaign", name: "Q3 webinar series", userDefined: true },
 ];
 
 const NODE_BY_ID = new Map(ATTRIBUTION_NODES.map((n) => [n.id, n]));
@@ -73,9 +106,9 @@ export function attributionChildren(parentId: string | null): AttributionNode[] 
 
 /**
  * Self-inclusive descendant expansion — the core of hierarchical filtering.
- * Selecting "Partnership" returns Partnership + BizBuySell + both its leaves + Transworld,
- * so a parent selection matches every contact classified anywhere under that branch.
- * (Real system: one indexed path-prefix query on attribution_nodes.)
+ * Selecting "Referrals" returns Referrals + BizBuySell + both its leaves + Transworld
+ * + Referral partners, so a parent selection matches every contact classified anywhere
+ * under that branch. (Real system: one indexed path-prefix query on attribution_nodes.)
  */
 export function attributionDescendantIds(selectedIds: string[]): Set<string> {
   const result = new Set<string>();
@@ -100,7 +133,7 @@ export function attributionPathNodes(id: string): AttributionNode[] {
   return path;
 }
 
-/** Human-readable classification path, e.g. "Partnership > BizBuySell > API leads". */
+/** Human-readable classification path, e.g. "Referrals > BizBuySell > API leads". */
 export function attributionPathLabel(id: string, separator = " > "): string {
   const path = attributionPathNodes(id);
   return path.length > 0 ? path.map((n) => n.name).join(separator) : "N/A";

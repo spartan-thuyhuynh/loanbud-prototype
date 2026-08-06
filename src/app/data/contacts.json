@@ -74,7 +74,7 @@
       "Pacific Bridge LLC",
       "Bay Area Ventures"
     ],
-    "attributionNodeId": "loanbud-io"
+    "attributionNodeId": "off-loanbud-io"
   },
   {
     "id": "3",
@@ -150,7 +150,7 @@
       "source": "sms-stop",
       "optedOutAt": "2024-02-15T10:00:00.000Z"
     },
-    "attributionNodeId": "sendgrid-campaigns"
+    "attributionNodeId": "em-nl-march"
   },
   {
     "id": "5",
@@ -243,7 +243,7 @@
       "source": "sms-stop",
       "optedOutAt": "2024-03-20T11:00:00.000Z"
     },
-    "attributionNodeId": "organic-search"
+    "attributionNodeId": "os-google"
   },
   {
     "id": "8",
@@ -272,7 +272,7 @@
     "city": "Los Angeles",
     "state": "CA",
     "zipCode": "90012",
-    "attributionNodeId": "wordpress-site"
+    "attributionNodeId": "off-wordpress"
   },
   {
     "id": "9",
@@ -341,7 +341,7 @@
     "state": "PA",
     "zipCode": "19103",
     "isDoNotCall": true,
-    "attributionNodeId": "meta-aa-comeback"
+    "attributionNodeId": "meta-bf-bo-video"
   },
   {
     "id": "11",
@@ -399,7 +399,7 @@
     "state": "GA",
     "zipCode": "30308",
     "isDoNotCall": true,
-    "attributionNodeId": "events"
+    "attributionNodeId": "off-events"
   },
   {
     "id": "13",
@@ -428,7 +428,7 @@
     "city": "San Francisco",
     "state": "CA",
     "zipCode": "94105",
-    "attributionNodeId": "loanbud-io"
+    "attributionNodeId": "oc-webinar"
   },
   {
     "id": "14",
@@ -496,7 +496,7 @@
       "source": "manual",
       "optedOutAt": "2024-03-01T08:00:00.000Z"
     },
-    "attributionNodeId": "cold-call"
+    "attributionNodeId": "off-cold-call"
   },
   {
     "id": "16",
@@ -526,7 +526,7 @@
     "state": "NC",
     "zipCode": "28202",
     "isDoNotCall": true,
-    "attributionNodeId": "sendgrid-campaigns"
+    "attributionNodeId": "em-nl-march"
   },
   {
     "id": "17",
@@ -555,7 +555,7 @@
     "city": "Seattle",
     "state": "WA",
     "zipCode": "98101",
-    "attributionNodeId": "meta-bf-retargeting"
+    "attributionNodeId": "meta-bf-bizowners"
   },
   {
     "id": "18",
@@ -583,7 +583,7 @@
     "city": "Austin",
     "state": "TX",
     "zipCode": "78701",
-    "attributionNodeId": "organic-social"
+    "attributionNodeId": "osoc-facebook"
   },
   {
     "id": "19",
@@ -612,7 +612,7 @@
     "city": "Albuquerque",
     "state": "NM",
     "zipCode": "87102",
-    "attributionNodeId": "partnership"
+    "attributionNodeId": "dt-homepage"
   },
   {
     "id": "20",
@@ -680,7 +680,7 @@
     "city": "Richmond",
     "state": "VA",
     "zipCode": "23219",
-    "attributionNodeId": "crm-manual-entry"
+    "attributionNodeId": "off-manual"
   },
   {
     "id": "22",
@@ -767,7 +767,7 @@
     "city": "Nashville",
     "state": "TN",
     "zipCode": "37201",
-    "attributionNodeId": "apply-lumba"
+    "attributionNodeId": "off-loanbud-hub"
   },
   {
     "id": "25",
@@ -795,7 +795,7 @@
     "city": "San Jose",
     "state": "CA",
     "zipCode": "95110",
-    "attributionNodeId": "meta-bf-bo-carousel"
+    "attributionNodeId": "meta-bf-bo-video"
   },
   {
     "id": "26",
@@ -824,6 +824,6 @@
     "city": "Indianapolis",
     "state": "IN",
     "zipCode": "46204",
-    "attributionNodeId": "partnership"
+    "attributionNodeId": "ai-chatgpt"
   }
 ]
