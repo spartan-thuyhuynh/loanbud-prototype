@@ -140,6 +140,8 @@ export interface AttributionNode {
   name: string;
   /** Phase-2 preview: node was auto-created from live UTM data, not curated by an admin. */
   isAutoCreated?: boolean;
+  /** The node's name is user-defined (a campaign / ad / email the marketer names via UTMs), not a fixed system category. */
+  userDefined?: boolean;
 }
 
 export interface EmailRecord {

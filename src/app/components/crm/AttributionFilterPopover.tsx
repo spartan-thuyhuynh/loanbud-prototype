@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Filter, Sparkles, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Filter, PencilLine, Sparkles, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Checkbox } from "../ui/checkbox";
 import type { AttributionNode } from "@/app/types";
@@ -13,7 +13,7 @@ import {
 /**
  * V2 (RFC-009): hierarchical attribution filter — the "lead source pyramid".
  * Ticking any node means "that node and everything under it" (descendant-inclusive),
- * so marketing filters by broad category (Paid Social, Partnership) without
+ * so marketing filters by broad category (Paid social, Referrals) without
  * hand-picking individual leaf sources. Mirrors the TreeSelect planned for frontend-hub.
  */
 
@@ -96,13 +96,17 @@ function TreeRow({
           onClick={() => (children.length > 0 ? toggleExpanded(node.id) : undefined)}
         >
           <span className="text-sm truncate">{node.name}</span>
-          {node.isAutoCreated && (
+          {node.userDefined && (
             <span
-              className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] shrink-0"
-              title="Auto-created from UTM data (Phase 2) — appeared in the tree the first time a lead arrived from it"
+              className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] shrink-0"
+              title={
+                node.isAutoCreated
+                  ? "User-defined — auto-created from your campaign's UTM data (a name you control, not a fixed system category)"
+                  : "User-defined — a campaign / ad / email you name and create (not a fixed system category)"
+              }
             >
-              <Sparkles className="w-2.5 h-2.5" />
-              auto
+              {node.isAutoCreated ? <Sparkles className="w-2.5 h-2.5" /> : <PencilLine className="w-2.5 h-2.5" />}
+              user-defined
             </span>
           )}
         </button>
@@ -143,7 +147,7 @@ export function AttributionFilterPopover({
 }: AttributionFilterPopoverProps) {
   const [expanded, setExpanded] = useState<Set<string>>(
     // start with the branches that make the demo story visible
-    () => new Set(["paid-social", "partnership", "bizbuysell", "meta-ads"]),
+    () => new Set(["referrals", "bizbuysell", "paid-social", "meta-ads", "meta-black-friday", "meta-bf-bizowners"]),
   );
 
   const toggleExpanded = (id: string) => {
@@ -194,6 +198,13 @@ export function AttributionFilterPopover({
             <p className="text-sm font-semibold">Attribution source</p>
             <p className="text-xs text-muted-foreground">
               Selecting a category includes everything under it
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1 flex-wrap">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <PencilLine className="w-2.5 h-2.5" />
+                user-defined
+              </span>
+              = names you create (campaigns, ads, emails); everything else is a fixed system category
             </p>
           </div>
           {selectedIds.length > 0 && (
